@@ -55,7 +55,7 @@ function Shell() {
   const session = useSession();
   const navigate = useNavigate();
   const userId = session.session?.user.id;
-  const { brands, selectedBrand, setSelectedBrandId, isAdmin, loading } = useBrand();
+  const { brands, selectedBrand, setSelectedBrandId, isAdmin } = useBrand();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
 
