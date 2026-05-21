@@ -1,107 +1,156 @@
-## Objetivo
-Pulir el Hito 1 enfocándonos en la experiencia de autenticación (login/registro) y dejar la arquitectura preparada para que el CRM pueda enchufarse sin reescribir nada.
+## Hito 2 — Clientes, Pedidos y Estados configurables
+
+Objetivo: que cada marca pueda gestionar su cartera de **clientes** y registrar **pedidos** con items y un historial de **cambios de estado** auditado. Estados editables por marca (no hardcoded). Todo multi-marca con RLS y arquitectura lista para que el CRM enchufe después.
 
 ---
 
-## 1. Desactivar verificación por email (Supabase)
+### 1. Modelo de datos (Supabase)
 
-La verificación por correo se controla en el dashboard de Supabase, no por código.
+Cinco tablas nuevas en `public`, todas con `brand_id` para aislamiento multi-marca y RLS escrita sobre `user_brands` + `has_role`.
 
-**Acción manual del usuario** (te dejo el link al final):
-- `Authentication → Providers → Email → Confirm email = OFF`
-
-Mientras esté activa, `signUp()` devuelve sesión `null` aunque el usuario se cree. Con esto desactivado, `signUp()` devuelve `session` inmediatamente → habilita el auto-login del punto 3.
-
----
-
-## 2. Mejoras UI/UX en `src/routes/auth.tsx`
-
-### a. Toggle "ver contraseña"
-Botón con ícono ojo/ojo-tachado (`Eye` / `EyeOff` de lucide-react) dentro del input. Estado local `showPassword`. Aplica a los dos formularios (signin y signup).
-
-### b. Medidor de fortaleza en tiempo real (solo en signup)
-Componente nuevo `src/components/auth/password-strength.tsx`:
-- Evalúa: longitud ≥8, minúscula, mayúscula, número, símbolo (5 criterios).
-- Barra de progreso segmentada de 5 tramos + etiqueta ("Muy débil → Excelente").
-- Colores semánticos del design system (rojo → ámbar → verde) usando tokens, no hex.
-- Lista de chequeo debajo mostrando qué falta cumplir.
-- Lógica pura, sin dependencias externas (función `scorePassword`).
-
-### c. Validaciones consistentes con Zod
-Mover validación de email/password a `src/lib/validation/auth-schemas.ts` (reutilizable por el CRM más adelante). Mínimo 8 caracteres + al menos 3 criterios para permitir submit.
-
-### d. Auto-login tras signup
-En `handleSignUp`, si la respuesta trae `data.session` (verificación desactivada), navegar directo a `/erp`. Si por algún motivo viene sin sesión, hacer fallback a `signInWithPassword` con las mismas credenciales.
-
-### e. Pulido visual menor
-- Mostrar/ocultar errores de campo inline (no solo toast).
-- Botón "Entrar" / "Crear cuenta" con estado disabled hasta cumplir criterios mínimos.
-- Microcopy más claro y consistente.
-
----
-
-## 3. Arquitectura SOLID pensando en el CRM
-
-Sin reescribir nada hoy, dejamos sembradas las piezas correctas para que cuando arranque el módulo CRM enchufe limpio:
-
-**Estructura propuesta** (creamos solo lo necesario para auth ahora):
 ```text
-src/
-  features/                ← módulos de negocio (ERP, CRM, shared)
-    auth/
-      components/          ← PasswordStrength, AuthForm, etc.
-      schemas/             ← Zod schemas reutilizables
-      hooks/               ← useSignUp, useSignIn (encapsulan supabase)
-    erp/                   ← (futuro) órdenes, producción, facturación
-    crm/                   ← (futuro) leads, pipeline, oportunidades
-  lib/                     ← utilidades cross-feature (use-session ya vive aquí)
-  integrations/supabase/   ← cliente único compartido (ya existe)
-  routes/                  ← solo composición de rutas, delgadas
+customers
+  id, brand_id (FK brands), display_name, doc_type, doc_number,
+  email, phone, address, city, notes, is_active, created_by, timestamps
+  UNIQUE (brand_id, doc_number) cuando doc_number no es null
+
+order_statuses                ← estados configurables POR MARCA
+  id, brand_id (FK brands), name, slug, color (token-friendly hex),
+  sort_order, is_initial (bool), is_final (bool), is_active, timestamps
+  UNIQUE (brand_id, slug)
+
+orders
+  id, brand_id, customer_id (FK customers),
+  order_number (auto: GTO-2026-000123 por marca), 
+  status_id (FK order_statuses), 
+  notes, subtotal, discount, tax, total (numeric 14,2),
+  assigned_to (uuid, nullable, FK auth.users vía user_id),
+  created_by, timestamps
+  UNIQUE (brand_id, order_number)
+
+order_items
+  id, order_id (FK orders ON DELETE CASCADE),
+  description, quantity (numeric), unit_price, line_total, sort_order, timestamps
+
+order_status_history          ← auditoría inmutable
+  id, order_id, from_status_id (null en creación), to_status_id,
+  changed_by (uuid), note, created_at
 ```
 
-**Principios aplicados**:
-- **S** (Single Responsibility): `auth.tsx` solo orquesta UI; la lógica vive en hooks (`useSignUp`, `useSignIn`).
-- **O** (Open/Closed): el medidor de fortaleza acepta reglas como prop → el CRM podrá usar reglas distintas sin modificar el componente.
-- **D** (Dependency Inversion): los hooks reciben el cliente Supabase vía import único (`@/integrations/supabase/client`), no se instancia en cada componente.
-- **Roles compartidos**: el enum `app_role` ya está pensado para extenderse (`comercial`, `sdr` cuando llegue el CRM) — no tocamos nada hoy.
+**Triggers / funciones**:
+- `set_updated_at()` en todas las tablas con `updated_at`.
+- `assign_order_number()` (BEFORE INSERT) → secuencia por marca tipo `GTO-2026-000001` usando prefijo de la marca (`brands.slug` en mayúsculas).
+- `log_order_status_change()` (AFTER INSERT/UPDATE de `orders`) → inserta fila en `order_status_history` cuando `status_id` cambia (o en INSERT).
+- `recalc_order_totals()` (AFTER INSERT/UPDATE/DELETE en `order_items`) → recalcula `subtotal` y `total` del pedido.
+- Seed de estados por defecto al crear marca (no aplica retroactivo automático aquí; en la migración se siembran para las 4 marcas existentes: `Borrador`, `Confirmado`, `En producción`, `Entregado`, `Cancelado`).
 
-> Nota: NO refactorizo todo el proyecto ahora. Solo creo `src/features/auth/` con lo nuevo de este hito. El resto migra cuando aporte valor (regla YAGNI).
-
----
-
-## 4. Archivos a tocar / crear
-
-**Crear:**
-- `src/features/auth/components/password-strength.tsx`
-- `src/features/auth/components/password-input.tsx` (input + toggle ojo, reutilizable)
-- `src/features/auth/schemas/auth-schemas.ts`
-- `src/features/auth/hooks/use-auth-actions.ts` (signIn, signUp + auto-login)
-
-**Editar:**
-- `src/routes/auth.tsx` (consumir lo anterior, quitar `emailRedirectTo`, auto-navegar tras signup)
-
-**No tocar:**
-- Migraciones de BD (todo el esquema del Hito 1 queda igual).
-- `_authenticated.erp.tsx`, sidebar, brand selector.
+**RLS** (mismo patrón que `brands`):
+- SELECT: usuario tiene la marca en `user_brands` **o** es `admin`.
+- INSERT/UPDATE/DELETE: `admin` **o** `ventas` con acceso a la marca (`comercial` queda preparado para el CRM, no se usa todavía).
+- `order_status_history`: solo SELECT por usuarios con acceso; INSERT solo por triggers (no policy de insert para usuarios).
 
 ---
 
-## 5. Cómo lo verificas tú
+### 2. Server functions (`createServerFn`)
 
-1. Vas a Supabase → Authentication → Providers → Email → desactivas "Confirm email" y guardas.
-2. En `/auth` → tab "Crear cuenta":
-   - Escribes una contraseña débil → barra roja + lista de criterios faltantes.
-   - Vas cumpliendo criterios → barra se llena y cambia de color en vivo.
-   - Click en el ojo → ves/ocultas la contraseña.
-   - Submit → entras directo a `/erp` sin pasar otra vez por login.
-3. En `/auth` → tab "Iniciar sesión": el ojo también funciona.
-4. Si dejas la verificación activa por error, el fallback de signIn cubre el caso y verás un toast claro.
+Toda lectura/escritura de datos pasa por server functions con `requireSupabaseAuth`. Nada de queries directas desde componentes para este módulo (sienta el patrón para el CRM).
+
+**Crear** (cada uno con su `.functions.ts` en `src/features/<area>/server/`):
+
+```text
+src/features/customers/server/customers.functions.ts
+  listCustomers({ brandId, search?, page?, pageSize? })
+  getCustomer({ id })
+  createCustomer({ brandId, ... })
+  updateCustomer({ id, ... })
+  toggleCustomerActive({ id, isActive })
+
+src/features/orders/server/orders.functions.ts
+  listOrders({ brandId, statusId?, customerId?, search?, page?, pageSize? })
+  getOrder({ id })          ← incluye items + customer + status
+  createOrder({ brandId, customerId, items[], notes?, statusId? })
+  updateOrder({ id, ... })  ← cambiar notas/assigned_to
+  changeOrderStatus({ id, toStatusId, note? })
+  upsertOrderItems({ orderId, items[] })
+  deleteOrder({ id })
+  listOrderHistory({ orderId })
+
+src/features/orders/server/order-statuses.functions.ts
+  listStatuses({ brandId })
+  createStatus({ brandId, name, color, isInitial?, isFinal? })
+  updateStatus({ id, ... })
+  reorderStatuses({ brandId, orderedIds[] })
+  deleteStatus({ id })      ← bloquea si hay pedidos usándolo
+```
+
+Validación con Zod en `src/features/<area>/schemas/`.
 
 ---
 
-## Lo que NO incluye este plan
-- Recuperación de contraseña (`/reset-password`) — lo dejamos para una iteración siguiente si lo quieres antes del Hito 2.
-- OAuth social (Google) — no fue pedido.
-- Migrar archivos existentes a `features/` — solo creamos lo nuevo allí.
+### 3. UI / Rutas
 
-¿Lo aplicamos así o ajustamos algo antes?
+Todas bajo el layout existente `_authenticated.erp.tsx` (sidebar + brand selector ya están).
+
+```text
+src/routes/_authenticated.erp.customers.tsx          ← listado + buscador + alta
+src/routes/_authenticated.erp.customers.$id.tsx      ← detalle/edición
+src/routes/_authenticated.erp.orders.tsx             ← listado con filtros (estado, cliente, búsqueda)
+src/routes/_authenticated.erp.orders.new.tsx         ← creación con items dinámicos
+src/routes/_authenticated.erp.orders.$id.tsx         ← detalle: items, totales, cambiar estado, timeline historial
+src/routes/_authenticated.erp.settings.statuses.tsx  ← CRUD de estados de la marca activa (drag-reorder)
+```
+
+Sidebar actualizado: añadir entradas `Clientes`, `Pedidos`, `Configuración → Estados` (esta última solo admin).
+
+Componentes nuevos clave:
+- `CustomerForm`, `CustomerTable` (TanStack Table)
+- `OrderForm` con `OrderItemsEditor` (filas dinámicas, totales en vivo)
+- `OrderStatusBadge` (lee `color` del estado, con buen contraste)
+- `OrderStatusChanger` (select + nota opcional → `changeOrderStatus`)
+- `OrderHistoryTimeline`
+- `StatusManager` (drag-and-drop con `@dnd-kit/sortable` — ya disponible en shadcn ecosystem; si no está, se instala)
+
+Data fetching con `@tanstack/react-query` + `useServerFn` (patrón ya usado en el proyecto).
+
+---
+
+### 4. Arquitectura SOLID (continuando lo del Hito 1)
+
+```text
+src/features/
+  customers/
+    components/   (form, table, search)
+    schemas/      (zod)
+    server/       (*.functions.ts)
+    hooks/        (use-customers, use-customer)
+  orders/
+    components/   (form, items-editor, status-changer, timeline, table)
+    schemas/
+    server/
+    hooks/
+```
+
+- Hooks encapsulan `useServerFn + useQuery/useMutation` (un solo lugar para invalidaciones).
+- Componentes presentacionales reciben datos por props (testeables sin Supabase).
+- Estados configurables como dato, no como enum → cumple Open/Closed para nuevas marcas.
+
+---
+
+### 5. Lo que NO incluye este hito (queda para el siguiente)
+
+- Kanban drag-and-drop entre estados (Hito 3).
+- Asignación visual de responsables / notificaciones.
+- KPIs y dashboard (Hito 4).
+- PDF de pedido / facturación (Hito 6).
+- Edición de items con histórico (por ahora `upsertOrderItems` reemplaza; el historial cubre solo cambios de estado).
+
+---
+
+### 6. Orden de ejecución propuesto
+
+1. **Migración SQL** (tablas + triggers + RLS + seed de estados para las 4 marcas) — requiere tu aprobación.
+2. Tras aprobar la migración: creo schemas Zod, server functions, hooks, componentes y rutas en paralelo.
+3. Actualizo sidebar con las nuevas secciones.
+4. Pruebo: crear cliente → crear pedido con items → cambiar estado → ver historial → editar estados de la marca.
+
+¿Lo aplicamos así o ajustamos algo (nombres de estados por defecto, formato de numeración, campos extra en cliente/pedido)?
