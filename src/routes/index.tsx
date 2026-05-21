@@ -21,7 +21,7 @@ const brands = [
   { name: "Espacio Inmobiliario", token: "bg-brand-espacio" },
   { name: "Montenegro Design",    token: "bg-brand-montenegro" },
   { name: "Casa Diseño",          token: "bg-brand-casa" },
-  { name: "Getova",                 token: "bg-brand-gtoa" },
+  { name: "Getova",                 token: "bg-brand-getova" },
 ];
 
 function LandingPage() {
