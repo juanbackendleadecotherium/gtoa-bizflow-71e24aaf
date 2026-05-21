@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Lock } from "lucide-react";
+import { ArrowRight, Lock, Shield } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -11,28 +11,39 @@ export const Route = createFileRoute("/")({
           "Acceso al backoffice de Grupo GTOA: ERP operativo y CRM comercial para Espacio Inmobiliario, Montenegro Design, Casa Diseño y GTOA.",
       },
       { property: "og:title", content: "Grupo GTOA — Backoffice corporativo" },
-      {
-        property: "og:description",
-        content: "Punto de acceso al ERP y CRM de Grupo GTOA.",
-      },
+      { property: "og:description", content: "Punto de acceso al ERP y CRM de Grupo GTOA." },
     ],
   }),
   component: LandingPage,
 });
 
 const brands = [
-  "Espacio Inmobiliario",
-  "Montenegro Design",
-  "Casa Diseño",
-  "GTOA",
+  { name: "Espacio Inmobiliario", token: "bg-brand-espacio" },
+  { name: "Montenegro Design",    token: "bg-brand-montenegro" },
+  { name: "Casa Diseño",          token: "bg-brand-casa" },
+  { name: "GTOA",                 token: "bg-brand-gtoa" },
 ];
 
 function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <header className="px-8 py-6 flex items-center justify-between border-b border-border/60">
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+      {/* fondo decorativo */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-40 -right-32 h-[480px] w-[480px] rounded-full bg-accent/20 blur-3xl" />
+        <div className="absolute top-1/3 -left-40 h-[420px] w-[420px] rounded-full bg-primary/10 blur-3xl" />
+        <div
+          className="absolute inset-0 opacity-[0.035]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
+      </div>
+
+      <header className="px-6 sm:px-10 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-md bg-primary text-primary-foreground grid place-items-center font-bold tracking-tight">
+          <div className="h-10 w-10 rounded-lg bg-primary text-primary-foreground grid place-items-center font-display font-bold text-lg shadow-lg shadow-primary/20">
             G
           </div>
           <div className="leading-tight">
@@ -40,78 +51,89 @@ function LandingPage() {
             <p className="text-xs text-muted-foreground">Backoffice corporativo</p>
           </div>
         </div>
-        <span className="text-xs text-muted-foreground hidden sm:block">
-          Acceso interno
-        </span>
+        <Link
+          to="/auth"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1.5"
+        >
+          <Shield className="h-3.5 w-3.5" />
+          Iniciar sesión
+        </Link>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-6 py-16">
-        <div className="w-full max-w-5xl">
-          <div className="text-center mb-14">
-            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground mb-4">
+      <main className="px-6 sm:px-10 py-16 sm:py-24">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center mb-16">
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 backdrop-blur px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-6">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
               Plataforma interna
-            </p>
-            <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight mb-5">
-              Backoffice Grupo GTOA
+            </span>
+            <h1 className="font-display text-5xl sm:text-6xl font-semibold tracking-tight mb-6">
+              Operación de cuatro marcas,
+              <br />
+              <span className="text-accent">un solo backoffice.</span>
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Un único punto de acceso para la operación, las ventas y la
-              administración de nuestras marcas.
+              Centralizamos pedidos, producción, ventas y facturación de las marcas de Grupo GTOA en una sola plataforma.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-5">
             <Link
               to="/erp"
-              className="group relative rounded-xl border border-border bg-card p-8 transition-all hover:border-primary hover:shadow-lg"
+              className="group relative overflow-hidden rounded-2xl border border-border bg-surface p-8 transition-all hover:border-accent hover:shadow-xl hover:shadow-accent/10 hover:-translate-y-0.5"
             >
-              <div className="flex items-start justify-between mb-8">
-                <span className="text-[10px] uppercase tracking-widest text-primary font-semibold">
+              <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
+              <div className="flex items-start justify-between mb-10">
+                <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-accent">
                   Disponible
                 </span>
-                <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+                <ArrowRight className="h-5 w-5 text-muted-foreground transition-all group-hover:translate-x-1 group-hover:text-accent" />
               </div>
-              <h2 className="text-2xl font-semibold mb-2">Ingresar al ERP</h2>
-              <p className="text-sm text-muted-foreground">
-                Gestión de pedidos, producción, ventas y facturación interna
-                multi-marca.
+              <h2 className="font-display text-2xl font-semibold mb-2">Ingresar al ERP</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Pedidos, flujo de producción, ventas, dashboard operativo y facturación interna multi-marca.
               </p>
             </Link>
 
             <div
               aria-disabled="true"
-              className="relative rounded-xl border border-dashed border-border bg-card/40 p-8 cursor-not-allowed"
+              className="relative overflow-hidden rounded-2xl border border-dashed border-border bg-surface/40 p-8 cursor-not-allowed"
             >
-              <div className="flex items-start justify-between mb-8">
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+              <div className="flex items-start justify-between mb-10">
+                <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-muted-foreground">
                   Próximamente
                 </span>
                 <Lock className="h-5 w-5 text-muted-foreground" />
               </div>
-              <h2 className="text-2xl font-semibold mb-2 text-muted-foreground">
+              <h2 className="font-display text-2xl font-semibold mb-2 text-muted-foreground">
                 Ingresar al CRM
               </h2>
-              <p className="text-sm text-muted-foreground">
-                Módulo comercial y de relación con clientes. Espacio reservado
-                para próxima fase.
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Módulo comercial y de relación con clientes. Espacio reservado para próxima fase del contrato.
               </p>
             </div>
           </div>
 
-          <div className="mt-16 text-center">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground mb-3">
+          <div className="mt-20">
+            <p className="text-center text-[11px] uppercase tracking-[0.25em] text-muted-foreground mb-5">
               Marcas operadas
             </p>
-            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-foreground/80">
+            <div className="flex flex-wrap justify-center gap-3">
               {brands.map((b) => (
-                <span key={b}>{b}</span>
+                <div
+                  key={b.name}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-1.5 text-sm"
+                >
+                  <span className={`h-2 w-2 rounded-full ${b.token}`} />
+                  {b.name}
+                </div>
               ))}
             </div>
           </div>
         </div>
       </main>
 
-      <footer className="px-8 py-6 border-t border-border/60 text-center text-xs text-muted-foreground">
+      <footer className="px-6 sm:px-10 py-8 text-center text-xs text-muted-foreground">
         © {new Date().getFullYear()} Grupo GTOA — Uso interno
       </footer>
     </div>
