@@ -141,12 +141,3 @@ function CustomersPage() {
   );
 }
 
-export function BackLink({ to, label }: { to: string; label: string }) {
-  return (
-    <Link to={to} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-4">
-      <ArrowLeft className="h-3 w-3" /> {label}
-    </Link>
-  );
-}
-
-export const _navigate = useNavigate;
