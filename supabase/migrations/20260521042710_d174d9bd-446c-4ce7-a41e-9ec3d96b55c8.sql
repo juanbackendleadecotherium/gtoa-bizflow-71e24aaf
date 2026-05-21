@@ -1,0 +1,1 @@
+UPDATE public.brands SET name='Getova', slug='getova', legal_name='Grupo Getova S.A.S.' WHERE slug='gtoa';
