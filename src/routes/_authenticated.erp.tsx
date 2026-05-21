@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Loader2,
   Construction,
+  ArrowLeft,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
