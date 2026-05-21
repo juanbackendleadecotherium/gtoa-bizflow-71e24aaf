@@ -35,8 +35,8 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
     meta: [
-      { title: "ERP — Grupo GTOA" },
-      { name: "description", content: "Backoffice operativo de Grupo GTOA." },
+      { title: "ERP — Grupo Getova" },
+      { name: "description", content: "Backoffice operativo de Grupo Getova." },
     ],
   }),
   component: ErpDashboard,
