@@ -4,14 +4,14 @@ import { ArrowRight, Lock, Shield } from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Grupo GTOA — Backoffice corporativo" },
+      { title: "Grupo Getova — Backoffice corporativo" },
       {
         name: "description",
         content:
-          "Acceso al backoffice de Grupo GTOA: ERP operativo y CRM comercial para Espacio Inmobiliario, Montenegro Design, Casa Diseño y GTOA.",
+          "Acceso al backoffice de Grupo Getova: ERP operativo y CRM comercial para Espacio Inmobiliario, Montenegro Design, Casa Diseño y Getova.",
       },
-      { property: "og:title", content: "Grupo GTOA — Backoffice corporativo" },
-      { property: "og:description", content: "Punto de acceso al ERP y CRM de Grupo GTOA." },
+      { property: "og:title", content: "Grupo Getova — Backoffice corporativo" },
+      { property: "og:description", content: "Punto de acceso al ERP y CRM de Grupo Getova." },
     ],
   }),
   component: LandingPage,
@@ -21,7 +21,7 @@ const brands = [
   { name: "Espacio Inmobiliario", token: "bg-brand-espacio" },
   { name: "Montenegro Design",    token: "bg-brand-montenegro" },
   { name: "Casa Diseño",          token: "bg-brand-casa" },
-  { name: "GTOA",                 token: "bg-brand-gtoa" },
+  { name: "Getova",                 token: "bg-brand-getova" },
 ];
 
 function LandingPage() {
@@ -47,7 +47,7 @@ function LandingPage() {
             G
           </div>
           <div className="leading-tight">
-            <p className="text-sm font-semibold tracking-wide">Grupo GTOA</p>
+            <p className="text-sm font-semibold tracking-wide">Grupo Getova</p>
             <p className="text-xs text-muted-foreground">Backoffice corporativo</p>
           </div>
         </div>
@@ -73,7 +73,7 @@ function LandingPage() {
               <span className="text-accent">un solo backoffice.</span>
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Centralizamos pedidos, producción, ventas y facturación de las marcas de Grupo GTOA en una sola plataforma.
+              Centralizamos pedidos, producción, ventas y facturación de las marcas de Grupo Getova en una sola plataforma.
             </p>
           </div>
 
@@ -134,7 +134,7 @@ function LandingPage() {
       </main>
 
       <footer className="px-6 sm:px-10 py-8 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Grupo GTOA — Uso interno
+        © {new Date().getFullYear()} Grupo Getova — Uso interno
       </footer>
     </div>
   );

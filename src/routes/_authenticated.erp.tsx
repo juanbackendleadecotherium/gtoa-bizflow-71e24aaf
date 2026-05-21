@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Loader2,
   Construction,
+  ArrowLeft,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -34,8 +35,8 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
     meta: [
-      { title: "ERP — Grupo GTOA" },
-      { name: "description", content: "Backoffice operativo de Grupo GTOA." },
+      { title: "ERP — Grupo Getova" },
+      { name: "description", content: "Backoffice operativo de Grupo Getova." },
     ],
   }),
   component: ErpDashboard,
@@ -58,7 +59,7 @@ type Profile = {
 
 type RoleRow = { role: "admin" | "operativo" | "finanzas" | "ventas" };
 
-const SELECTED_BRAND_KEY = "gtoa:selected-brand";
+const SELECTED_BRAND_KEY = "getova:selected-brand";
 
 const NAV = [
   { label: "Dashboard", icon: LayoutDashboard, key: "dashboard", ready: true },
@@ -182,9 +183,19 @@ function ErpDashboard() {
               G
             </div>
             <div className="leading-tight">
-              <p className="text-sm font-semibold">Grupo GTOA</p>
+              <p className="text-sm font-semibold">Grupo Getova</p>
               <p className="text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/60">ERP</p>
             </div>
+          </Link>
+        </div>
+
+        <div className="px-3 pt-3">
+          <Link
+            to="/"
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Volver al menú principal
           </Link>
         </div>
 
