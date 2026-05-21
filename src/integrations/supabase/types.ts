@@ -53,6 +53,284 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          address: string | null
+          brand_id: string
+          city: string | null
+          created_at: string
+          created_by: string | null
+          display_name: string
+          doc_number: string | null
+          doc_type: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          brand_id: string
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          doc_number?: string | null
+          doc_type?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          brand_id?: string
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          doc_number?: string | null
+          doc_type?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          line_total: number
+          order_id: string
+          quantity: number
+          sort_order: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          line_total?: number
+          order_id: string
+          quantity?: number
+          sort_order?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          line_total?: number
+          order_id?: string
+          quantity?: number
+          sort_order?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          from_status_id: string | null
+          id: string
+          note: string | null
+          order_id: string
+          to_status_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          from_status_id?: string | null
+          id?: string
+          note?: string | null
+          order_id: string
+          to_status_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          from_status_id?: string | null
+          id?: string
+          note?: string | null
+          order_id?: string
+          to_status_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_from_status_id_fkey"
+            columns: ["from_status_id"]
+            isOneToOne: false
+            referencedRelation: "order_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_history_to_status_id_fkey"
+            columns: ["to_status_id"]
+            isOneToOne: false
+            referencedRelation: "order_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_statuses: {
+        Row: {
+          brand_id: string
+          color: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_final: boolean
+          is_initial: boolean
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          color?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_final?: boolean
+          is_initial?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          color?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_final?: boolean
+          is_initial?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_statuses_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          assigned_to: string | null
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          discount: number
+          id: string
+          notes: string | null
+          order_number: string
+          status_id: string
+          subtotal: number
+          tax: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          discount?: number
+          id?: string
+          notes?: string | null
+          order_number: string
+          status_id: string
+          subtotal?: number
+          tax?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          discount?: number
+          id?: string
+          notes?: string | null
+          order_number?: string
+          status_id?: string
+          subtotal?: number
+          tax?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "order_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -138,6 +416,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_write_brand: {
+        Args: { _brand_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_brand_access: {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
