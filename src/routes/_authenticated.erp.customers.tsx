@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, Search, ArrowLeft, Loader2 } from "lucide-react";
@@ -94,7 +94,7 @@ function CustomersPage() {
           <p className="font-medium mb-3">Nuevo cliente</p>
           <CustomerForm
             onCancel={() => setCreating(false)}
-            onSubmit={(v) => createMutation.mutate(v)}
+            onSubmit={(v: CustomerInput) => createMutation.mutate(v)}
             submitting={createMutation.isPending}
           />
         </div>
