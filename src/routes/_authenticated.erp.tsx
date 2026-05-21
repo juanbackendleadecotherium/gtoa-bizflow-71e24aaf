@@ -55,7 +55,7 @@ function Shell() {
   const session = useSession();
   const navigate = useNavigate();
   const userId = session.session?.user.id;
-  const { brands, selectedBrand, setSelectedBrandId, isAdmin, loading } = useBrand();
+  const { brands, selectedBrand, setSelectedBrandId, isAdmin } = useBrand();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
 
@@ -185,15 +185,9 @@ function Shell() {
         </header>
 
         <main className="flex-1 p-6 sm:p-8 max-w-6xl w-full mx-auto">
-          {loading ? (
-            <div className="grid place-items-center h-64 text-sm text-muted-foreground gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Cargando datos del backoffice…
-            </div>
-          ) : (
-            <Outlet />
-          )}
+          <Outlet />
         </main>
+
       </div>
     </div>
   );
