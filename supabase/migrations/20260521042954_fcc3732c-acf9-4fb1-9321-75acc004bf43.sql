@@ -1,0 +1,1 @@
+UPDATE public.brands SET legal_name = regexp_replace(legal_name, '\s*S\.A\.S\.?\s*$', '', 'i') WHERE legal_name ~* 'S\.A\.S\.?\s*$';
