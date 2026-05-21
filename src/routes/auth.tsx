@@ -1,14 +1,22 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PasswordInput } from "@/features/auth/components/password-input";
+import { PasswordStrength } from "@/features/auth/components/password-strength";
+import {
+  MIN_PASSWORD_SCORE,
+  scorePassword,
+  signInSchema,
+  signUpSchema,
+} from "@/features/auth/schemas/auth-schemas";
+import { signIn, signUpAndLogin } from "@/features/auth/hooks/use-auth-actions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -20,14 +28,43 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+type Errors = Record<string, string>;
+
+function fieldErrors(parseError: unknown): Errors {
+  const out: Errors = {};
+  if (parseError && typeof parseError === "object" && "issues" in parseError) {
+    for (const issue of (parseError as { issues: { path: (string | number)[]; message: string }[] }).issues) {
+      const key = String(issue.path[0] ?? "_");
+      if (!out[key]) out[key] = issue.message;
+    }
+  }
+  return out;
+}
+
 function AuthPage() {
   const navigate = useNavigate();
   const session = useSession();
   const [tab, setTab] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
+
+  // signin state
+  const [siEmail, setSiEmail] = useState("");
+  const [siPass, setSiPass] = useState("");
+  const [siErrors, setSiErrors] = useState<Errors>({});
+
+  // signup state
+  const [suName, setSuName] = useState("");
+  const [suEmail, setSuEmail] = useState("");
+  const [suPass, setSuPass] = useState("");
+  const [suErrors, setSuErrors] = useState<Errors>({});
+
   const [loading, setLoading] = useState(false);
+
+  const suScore = useMemo(() => scorePassword(suPass).score, [suPass]);
+  const canSignUp =
+    suName.trim().length > 0 &&
+    suEmail.trim().length > 0 &&
+    suPass.length >= 8 &&
+    suScore >= MIN_PASSWORD_SCORE;
 
   useEffect(() => {
     if (session.status === "authenticated") {
@@ -37,30 +74,50 @@ function AuthPage() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    const parsed = signInSchema.safeParse({ email: siEmail, password: siPass });
+    if (!parsed.success) {
+      setSiErrors(fieldErrors(parsed.error));
+      return;
+    }
+    setSiErrors({});
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) return toast.error("No se pudo iniciar sesión", { description: error.message });
-    toast.success("Bienvenido");
-    navigate({ to: "/erp" });
+    try {
+      await signIn(parsed.data);
+      toast.success("Bienvenido");
+      navigate({ to: "/erp" });
+    } catch (err) {
+      toast.error("No se pudo iniciar sesión", {
+        description: err instanceof Error ? err.message : "Intenta de nuevo",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    const parsed = signUpSchema.safeParse({
+      displayName: suName,
+      email: suEmail,
+      password: suPass,
+    });
+    if (!parsed.success) {
+      setSuErrors(fieldErrors(parsed.error));
+      return;
+    }
+    setSuErrors({});
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/erp`,
-        data: { display_name: displayName },
-      },
-    });
-    setLoading(false);
-    if (error) return toast.error("No se pudo crear la cuenta", { description: error.message });
-    toast.success("Cuenta creada", {
-      description: "Revisa tu correo para confirmar el acceso si la verificación está activa.",
-    });
+    try {
+      await signUpAndLogin(parsed.data);
+      toast.success("Cuenta creada", { description: "Entrando al backoffice…" });
+      navigate({ to: "/erp" });
+    } catch (err) {
+      toast.error("No se pudo crear la cuenta", {
+        description: err instanceof Error ? err.message : "Intenta de nuevo",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -93,14 +150,32 @@ function AuthPage() {
               </TabsList>
 
               <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4">
+                <form onSubmit={handleSignIn} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="email-in">Correo</Label>
-                    <Input id="email-in" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@grupogtoa.com" />
+                    <Input
+                      id="email-in"
+                      type="email"
+                      value={siEmail}
+                      onChange={(e) => setSiEmail(e.target.value)}
+                      placeholder="nombre@grupogtoa.com"
+                      aria-invalid={!!siErrors.email}
+                    />
+                    {siErrors.email && (
+                      <p className="text-xs text-destructive">{siErrors.email}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pass-in">Contraseña</Label>
-                    <Input id="pass-in" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <PasswordInput
+                      id="pass-in"
+                      value={siPass}
+                      onChange={(e) => setSiPass(e.target.value)}
+                      aria-invalid={!!siErrors.password}
+                    />
+                    {siErrors.password && (
+                      <p className="text-xs text-destructive">{siErrors.password}</p>
+                    )}
                   </div>
                   <Button type="submit" disabled={loading} className="w-full">
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -110,22 +185,54 @@ function AuthPage() {
               </TabsContent>
 
               <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
+                <form onSubmit={handleSignUp} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="name-up">Nombre</Label>
-                    <Input id="name-up" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Tu nombre" />
+                    <Input
+                      id="name-up"
+                      value={suName}
+                      onChange={(e) => setSuName(e.target.value)}
+                      placeholder="Tu nombre"
+                      aria-invalid={!!suErrors.displayName}
+                    />
+                    {suErrors.displayName && (
+                      <p className="text-xs text-destructive">{suErrors.displayName}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email-up">Correo</Label>
-                    <Input id="email-up" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Input
+                      id="email-up"
+                      type="email"
+                      value={suEmail}
+                      onChange={(e) => setSuEmail(e.target.value)}
+                      placeholder="nombre@grupogtoa.com"
+                      aria-invalid={!!suErrors.email}
+                    />
+                    {suErrors.email && (
+                      <p className="text-xs text-destructive">{suErrors.email}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pass-up">Contraseña</Label>
-                    <Input id="pass-up" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <PasswordInput
+                      id="pass-up"
+                      value={suPass}
+                      onChange={(e) => setSuPass(e.target.value)}
+                      aria-invalid={!!suErrors.password}
+                    />
+                    <PasswordStrength value={suPass} />
+                    {suErrors.password && (
+                      <p className="text-xs text-destructive">{suErrors.password}</p>
+                    )}
                   </div>
-                  <Button type="submit" disabled={loading} className="w-full">
+                  <Button
+                    type="submit"
+                    disabled={loading || !canSignUp}
+                    className="w-full"
+                  >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Crear cuenta
+                    Crear cuenta y entrar
                   </Button>
                   <p className="text-xs text-muted-foreground text-center">
                     Una vez creada, un administrador debe asignarte rol y marcas.

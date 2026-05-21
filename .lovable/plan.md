@@ -1,81 +1,107 @@
-# Plan: ERP Grupo GTOA — Landing inicial + Roadmap por hitos
-
-## Fase 0 (AHORA): Landing de acceso
-
-Antes de tocar base de datos, levantamos una landing limpia y profesional que sirva como punto de entrada al backoffice. Esto te da tiempo para conectar Supabase (Lovable Cloud) sin que el proyecto avance al modelado todavía.
-
-**Qué se construye en esta fase:**
-
-- Ruta `/` (landing) con identidad **Grupo GTOA**:
-  - Encabezado con nombre del grupo y bajada corta ("Backoffice corporativo").
-  - Mención discreta de las 4 marcas que opera: Espacio Inmobiliario, Montenegro Design, Casa Diseño, GTOA.
-  - Dos tarjetas de acceso lado a lado:
-    1. **Ingresar al ERP** → botón activo, navega a `/erp` (placeholder por ahora).
-    2. **Ingresar al CRM** → botón visible pero deshabilitado / "Próximamente", reservando el espacio.
-  - Pie con copyright Grupo GTOA.
-- Ruta `/erp` con un placeholder mínimo ("ERP — base lista, módulos en construcción") para que el botón funcione.
-- Diseño: paleta sobria corporativa (neutros oscuros + un acento), tipografía con carácter, tokens definidos en `src/styles.css` (sin colores hardcoded en componentes).
-- SEO básico por ruta (`title`, `description`, `og:*`) en `/` y `/erp`.
-
-**Lo que NO se hace en Fase 0:**
-- No se habilita Lovable Cloud todavía.
-- No se crean tablas, ni auth, ni modelos de pedidos/facturas.
-- No se construye ningún módulo del ERP aún.
-
-Cuando confirmes que conectaste tu BD de Supabase, arrancamos Hito 1.
+## Objetivo
+Pulir el Hito 1 enfocándonos en la experiencia de autenticación (login/registro) y dejar la arquitectura preparada para que el CRM pueda enchufarse sin reescribir nada.
 
 ---
 
-## Roadmap por hitos (post-landing)
+## 1. Desactivar verificación por email (Supabase)
 
-### Hito 1 — Cimientos técnicos y multi-marca
-- Activar Lovable Cloud y verificar conexión.
-- Modelo `brands` con las 4 marcas (Espacio Inmobiliario, Montenegro Design, Casa Diseño, GTOA) + logo, colores y datos fiscales por marca.
-- Autenticación de usuarios internos (email/password) + tabla `user_roles` separada (admin, operativo, finanzas, ventas) con función `has_role` y RLS.
-- Layout autenticado `/erp/*` con sidebar, selector de marca activa y guard de sesión.
+La verificación por correo se controla en el dashboard de Supabase, no por código.
 
-### Hito 2 — Gestión de pedidos (núcleo operativo)
-- Tablas: `customers`, `orders`, `order_items`, `order_status_history`.
-- CRUD de pedidos asociado a marca activa.
-- Estados operativos configurables (ej. Borrador → Confirmado → En producción → Listo → Entregado → Cerrado).
-- Listado con filtros por marca, estado, cliente, fecha.
+**Acción manual del usuario** (te dejo el link al final):
+- `Authentication → Providers → Email → Confirm email = OFF`
 
-### Hito 3 — Flujo de producción y seguimiento
-- Tablero tipo kanban por estado operativo.
-- Asignación de responsables, fechas comprometidas y bitácora por pedido.
-- Vista de seguimiento detallada del pedido (timeline de cambios de estado).
-
-### Hito 4 — Dashboard operativo
-- KPIs por marca y consolidado: pedidos por estado, tiempos promedio, pedidos atrasados, carga por responsable.
-- Gráficos y filtros por rango de fechas.
-
-### Hito 5 — Ventas y gestión financiera básica
-- Registro de ventas vinculado a pedidos.
-- Métricas financieras básicas: ingresos por marca, ticket promedio, cuentas por cobrar simples.
-- Reporte exportable (CSV).
-
-### Hito 6 — Facturación interna personalizada por marca
-- Plantilla de factura propia por marca (logo, colores, datos fiscales, numeración independiente).
-- Generación de PDF de factura interna asociada a un pedido/venta.
-- Historial de facturas filtrable por marca.
-
-### Hito 7 — Organización de producción e historial operativo
-- Vistas de capacidad y planificación por marca.
-- Historial operativo consultable por pedido, cliente, marca y período.
-- Auditoría de cambios sensible (quién cambió qué y cuándo).
-
-### Hito 8 (opcional, futuro) — Activación del CRM
-- Habilitar el segundo botón de la landing.
-- Definir alcance del CRM en su propio roadmap.
+Mientras esté activa, `signUp()` devuelve sesión `null` aunque el usuario se cree. Con esto desactivado, `signUp()` devuelve `session` inmediatamente → habilita el auto-login del punto 3.
 
 ---
 
-## Detalles técnicos (referencia)
+## 2. Mejoras UI/UX en `src/routes/auth.tsx`
 
-- Stack: TanStack Start v1 + React 19 + Tailwind v4 + shadcn/ui (ya presente en el proyecto).
-- Rutas file-based en `src/routes/` — la landing reemplaza el placeholder de `src/routes/index.tsx` y se agrega `src/routes/erp.tsx` como placeholder de entrada.
-- Backend (a partir de Hito 1): Lovable Cloud (Supabase gestionado) con RLS estricta, roles en tabla aparte, server functions de TanStack Start para lógica protegida.
-- Multi-marca: campo `brand_id` en todas las tablas operativas + RLS que filtre por marcas permitidas al usuario.
+### a. Toggle "ver contraseña"
+Botón con ícono ojo/ojo-tachado (`Eye` / `EyeOff` de lucide-react) dentro del input. Estado local `showPassword`. Aplica a los dos formularios (signin y signup).
 
-## Entregable inmediato al aprobar este plan
-Solo la **Fase 0**: landing `/` con botón ERP funcional y botón CRM reservado, más placeholder `/erp`. Nada de base de datos hasta que confirmes que ya conectaste Supabase.
+### b. Medidor de fortaleza en tiempo real (solo en signup)
+Componente nuevo `src/components/auth/password-strength.tsx`:
+- Evalúa: longitud ≥8, minúscula, mayúscula, número, símbolo (5 criterios).
+- Barra de progreso segmentada de 5 tramos + etiqueta ("Muy débil → Excelente").
+- Colores semánticos del design system (rojo → ámbar → verde) usando tokens, no hex.
+- Lista de chequeo debajo mostrando qué falta cumplir.
+- Lógica pura, sin dependencias externas (función `scorePassword`).
+
+### c. Validaciones consistentes con Zod
+Mover validación de email/password a `src/lib/validation/auth-schemas.ts` (reutilizable por el CRM más adelante). Mínimo 8 caracteres + al menos 3 criterios para permitir submit.
+
+### d. Auto-login tras signup
+En `handleSignUp`, si la respuesta trae `data.session` (verificación desactivada), navegar directo a `/erp`. Si por algún motivo viene sin sesión, hacer fallback a `signInWithPassword` con las mismas credenciales.
+
+### e. Pulido visual menor
+- Mostrar/ocultar errores de campo inline (no solo toast).
+- Botón "Entrar" / "Crear cuenta" con estado disabled hasta cumplir criterios mínimos.
+- Microcopy más claro y consistente.
+
+---
+
+## 3. Arquitectura SOLID pensando en el CRM
+
+Sin reescribir nada hoy, dejamos sembradas las piezas correctas para que cuando arranque el módulo CRM enchufe limpio:
+
+**Estructura propuesta** (creamos solo lo necesario para auth ahora):
+```text
+src/
+  features/                ← módulos de negocio (ERP, CRM, shared)
+    auth/
+      components/          ← PasswordStrength, AuthForm, etc.
+      schemas/             ← Zod schemas reutilizables
+      hooks/               ← useSignUp, useSignIn (encapsulan supabase)
+    erp/                   ← (futuro) órdenes, producción, facturación
+    crm/                   ← (futuro) leads, pipeline, oportunidades
+  lib/                     ← utilidades cross-feature (use-session ya vive aquí)
+  integrations/supabase/   ← cliente único compartido (ya existe)
+  routes/                  ← solo composición de rutas, delgadas
+```
+
+**Principios aplicados**:
+- **S** (Single Responsibility): `auth.tsx` solo orquesta UI; la lógica vive en hooks (`useSignUp`, `useSignIn`).
+- **O** (Open/Closed): el medidor de fortaleza acepta reglas como prop → el CRM podrá usar reglas distintas sin modificar el componente.
+- **D** (Dependency Inversion): los hooks reciben el cliente Supabase vía import único (`@/integrations/supabase/client`), no se instancia en cada componente.
+- **Roles compartidos**: el enum `app_role` ya está pensado para extenderse (`comercial`, `sdr` cuando llegue el CRM) — no tocamos nada hoy.
+
+> Nota: NO refactorizo todo el proyecto ahora. Solo creo `src/features/auth/` con lo nuevo de este hito. El resto migra cuando aporte valor (regla YAGNI).
+
+---
+
+## 4. Archivos a tocar / crear
+
+**Crear:**
+- `src/features/auth/components/password-strength.tsx`
+- `src/features/auth/components/password-input.tsx` (input + toggle ojo, reutilizable)
+- `src/features/auth/schemas/auth-schemas.ts`
+- `src/features/auth/hooks/use-auth-actions.ts` (signIn, signUp + auto-login)
+
+**Editar:**
+- `src/routes/auth.tsx` (consumir lo anterior, quitar `emailRedirectTo`, auto-navegar tras signup)
+
+**No tocar:**
+- Migraciones de BD (todo el esquema del Hito 1 queda igual).
+- `_authenticated.erp.tsx`, sidebar, brand selector.
+
+---
+
+## 5. Cómo lo verificas tú
+
+1. Vas a Supabase → Authentication → Providers → Email → desactivas "Confirm email" y guardas.
+2. En `/auth` → tab "Crear cuenta":
+   - Escribes una contraseña débil → barra roja + lista de criterios faltantes.
+   - Vas cumpliendo criterios → barra se llena y cambia de color en vivo.
+   - Click en el ojo → ves/ocultas la contraseña.
+   - Submit → entras directo a `/erp` sin pasar otra vez por login.
+3. En `/auth` → tab "Iniciar sesión": el ojo también funciona.
+4. Si dejas la verificación activa por error, el fallback de signIn cubre el caso y verás un toast claro.
+
+---
+
+## Lo que NO incluye este plan
+- Recuperación de contraseña (`/reset-password`) — lo dejamos para una iteración siguiente si lo quieres antes del Hito 2.
+- OAuth social (Google) — no fue pedido.
+- Migrar archivos existentes a `features/` — solo creamos lo nuevo allí.
+
+¿Lo aplicamos así o ajustamos algo antes?
