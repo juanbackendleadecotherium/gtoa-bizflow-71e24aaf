@@ -65,14 +65,17 @@ export function BrandProvider({ userId, children }: { userId: string | undefined
     },
   });
 
-  const brands = brandsQuery.data ?? [];
+  const brands = useMemo(() => brandsQuery.data ?? [], [brandsQuery.data]);
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
 
   useEffect(() => {
     if (brands.length === 0) return;
-    const stored = typeof window !== "undefined" ? localStorage.getItem(SELECTED_BRAND_KEY) : null;
-    const exists = stored && brands.find((b) => b.id === stored);
-    setSelectedBrandId(exists ? stored! : brands[0].id);
+    setSelectedBrandId((curr) => {
+      if (curr && brands.find((b) => b.id === curr)) return curr;
+      const stored = typeof window !== "undefined" ? localStorage.getItem(SELECTED_BRAND_KEY) : null;
+      const exists = stored && brands.find((b) => b.id === stored);
+      return exists ? stored! : brands[0].id;
+    });
   }, [brands]);
 
   useEffect(() => {
@@ -81,13 +84,16 @@ export function BrandProvider({ userId, children }: { userId: string | undefined
     }
   }, [selectedBrandId]);
 
-  const selectedBrand = brands.find((b) => b.id === selectedBrandId) ?? null;
-  const loading = rolesQuery.isLoading || brandsQuery.isLoading;
+  const selectedBrand = useMemo(
+    () => brands.find((b) => b.id === selectedBrandId) ?? null,
+    [brands, selectedBrandId],
+  );
+  const loading = (rolesQuery.isLoading || brandsQuery.isLoading) && brands.length === 0;
 
-  const value: BrandCtx = {
+  const value = useMemo<BrandCtx>(() => ({
     brands, loading, selectedBrand, selectedBrandId,
     setSelectedBrandId, isAdmin, roles,
-  };
+  }), [brands, loading, selectedBrand, selectedBrandId, isAdmin, roles]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
