@@ -13,6 +13,13 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedErpRouteImport } from './routes/_authenticated.erp'
+import { Route as AuthenticatedErpIndexRouteImport } from './routes/_authenticated.erp.index'
+import { Route as AuthenticatedErpOrdersRouteImport } from './routes/_authenticated.erp.orders'
+import { Route as AuthenticatedErpCustomersRouteImport } from './routes/_authenticated.erp.customers'
+import { Route as AuthenticatedErpSettingsStatusesRouteImport } from './routes/_authenticated.erp.settings.statuses'
+import { Route as AuthenticatedErpOrdersNewRouteImport } from './routes/_authenticated.erp.orders.new'
+import { Route as AuthenticatedErpOrdersIdRouteImport } from './routes/_authenticated.erp.orders.$id'
+import { Route as AuthenticatedErpCustomersIdRouteImport } from './routes/_authenticated.erp.customers.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -33,30 +40,121 @@ const AuthenticatedErpRoute = AuthenticatedErpRouteImport.update({
   path: '/erp',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedErpIndexRoute = AuthenticatedErpIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedErpRoute,
+} as any)
+const AuthenticatedErpOrdersRoute = AuthenticatedErpOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AuthenticatedErpRoute,
+} as any)
+const AuthenticatedErpCustomersRoute =
+  AuthenticatedErpCustomersRouteImport.update({
+    id: '/customers',
+    path: '/customers',
+    getParentRoute: () => AuthenticatedErpRoute,
+  } as any)
+const AuthenticatedErpSettingsStatusesRoute =
+  AuthenticatedErpSettingsStatusesRouteImport.update({
+    id: '/settings/statuses',
+    path: '/settings/statuses',
+    getParentRoute: () => AuthenticatedErpRoute,
+  } as any)
+const AuthenticatedErpOrdersNewRoute =
+  AuthenticatedErpOrdersNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedErpOrdersRoute,
+  } as any)
+const AuthenticatedErpOrdersIdRoute =
+  AuthenticatedErpOrdersIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedErpOrdersRoute,
+  } as any)
+const AuthenticatedErpCustomersIdRoute =
+  AuthenticatedErpCustomersIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedErpCustomersRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/erp': typeof AuthenticatedErpRoute
+  '/erp': typeof AuthenticatedErpRouteWithChildren
+  '/erp/customers': typeof AuthenticatedErpCustomersRouteWithChildren
+  '/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
+  '/erp/': typeof AuthenticatedErpIndexRoute
+  '/erp/customers/$id': typeof AuthenticatedErpCustomersIdRoute
+  '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
+  '/erp/orders/new': typeof AuthenticatedErpOrdersNewRoute
+  '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/erp': typeof AuthenticatedErpRoute
+  '/erp/customers': typeof AuthenticatedErpCustomersRouteWithChildren
+  '/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
+  '/erp': typeof AuthenticatedErpIndexRoute
+  '/erp/customers/$id': typeof AuthenticatedErpCustomersIdRoute
+  '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
+  '/erp/orders/new': typeof AuthenticatedErpOrdersNewRoute
+  '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/erp': typeof AuthenticatedErpRoute
+  '/_authenticated/erp': typeof AuthenticatedErpRouteWithChildren
+  '/_authenticated/erp/customers': typeof AuthenticatedErpCustomersRouteWithChildren
+  '/_authenticated/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
+  '/_authenticated/erp/': typeof AuthenticatedErpIndexRoute
+  '/_authenticated/erp/customers/$id': typeof AuthenticatedErpCustomersIdRoute
+  '/_authenticated/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
+  '/_authenticated/erp/orders/new': typeof AuthenticatedErpOrdersNewRoute
+  '/_authenticated/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/erp'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/erp'
+    | '/erp/customers'
+    | '/erp/orders'
+    | '/erp/'
+    | '/erp/customers/$id'
+    | '/erp/orders/$id'
+    | '/erp/orders/new'
+    | '/erp/settings/statuses'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/erp'
-  id: '__root__' | '/' | '/_authenticated' | '/auth' | '/_authenticated/erp'
+  to:
+    | '/'
+    | '/auth'
+    | '/erp/customers'
+    | '/erp/orders'
+    | '/erp'
+    | '/erp/customers/$id'
+    | '/erp/orders/$id'
+    | '/erp/orders/new'
+    | '/erp/settings/statuses'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/erp'
+    | '/_authenticated/erp/customers'
+    | '/_authenticated/erp/orders'
+    | '/_authenticated/erp/'
+    | '/_authenticated/erp/customers/$id'
+    | '/_authenticated/erp/orders/$id'
+    | '/_authenticated/erp/orders/new'
+    | '/_authenticated/erp/settings/statuses'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -95,15 +193,111 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/erp/': {
+      id: '/_authenticated/erp/'
+      path: '/'
+      fullPath: '/erp/'
+      preLoaderRoute: typeof AuthenticatedErpIndexRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
+    '/_authenticated/erp/orders': {
+      id: '/_authenticated/erp/orders'
+      path: '/orders'
+      fullPath: '/erp/orders'
+      preLoaderRoute: typeof AuthenticatedErpOrdersRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
+    '/_authenticated/erp/customers': {
+      id: '/_authenticated/erp/customers'
+      path: '/customers'
+      fullPath: '/erp/customers'
+      preLoaderRoute: typeof AuthenticatedErpCustomersRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
+    '/_authenticated/erp/settings/statuses': {
+      id: '/_authenticated/erp/settings/statuses'
+      path: '/settings/statuses'
+      fullPath: '/erp/settings/statuses'
+      preLoaderRoute: typeof AuthenticatedErpSettingsStatusesRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
+    '/_authenticated/erp/orders/new': {
+      id: '/_authenticated/erp/orders/new'
+      path: '/new'
+      fullPath: '/erp/orders/new'
+      preLoaderRoute: typeof AuthenticatedErpOrdersNewRouteImport
+      parentRoute: typeof AuthenticatedErpOrdersRoute
+    }
+    '/_authenticated/erp/orders/$id': {
+      id: '/_authenticated/erp/orders/$id'
+      path: '/$id'
+      fullPath: '/erp/orders/$id'
+      preLoaderRoute: typeof AuthenticatedErpOrdersIdRouteImport
+      parentRoute: typeof AuthenticatedErpOrdersRoute
+    }
+    '/_authenticated/erp/customers/$id': {
+      id: '/_authenticated/erp/customers/$id'
+      path: '/$id'
+      fullPath: '/erp/customers/$id'
+      preLoaderRoute: typeof AuthenticatedErpCustomersIdRouteImport
+      parentRoute: typeof AuthenticatedErpCustomersRoute
+    }
   }
 }
 
+interface AuthenticatedErpCustomersRouteChildren {
+  AuthenticatedErpCustomersIdRoute: typeof AuthenticatedErpCustomersIdRoute
+}
+
+const AuthenticatedErpCustomersRouteChildren: AuthenticatedErpCustomersRouteChildren =
+  {
+    AuthenticatedErpCustomersIdRoute: AuthenticatedErpCustomersIdRoute,
+  }
+
+const AuthenticatedErpCustomersRouteWithChildren =
+  AuthenticatedErpCustomersRoute._addFileChildren(
+    AuthenticatedErpCustomersRouteChildren,
+  )
+
+interface AuthenticatedErpOrdersRouteChildren {
+  AuthenticatedErpOrdersIdRoute: typeof AuthenticatedErpOrdersIdRoute
+  AuthenticatedErpOrdersNewRoute: typeof AuthenticatedErpOrdersNewRoute
+}
+
+const AuthenticatedErpOrdersRouteChildren: AuthenticatedErpOrdersRouteChildren =
+  {
+    AuthenticatedErpOrdersIdRoute: AuthenticatedErpOrdersIdRoute,
+    AuthenticatedErpOrdersNewRoute: AuthenticatedErpOrdersNewRoute,
+  }
+
+const AuthenticatedErpOrdersRouteWithChildren =
+  AuthenticatedErpOrdersRoute._addFileChildren(
+    AuthenticatedErpOrdersRouteChildren,
+  )
+
+interface AuthenticatedErpRouteChildren {
+  AuthenticatedErpCustomersRoute: typeof AuthenticatedErpCustomersRouteWithChildren
+  AuthenticatedErpOrdersRoute: typeof AuthenticatedErpOrdersRouteWithChildren
+  AuthenticatedErpIndexRoute: typeof AuthenticatedErpIndexRoute
+  AuthenticatedErpSettingsStatusesRoute: typeof AuthenticatedErpSettingsStatusesRoute
+}
+
+const AuthenticatedErpRouteChildren: AuthenticatedErpRouteChildren = {
+  AuthenticatedErpCustomersRoute: AuthenticatedErpCustomersRouteWithChildren,
+  AuthenticatedErpOrdersRoute: AuthenticatedErpOrdersRouteWithChildren,
+  AuthenticatedErpIndexRoute: AuthenticatedErpIndexRoute,
+  AuthenticatedErpSettingsStatusesRoute: AuthenticatedErpSettingsStatusesRoute,
+}
+
+const AuthenticatedErpRouteWithChildren =
+  AuthenticatedErpRoute._addFileChildren(AuthenticatedErpRouteChildren)
+
 interface AuthenticatedRouteChildren {
-  AuthenticatedErpRoute: typeof AuthenticatedErpRoute
+  AuthenticatedErpRoute: typeof AuthenticatedErpRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedErpRoute: AuthenticatedErpRoute,
+  AuthenticatedErpRoute: AuthenticatedErpRouteWithChildren,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -118,3 +312,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
