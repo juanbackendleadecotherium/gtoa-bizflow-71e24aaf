@@ -59,7 +59,7 @@ type Profile = {
 
 type RoleRow = { role: "admin" | "operativo" | "finanzas" | "ventas" };
 
-const SELECTED_BRAND_KEY = "gtoa:selected-brand";
+const SELECTED_BRAND_KEY = "getova:selected-brand";
 
 const NAV = [
   { label: "Dashboard", icon: LayoutDashboard, key: "dashboard", ready: true },
