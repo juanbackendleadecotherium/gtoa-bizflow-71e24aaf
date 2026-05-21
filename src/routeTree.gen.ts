@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedErpRouteImport } from './routes/_authenticated.erp'
 import { Route as AuthenticatedErpIndexRouteImport } from './routes/_authenticated.erp.index'
 import { Route as AuthenticatedErpCustomersRouteImport } from './routes/_authenticated.erp.customers'
+import { Route as AuthenticatedErpCustomersIdRouteImport } from './routes/_authenticated.erp.customers.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -46,19 +47,27 @@ const AuthenticatedErpCustomersRoute =
     path: '/customers',
     getParentRoute: () => AuthenticatedErpRoute,
   } as any)
+const AuthenticatedErpCustomersIdRoute =
+  AuthenticatedErpCustomersIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedErpCustomersRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/erp': typeof AuthenticatedErpRouteWithChildren
-  '/erp/customers': typeof AuthenticatedErpCustomersRoute
+  '/erp/customers': typeof AuthenticatedErpCustomersRouteWithChildren
   '/erp/': typeof AuthenticatedErpIndexRoute
+  '/erp/customers/$id': typeof AuthenticatedErpCustomersIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/erp/customers': typeof AuthenticatedErpCustomersRoute
+  '/erp/customers': typeof AuthenticatedErpCustomersRouteWithChildren
   '/erp': typeof AuthenticatedErpIndexRoute
+  '/erp/customers/$id': typeof AuthenticatedErpCustomersIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,14 +75,21 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/erp': typeof AuthenticatedErpRouteWithChildren
-  '/_authenticated/erp/customers': typeof AuthenticatedErpCustomersRoute
+  '/_authenticated/erp/customers': typeof AuthenticatedErpCustomersRouteWithChildren
   '/_authenticated/erp/': typeof AuthenticatedErpIndexRoute
+  '/_authenticated/erp/customers/$id': typeof AuthenticatedErpCustomersIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/erp' | '/erp/customers' | '/erp/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/erp'
+    | '/erp/customers'
+    | '/erp/'
+    | '/erp/customers/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/erp/customers' | '/erp'
+  to: '/' | '/auth' | '/erp/customers' | '/erp' | '/erp/customers/$id'
   id:
     | '__root__'
     | '/'
@@ -82,6 +98,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp'
     | '/_authenticated/erp/customers'
     | '/_authenticated/erp/'
+    | '/_authenticated/erp/customers/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -134,16 +151,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpCustomersRouteImport
       parentRoute: typeof AuthenticatedErpRoute
     }
+    '/_authenticated/erp/customers/$id': {
+      id: '/_authenticated/erp/customers/$id'
+      path: '/$id'
+      fullPath: '/erp/customers/$id'
+      preLoaderRoute: typeof AuthenticatedErpCustomersIdRouteImport
+      parentRoute: typeof AuthenticatedErpCustomersRoute
+    }
   }
 }
 
+interface AuthenticatedErpCustomersRouteChildren {
+  AuthenticatedErpCustomersIdRoute: typeof AuthenticatedErpCustomersIdRoute
+}
+
+const AuthenticatedErpCustomersRouteChildren: AuthenticatedErpCustomersRouteChildren =
+  {
+    AuthenticatedErpCustomersIdRoute: AuthenticatedErpCustomersIdRoute,
+  }
+
+const AuthenticatedErpCustomersRouteWithChildren =
+  AuthenticatedErpCustomersRoute._addFileChildren(
+    AuthenticatedErpCustomersRouteChildren,
+  )
+
 interface AuthenticatedErpRouteChildren {
-  AuthenticatedErpCustomersRoute: typeof AuthenticatedErpCustomersRoute
+  AuthenticatedErpCustomersRoute: typeof AuthenticatedErpCustomersRouteWithChildren
   AuthenticatedErpIndexRoute: typeof AuthenticatedErpIndexRoute
 }
 
 const AuthenticatedErpRouteChildren: AuthenticatedErpRouteChildren = {
-  AuthenticatedErpCustomersRoute: AuthenticatedErpCustomersRoute,
+  AuthenticatedErpCustomersRoute: AuthenticatedErpCustomersRouteWithChildren,
   AuthenticatedErpIndexRoute: AuthenticatedErpIndexRoute,
 }
 
@@ -170,3 +208,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
