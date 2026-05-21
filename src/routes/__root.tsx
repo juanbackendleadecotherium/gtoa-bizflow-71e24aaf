@@ -67,11 +67,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Grupo GTOA — Backoffice" },
-      { name: "description", content: "Backoffice corporativo de Grupo GTOA: ERP y CRM." },
-      { name: "author", content: "Grupo GTOA" },
-      { property: "og:title", content: "Grupo GTOA — Backoffice" },
-      { property: "og:description", content: "Backoffice corporativo de Grupo GTOA." },
+      { title: "Grupo Getova — Backoffice" },
+      { name: "description", content: "Backoffice corporativo de Grupo Getova: ERP y CRM." },
+      { name: "author", content: "Grupo Getova" },
+      { property: "og:title", content: "Grupo Getova — Backoffice" },
+      { property: "og:description", content: "Backoffice corporativo de Grupo Getova." },
       { property: "og:type", content: "website" },
     ],
     links: [

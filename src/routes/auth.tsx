@@ -21,8 +21,8 @@ import { signIn, signUpAndLogin } from "@/features/auth/hooks/use-auth-actions";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Acceso — Grupo GTOA" },
-      { name: "description", content: "Iniciar sesión en el backoffice de Grupo GTOA." },
+      { title: "Acceso — Grupo Getova" },
+      { name: "description", content: "Iniciar sesión en el backoffice de Grupo Getova." },
     ],
   }),
   component: AuthPage,
@@ -138,7 +138,7 @@ function AuthPage() {
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground font-display font-bold text-xl mb-4 shadow-lg shadow-primary/20">
               G
             </div>
-            <h1 className="font-display text-2xl font-semibold">Backoffice Grupo GTOA</h1>
+            <h1 className="font-display text-2xl font-semibold">Backoffice Grupo Getova</h1>
             <p className="text-sm text-muted-foreground mt-1">Acceso interno</p>
           </div>
 
@@ -158,7 +158,7 @@ function AuthPage() {
                       type="email"
                       value={siEmail}
                       onChange={(e) => setSiEmail(e.target.value)}
-                      placeholder="nombre@grupogtoa.com"
+                      placeholder="nombre@grupogetova.com"
                       aria-invalid={!!siErrors.email}
                     />
                     {siErrors.email && (
@@ -206,7 +206,7 @@ function AuthPage() {
                       type="email"
                       value={suEmail}
                       onChange={(e) => setSuEmail(e.target.value)}
-                      placeholder="nombre@grupogtoa.com"
+                      placeholder="nombre@grupogetova.com"
                       aria-invalid={!!suErrors.email}
                     />
                     {suErrors.email && (
