@@ -79,7 +79,9 @@ export const parseWhatsAppOrder = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY no configurada");
+    if (!key) {
+      return { success: false, message: "La IA no está configurada todavía. Revisa LOVABLE_API_KEY en el proyecto." };
+    }
 
     const gateway = createLovableAiGatewayProvider(key);
     const model = gateway("google/gemini-3-flash-preview");
@@ -101,10 +103,15 @@ export const parseWhatsAppOrder = createServerFn({ method: "POST" })
       });
 
       const parsed = ExtractedSchema.parse(extractJsonObject(text));
-      return normalizeExtractedOrder(parsed);
+      return { success: true, order: normalizeExtractedOrder(parsed) };
     } catch (error) {
       console.error("[WhatsApp AI] Extraction failed", error);
-      if (error instanceof Error) throw error;
-      throw new Error("No se pudo procesar el texto de WhatsApp. Intenta con un resumen más claro del pedido.");
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "No se pudo procesar el texto de WhatsApp. Intenta con un resumen más claro del pedido.",
+      };
     }
   });
