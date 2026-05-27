@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
@@ -56,20 +56,10 @@ function OrdersPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1">{selectedBrand?.name}</p>
-          <h1 className="font-display text-2xl font-semibold">Pedidos</h1>
-          <p className="text-sm text-muted-foreground">Registra y da seguimiento a los pedidos de la marca.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline" className="gap-2">
-            <Link to="/erp/orders/whatsapp"><Sparkles className="h-4 w-4 text-accent" /> Desde WhatsApp</Link>
-          </Button>
-          <Button asChild className="gap-2">
-            <Link to="/erp/orders/new"><Plus className="h-4 w-4" /> Nuevo pedido</Link>
-          </Button>
-        </div>
+      <div className="mb-6">
+        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1">{selectedBrand?.name}</p>
+        <h1 className="font-display text-2xl font-semibold">Pedidos</h1>
+        <p className="text-sm text-muted-foreground">Consulta y edita los pedidos de la marca. Los pedidos nuevos se crean desde Clientes.</p>
       </div>
 
       <div className="mb-4 flex gap-2 flex-wrap">

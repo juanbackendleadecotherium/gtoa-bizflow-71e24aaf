@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { ArrowLeft, Loader2, Trash2, History } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -12,7 +13,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { StatusBadge } from "@/features/orders/status-badge";
-import { formatMoney } from "@/features/orders/order-items-editor";
+import { OrderItemsEditor, formatMoney } from "@/features/orders/order-items-editor";
+import type { OrderItemInput } from "@/features/orders/schemas";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -30,7 +32,7 @@ function OrderDetail() {
       const { data, error } = await supabase
         .from("orders")
         .select(`
-          id, order_number, status_id, notes, subtotal, discount, tax, total, created_at, brand_id,
+          id, order_number, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date,
           customer:customers(id, display_name, email, phone),
           status:order_statuses(id, name, color),
           items:order_items(id, description, quantity, unit_price, line_total, sort_order)
@@ -65,8 +67,44 @@ function OrderDetail() {
     },
   });
 
+  const auditQuery = useQuery({
+    queryKey: ["order-audit", id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("order_audit_log")
+        .select("id, created_at, changed_by, changed_by_email, action, entity, field, old_value, new_value")
+        .eq("order_id", id)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as AuditRow[];
+    },
+  });
+
   const [newStatus, setNewStatus] = useState("");
   const [statusNote, setStatusNote] = useState("");
+
+  // edit mode state
+  const [editing, setEditing] = useState(false);
+  const [editNotes, setEditNotes] = useState("");
+  const [editDiscount, setEditDiscount] = useState(0);
+  const [editTax, setEditTax] = useState(0);
+  const [editETA, setEditETA] = useState<string>("");
+  const [editItems, setEditItems] = useState<(OrderItemInput & { id?: string })[]>([]);
+
+  useEffect(() => {
+    if (!orderQuery.data) return;
+    const o = orderQuery.data as any;
+    setEditNotes(o.notes ?? "");
+    setEditDiscount(Number(o.discount ?? 0));
+    setEditTax(Number(o.tax ?? 0));
+    setEditETA(o.estimated_delivery_date ?? "");
+    const its = ((o.items ?? []) as any[]).slice().sort((a, b) => a.sort_order - b.sort_order);
+    setEditItems(its.map((it) => ({
+      id: it.id, description: it.description, quantity: Number(it.quantity),
+      unit_price: Number(it.unit_price), sort_order: it.sort_order,
+    })));
+  }, [orderQuery.data]);
 
   const changeStatus = useMutation({
     mutationFn: async () => {
@@ -74,7 +112,6 @@ function OrderDetail() {
       const { error } = await supabase.from("orders").update({ status_id: newStatus }).eq("id", id);
       if (error) throw error;
       if (statusNote.trim()) {
-        // append note to most recent history row (insert via trigger doesn't include note for updates)
         const { data: rows } = await supabase
           .from("order_status_history").select("id")
           .eq("order_id", id).order("created_at", { ascending: false }).limit(1);
@@ -85,10 +122,74 @@ function OrderDetail() {
     },
     onSuccess: () => {
       toast.success("Estado actualizado");
-      setStatusNote("");
-      setNewStatus("");
+      setStatusNote(""); setNewStatus("");
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["order-history", id] });
+      qc.invalidateQueries({ queryKey: ["order-audit", id] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const saveEdit = useMutation({
+    mutationFn: async () => {
+      const original = orderQuery.data as any;
+      // Update order header fields (only if changed — triggers will dedupe via IS DISTINCT FROM)
+      const { error: upErr } = await supabase.from("orders").update({
+        notes: editNotes || null,
+        discount: editDiscount,
+        tax: editTax,
+        estimated_delivery_date: editETA || null,
+      }).eq("id", id);
+      if (upErr) throw upErr;
+
+      // Diff items
+      const originalItems = ((original.items ?? []) as any[]);
+      const origMap = new Map(originalItems.map((it) => [it.id, it]));
+      const keptIds = new Set<string>();
+
+      for (let i = 0; i < editItems.length; i++) {
+        const it = editItems[i];
+        if (it.id) {
+          keptIds.add(it.id);
+          const orig = origMap.get(it.id);
+          const changed = !orig
+            || orig.description !== it.description
+            || Number(orig.quantity) !== Number(it.quantity)
+            || Number(orig.unit_price) !== Number(it.unit_price)
+            || Number(orig.sort_order) !== i;
+          if (changed) {
+            const { error } = await supabase.from("order_items").update({
+              description: it.description,
+              quantity: it.quantity,
+              unit_price: it.unit_price,
+              sort_order: i,
+            }).eq("id", it.id);
+            if (error) throw error;
+          }
+        } else {
+          const { error } = await supabase.from("order_items").insert({
+            order_id: id,
+            description: it.description,
+            quantity: it.quantity,
+            unit_price: it.unit_price,
+            sort_order: i,
+          });
+          if (error) throw error;
+        }
+      }
+      // Delete removed
+      const toDelete = originalItems.filter((it) => !keptIds.has(it.id)).map((it) => it.id);
+      if (toDelete.length) {
+        const { error } = await supabase.from("order_items").delete().in("id", toDelete);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Pedido actualizado");
+      setEditing(false);
+      qc.invalidateQueries({ queryKey: ["order", id] });
+      qc.invalidateQueries({ queryKey: ["order-audit", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -107,13 +208,12 @@ function OrderDetail() {
   });
 
   if (orderQuery.isLoading) return <div className="grid place-items-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
-  const o = orderQuery.data;
+  const o = orderQuery.data as any;
   if (!o) return <p className="text-sm text-muted-foreground">Pedido no encontrado.</p>;
 
   const customer = o.customer as any;
   const status = o.status as any;
-  const items = (o.items as any[] | null) ?? [];
-  items.sort((a, b) => a.sort_order - b.sort_order);
+  const items = ((o.items as any[] | null) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
 
   return (
     <>
@@ -131,6 +231,20 @@ function OrderDetail() {
         </div>
         <div className="flex items-center gap-2">
           {status && <StatusBadge name={status.name} color={status.color} />}
+          {!editing ? (
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
+              <Pencil className="h-4 w-4" /> Editar
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" className="gap-2" onClick={() => { setEditing(false); }}>
+                <X className="h-4 w-4" /> Cancelar
+              </Button>
+              <Button size="sm" onClick={() => saveEdit.mutate()} disabled={saveEdit.isPending}>
+                {saveEdit.isPending ? "Guardando…" : "Guardar cambios"}
+              </Button>
+            </>
+          )}
           <Button variant="outline" size="sm" className="gap-2 text-destructive border-destructive/40 hover:bg-destructive/10"
             onClick={() => { if (confirm("¿Eliminar este pedido?")) deleteMutation.mutate(); }}>
             <Trash2 className="h-4 w-4" />
@@ -142,40 +256,65 @@ function OrderDetail() {
         <div className="lg:col-span-2 space-y-5">
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-sm font-medium mb-3">Items</p>
-            <table className="w-full text-sm">
-              <thead className="text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="text-left py-2">Descripción</th>
-                  <th className="text-right py-2 w-20">Cant.</th>
-                  <th className="text-right py-2 w-28">Precio</th>
-                  <th className="text-right py-2 w-28">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((it) => (
-                  <tr key={it.id} className="border-t border-border">
-                    <td className="py-2">{it.description}</td>
-                    <td className="py-2 text-right tabular-nums">{Number(it.quantity)}</td>
-                    <td className="py-2 text-right tabular-nums">{formatMoney(it.unit_price)}</td>
-                    <td className="py-2 text-right tabular-nums">{formatMoney(it.line_total)}</td>
+            {editing ? (
+              <OrderItemsEditor items={editItems} onChange={setEditItems} />
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="text-left py-2">Descripción</th>
+                    <th className="text-right py-2 w-20">Cant.</th>
+                    <th className="text-right py-2 w-28">Precio</th>
+                    <th className="text-right py-2 w-28">Total</th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <Row label="Subtotal" value={formatMoney(o.subtotal)} />
-                <Row label="Descuento" value={`- ${formatMoney(o.discount)}`} />
-                <Row label="Impuesto" value={`+ ${formatMoney(o.tax)}`} />
-                <Row label="Total" value={formatMoney(o.total)} bold />
-              </tfoot>
-            </table>
+                </thead>
+                <tbody>
+                  {items.map((it) => (
+                    <tr key={it.id} className="border-t border-border">
+                      <td className="py-2">{it.description}</td>
+                      <td className="py-2 text-right tabular-nums">{Number(it.quantity)}</td>
+                      <td className="py-2 text-right tabular-nums">{formatMoney(it.unit_price)}</td>
+                      <td className="py-2 text-right tabular-nums">{formatMoney(it.line_total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <Row label="Subtotal" value={formatMoney(o.subtotal)} />
+                  <Row label="Descuento" value={`- ${formatMoney(o.discount)}`} />
+                  <Row label="Impuesto" value={`+ ${formatMoney(o.tax)}`} />
+                  <Row label="Total" value={formatMoney(o.total)} bold />
+                </tfoot>
+              </table>
+            )}
+
+            {editing && (
+              <div className="grid sm:grid-cols-3 gap-3 mt-4">
+                <div>
+                  <Label className="text-xs mb-1.5 block text-muted-foreground">Descuento</Label>
+                  <Input type="number" step="0.01" min="0" value={editDiscount} onChange={(e) => setEditDiscount(Number(e.target.value))} />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block text-muted-foreground">Impuesto</Label>
+                  <Input type="number" step="0.01" min="0" value={editTax} onChange={(e) => setEditTax(Number(e.target.value))} />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block text-muted-foreground">Entrega estimada</Label>
+                  <Input type="date" value={editETA ?? ""} onChange={(e) => setEditETA(e.target.value)} />
+                </div>
+              </div>
+            )}
           </div>
 
-          {o.notes && (
-            <div className="rounded-xl border border-border bg-surface p-5">
-              <p className="text-sm font-medium mb-2">Notas</p>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{o.notes}</p>
-            </div>
-          )}
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <p className="text-sm font-medium mb-2">Notas</p>
+            {editing ? (
+              <Textarea rows={3} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Notas del pedido…" />
+            ) : (
+              o.notes
+                ? <p className="text-sm text-muted-foreground whitespace-pre-wrap">{o.notes}</p>
+                : <p className="text-xs text-muted-foreground italic">Sin notas.</p>
+            )}
+          </div>
 
           <div className="rounded-xl border border-border bg-surface p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -201,6 +340,33 @@ function OrderDetail() {
                       </div>
                       {h.note && <p className="text-xs text-muted-foreground mt-1">{h.note}</p>}
                     </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm font-medium">Auditoría de cambios</p>
+            </div>
+            {auditQuery.isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : (auditQuery.data ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground">Sin cambios registrados todavía.</p>
+            ) : (
+              <ol className="space-y-2.5">
+                {auditQuery.data!.map((a) => (
+                  <li key={a.id} className="text-sm border-l-2 border-border pl-3">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(a.created_at).toLocaleString("es-CO")}
+                      </span>
+                      <span className="text-xs font-medium">{a.changed_by_email ?? "—"}</span>
+                      <span className="text-xs uppercase tracking-wider text-accent">{describeAction(a)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{describeChange(a)}</p>
                   </li>
                 ))}
               </ol>
@@ -250,6 +416,51 @@ function OrderDetail() {
       </div>
     </>
   );
+}
+
+type AuditRow = {
+  id: string;
+  created_at: string;
+  changed_by: string | null;
+  changed_by_email: string | null;
+  action: string;
+  entity: string;
+  field: string | null;
+  old_value: unknown;
+  new_value: unknown;
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  notes: "Notas",
+  discount: "Descuento",
+  tax: "Impuesto",
+  customer_id: "Cliente",
+  estimated_delivery_date: "Entrega estimada",
+  seller_id: "Vendedor",
+};
+
+function describeAction(a: AuditRow) {
+  if (a.action === "item_insert") return "Item agregado";
+  if (a.action === "item_update") return "Item modificado";
+  if (a.action === "item_delete") return "Item eliminado";
+  return FIELD_LABELS[a.field ?? ""] ?? "Pedido actualizado";
+}
+
+function fmtVal(v: unknown): string {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+
+function describeChange(a: AuditRow) {
+  if (a.entity === "order_item") {
+    const n = a.new_value as any;
+    const o = a.old_value as any;
+    if (a.action === "item_insert") return `${n?.description ?? ""} · ${n?.quantity ?? 0} × ${n?.unit_price ?? 0}`;
+    if (a.action === "item_delete") return `${o?.description ?? ""} · ${o?.quantity ?? 0} × ${o?.unit_price ?? 0}`;
+    return `"${o?.description}" (${o?.quantity}×${o?.unit_price}) → "${n?.description}" (${n?.quantity}×${n?.unit_price})`;
+  }
+  return `${fmtVal(a.old_value)} → ${fmtVal(a.new_value)}`;
 }
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
