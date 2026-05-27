@@ -463,18 +463,16 @@ export function NewCustomerDialog({
                     />
                     <Input
                       className="col-span-2 text-right"
-                      type="number"
-                      step="1"
-                      min="0"
-                      value={it.quantity}
+                      type="text"
+                      inputMode="decimal"
+                      value={it.quantity === 0 ? "" : String(it.quantity)}
                       onChange={(e) => updateItem(idx, "quantity", e.target.value)}
                     />
                     <Input
                       className="col-span-2 text-right"
-                      type="number"
-                      step="1"
-                      min="0"
-                      value={it.unit_price}
+                      type="text"
+                      inputMode="decimal"
+                      value={it.unit_price === 0 ? "" : String(it.unit_price)}
                       onChange={(e) => updateItem(idx, "unit_price", e.target.value)}
                     />
                     <Button

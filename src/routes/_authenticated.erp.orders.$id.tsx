@@ -440,9 +440,9 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 function describeAction(a: AuditRow) {
-  if (a.action === "item_insert") return "Item agregado";
-  if (a.action === "item_update") return "Item modificado";
-  if (a.action === "item_delete") return "Item eliminado";
+  if (a.action === "item_insert") return "Producto agregado";
+  if (a.action === "item_update") return "Producto modificado";
+  if (a.action === "item_delete") return "Producto eliminado";
   return FIELD_LABELS[a.field ?? ""] ?? "Pedido actualizado";
 }
 

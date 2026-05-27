@@ -14,7 +14,7 @@ export const orderSchema = z.object({
   notes: z.string().max(2000).optional().or(z.literal("")),
   discount: z.coerce.number().min(0).default(0),
   tax: z.coerce.number().min(0).default(0),
-  items: z.array(orderItemSchema).min(1, "Agrega al menos un item"),
+  items: z.array(orderItemSchema).min(1, "Agrega al menos un producto"),
 });
 
 export type OrderItemInput = z.infer<typeof orderItemSchema>;
