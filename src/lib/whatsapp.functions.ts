@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
@@ -10,43 +10,118 @@ const InputSchema = z.object({
 
 const ExtractedSchema = z.object({
   customer: z.object({
-    display_name: z.string().describe("Nombre del cliente"),
-    phone: z.string().describe("Teléfono normalizado, sólo dígitos con código país si aparece"),
-    address: z.string().describe("Dirección completa si se menciona, vacío si no"),
-    city: z.string().describe("Ciudad si se menciona, vacío si no"),
+    display_name: z.string().catch(""),
+    phone: z.string().catch(""),
+    address: z.string().catch(""),
+    city: z.string().catch(""),
   }),
   items: z
     .array(
       z.object({
-        description: z.string().describe("Descripción del producto solicitado"),
-        quantity: z.number().describe("Cantidad solicitada, 1 si no se especifica"),
-        unit_price: z.number().describe("Valor unitario en pesos colombianos, 0 si no aparece"),
+        description: z.string().catch(""),
+        quantity: z.coerce.number().catch(1),
+        unit_price: z.coerce.number().catch(0),
       }),
     )
-    .describe("Productos solicitados"),
-  notes: z.string().describe("Observaciones, fechas, condiciones especiales mencionadas"),
-  total_estimated: z.number().describe("Valor total acordado si aparece, 0 si no"),
+    .catch([]),
+  notes: z.string().catch(""),
+  total_estimated: z.coerce.number().catch(0),
 });
+
+type ExtractedOrder = z.infer<typeof ExtractedSchema>;
+
+function extractJsonObject(response: string) {
+  const cleaned = response
+    .replace(/```json\s*/gi, "")
+    .replace(/```/g, "")
+    .replace(/\p{Cc}/gu, "")
+    .trim();
+
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error(
+      "La IA no devolvió datos estructurados. Intenta pegar un resumen más claro del pedido.",
+    );
+  }
+
+  const json = cleaned
+    .slice(start, end + 1)
+    .replace(/,\s*}/g, "}")
+    .replace(/,\s*]/g, "]");
+
+  try {
+    return JSON.parse(json);
+  } catch {
+    throw new Error(
+      "La respuesta de IA llegó incompleta. Intenta con una conversación más corta o más resumida.",
+    );
+  }
+}
+
+function normalizeExtractedOrder(order: ExtractedOrder): ExtractedOrder {
+  return {
+    customer: {
+      display_name: order.customer.display_name.trim(),
+      phone: order.customer.phone.replace(/\D/g, ""),
+      address: order.customer.address.trim(),
+      city: order.customer.city.trim(),
+    },
+    items: order.items.map((item) => ({
+      description: item.description.trim(),
+      quantity: Math.max(1, Number.isFinite(item.quantity) ? item.quantity : 1),
+      unit_price: Math.max(0, Math.round(Number.isFinite(item.unit_price) ? item.unit_price : 0)),
+    })),
+    notes: order.notes.trim(),
+    total_estimated: Math.max(
+      0,
+      Math.round(Number.isFinite(order.total_estimated) ? order.total_estimated : 0),
+    ),
+  };
+}
 
 export const parseWhatsAppOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY no configurada");
+    if (!key) {
+      return {
+        success: false,
+        message: "La IA no está configurada todavía. Revisa LOVABLE_API_KEY en el proyecto.",
+      };
+    }
 
     const gateway = createLovableAiGatewayProvider(key);
-    const model = gateway("google/gemini-2.5-flash");
+    const model = gateway("google/gemini-3-flash-preview");
 
-    const { output } = await generateText({
-      model,
-      output: Output.object({ schema: ExtractedSchema }),
-      system:
-        "Eres un asistente que extrae información estructurada de conversaciones de WhatsApp en español (Colombia) " +
-        "para crear pedidos en un ERP de muebles a la medida. Devuelve campos vacíos ('' o 0) si un dato no aparece, " +
-        "nunca inventes. Los precios están en pesos colombianos sin decimales. Normaliza teléfonos a sólo dígitos.",
-      prompt: `Extrae los datos del pedido de esta conversación:\n\n${data.text}`,
-    });
+    try {
+      const { text } = await generateText({
+        model,
+        temperature: 0,
+        maxOutputTokens: 1800,
+        system:
+          "Extrae pedidos de WhatsApp en español de Colombia para un ERP de muebles a la medida. " +
+          "Responde únicamente un objeto JSON válido, sin markdown, sin comentarios y sin texto adicional. " +
+          "No inventes datos. Usa cadenas vacías o 0 cuando un dato no aparezca. " +
+          "Los teléfonos deben contener sólo dígitos. Los precios deben ser números enteros en pesos colombianos, sin puntos, comas ni símbolos.",
+        prompt:
+          "Devuelve exactamente esta estructura: " +
+          '{"customer":{"display_name":"","phone":"","address":"","city":""},"items":[{"description":"","quantity":1,"unit_price":0}],"notes":"","total_estimated":0}' +
+          `\n\nConversación:\n${data.text}`,
+      });
 
-    return output;
+      const parsed = ExtractedSchema.parse(extractJsonObject(text));
+      return { success: true, order: normalizeExtractedOrder(parsed) };
+    } catch (error) {
+      console.error("[WhatsApp AI] Extraction failed", error);
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "No se pudo procesar el texto de WhatsApp. Intenta con un resumen más claro del pedido.",
+      };
+    }
   });
