@@ -16,6 +16,7 @@ import { Route as AuthenticatedErpRouteImport } from './routes/_authenticated.er
 import { Route as AuthenticatedErpIndexRouteImport } from './routes/_authenticated.erp.index'
 import { Route as AuthenticatedErpOrdersRouteImport } from './routes/_authenticated.erp.orders'
 import { Route as AuthenticatedErpCustomersRouteImport } from './routes/_authenticated.erp.customers'
+import { Route as AuthenticatedErpOrdersIndexRouteImport } from './routes/_authenticated.erp.orders.index'
 import { Route as AuthenticatedErpSettingsStatusesRouteImport } from './routes/_authenticated.erp.settings.statuses'
 import { Route as AuthenticatedErpOrdersWhatsappRouteImport } from './routes/_authenticated.erp.orders.whatsapp'
 import { Route as AuthenticatedErpOrdersNewRouteImport } from './routes/_authenticated.erp.orders.new'
@@ -56,6 +57,12 @@ const AuthenticatedErpCustomersRoute =
     id: '/customers',
     path: '/customers',
     getParentRoute: () => AuthenticatedErpRoute,
+  } as any)
+const AuthenticatedErpOrdersIndexRoute =
+  AuthenticatedErpOrdersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedErpOrdersRoute,
   } as any)
 const AuthenticatedErpSettingsStatusesRoute =
   AuthenticatedErpSettingsStatusesRouteImport.update({
@@ -100,18 +107,19 @@ export interface FileRoutesByFullPath {
   '/erp/orders/new': typeof AuthenticatedErpOrdersNewRoute
   '/erp/orders/whatsapp': typeof AuthenticatedErpOrdersWhatsappRoute
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
+  '/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/erp/customers': typeof AuthenticatedErpCustomersRouteWithChildren
-  '/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/erp': typeof AuthenticatedErpIndexRoute
   '/erp/customers/$id': typeof AuthenticatedErpCustomersIdRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/orders/new': typeof AuthenticatedErpOrdersNewRoute
   '/erp/orders/whatsapp': typeof AuthenticatedErpOrdersWhatsappRoute
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
+  '/erp/orders': typeof AuthenticatedErpOrdersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/_authenticated/erp/orders/new': typeof AuthenticatedErpOrdersNewRoute
   '/_authenticated/erp/orders/whatsapp': typeof AuthenticatedErpOrdersWhatsappRoute
   '/_authenticated/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
+  '/_authenticated/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -142,18 +151,19 @@ export interface FileRouteTypes {
     | '/erp/orders/new'
     | '/erp/orders/whatsapp'
     | '/erp/settings/statuses'
+    | '/erp/orders/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/erp/customers'
-    | '/erp/orders'
     | '/erp'
     | '/erp/customers/$id'
     | '/erp/orders/$id'
     | '/erp/orders/new'
     | '/erp/orders/whatsapp'
     | '/erp/settings/statuses'
+    | '/erp/orders'
   id:
     | '__root__'
     | '/'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/orders/new'
     | '/_authenticated/erp/orders/whatsapp'
     | '/_authenticated/erp/settings/statuses'
+    | '/_authenticated/erp/orders/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -227,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpCustomersRouteImport
       parentRoute: typeof AuthenticatedErpRoute
     }
+    '/_authenticated/erp/orders/': {
+      id: '/_authenticated/erp/orders/'
+      path: '/'
+      fullPath: '/erp/orders/'
+      preLoaderRoute: typeof AuthenticatedErpOrdersIndexRouteImport
+      parentRoute: typeof AuthenticatedErpOrdersRoute
+    }
     '/_authenticated/erp/settings/statuses': {
       id: '/_authenticated/erp/settings/statuses'
       path: '/settings/statuses'
@@ -283,6 +301,7 @@ interface AuthenticatedErpOrdersRouteChildren {
   AuthenticatedErpOrdersIdRoute: typeof AuthenticatedErpOrdersIdRoute
   AuthenticatedErpOrdersNewRoute: typeof AuthenticatedErpOrdersNewRoute
   AuthenticatedErpOrdersWhatsappRoute: typeof AuthenticatedErpOrdersWhatsappRoute
+  AuthenticatedErpOrdersIndexRoute: typeof AuthenticatedErpOrdersIndexRoute
 }
 
 const AuthenticatedErpOrdersRouteChildren: AuthenticatedErpOrdersRouteChildren =
@@ -290,6 +309,7 @@ const AuthenticatedErpOrdersRouteChildren: AuthenticatedErpOrdersRouteChildren =
     AuthenticatedErpOrdersIdRoute: AuthenticatedErpOrdersIdRoute,
     AuthenticatedErpOrdersNewRoute: AuthenticatedErpOrdersNewRoute,
     AuthenticatedErpOrdersWhatsappRoute: AuthenticatedErpOrdersWhatsappRoute,
+    AuthenticatedErpOrdersIndexRoute: AuthenticatedErpOrdersIndexRoute,
   }
 
 const AuthenticatedErpOrdersRouteWithChildren =
