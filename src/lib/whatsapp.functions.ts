@@ -12,8 +12,12 @@ const ExtractedSchema = z.object({
   customer: z.object({
     display_name: z.string().catch(""),
     phone: z.string().catch(""),
+    email: z.string().catch(""),
+    doc_number: z.string().catch(""),
     address: z.string().catch(""),
     city: z.string().catch(""),
+    needs_summary: z.string().catch(""),
+    references: z.string().catch(""),
   }),
   items: z
     .array(
@@ -25,48 +29,28 @@ const ExtractedSchema = z.object({
     )
     .catch([]),
   notes: z.string().catch(""),
+  urgency: z.string().catch(""),
+  estimated_delivery_date: z.string().catch(""),
   total_estimated: z.coerce.number().catch(0),
 });
 
 type ExtractedOrder = z.infer<typeof ExtractedSchema>;
-
-function extractJsonObject(response: string) {
-  const cleaned = response
-    .replace(/```json\s*/gi, "")
-    .replace(/```/g, "")
-    .replace(/\p{Cc}/gu, "")
-    .trim();
-
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error(
-      "La IA no devolvió datos estructurados. Intenta pegar un resumen más claro del pedido.",
-    );
-  }
-
-  const json = cleaned
-    .slice(start, end + 1)
-    .replace(/,\s*}/g, "}")
-    .replace(/,\s*]/g, "]");
-
-  try {
-    return JSON.parse(json);
-  } catch {
-    throw new Error(
-      "La respuesta de IA llegó incompleta. Intenta con una conversación más corta o más resumida.",
-    );
-  }
-}
-
+...
 function normalizeExtractedOrder(order: ExtractedOrder): ExtractedOrder {
+  const isoDate = /^\d{4}-\d{2}-\d{2}$/.test(order.estimated_delivery_date.trim())
+    ? order.estimated_delivery_date.trim()
+    : "";
+  const email = order.customer.email.trim().toLowerCase();
   return {
     customer: {
       display_name: order.customer.display_name.trim(),
       phone: order.customer.phone.replace(/\D/g, ""),
+      email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "",
+      doc_number: order.customer.doc_number.replace(/\D/g, ""),
       address: order.customer.address.trim(),
       city: order.customer.city.trim(),
+      needs_summary: order.customer.needs_summary.trim(),
+      references: order.customer.references.trim(),
     },
     items: order.items.map((item) => ({
       description: item.description.trim(),
@@ -74,6 +58,8 @@ function normalizeExtractedOrder(order: ExtractedOrder): ExtractedOrder {
       unit_price: Math.max(0, Math.round(Number.isFinite(item.unit_price) ? item.unit_price : 0)),
     })),
     notes: order.notes.trim(),
+    urgency: order.urgency.trim(),
+    estimated_delivery_date: isoDate,
     total_estimated: Math.max(
       0,
       Math.round(Number.isFinite(order.total_estimated) ? order.total_estimated : 0),
