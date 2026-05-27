@@ -292,11 +292,11 @@ function OrderDetail() {
               <div className="grid sm:grid-cols-3 gap-3 mt-4">
                 <div>
                   <Label className="text-xs mb-1.5 block text-muted-foreground">Descuento</Label>
-                  <MoneyInput value={editDiscount} onValueChange={setEditDiscount} />
+                  <MoneyInput allowDecimals value={editDiscount} onValueChange={setEditDiscount} />
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block text-muted-foreground">Impuesto</Label>
-                  <MoneyInput value={editTax} onValueChange={setEditTax} />
+                  <MoneyInput allowDecimals value={editTax} onValueChange={setEditTax} />
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block text-muted-foreground">Entrega estimada</Label>
