@@ -12,8 +12,12 @@ const ExtractedSchema = z.object({
   customer: z.object({
     display_name: z.string().catch(""),
     phone: z.string().catch(""),
+    email: z.string().catch(""),
+    doc_number: z.string().catch(""),
     address: z.string().catch(""),
     city: z.string().catch(""),
+    needs_summary: z.string().catch(""),
+    references: z.string().catch(""),
   }),
   items: z
     .array(
@@ -25,6 +29,8 @@ const ExtractedSchema = z.object({
     )
     .catch([]),
   notes: z.string().catch(""),
+  urgency: z.string().catch(""),
+  estimated_delivery_date: z.string().catch(""),
   total_estimated: z.coerce.number().catch(0),
 });
 
@@ -61,12 +67,20 @@ function extractJsonObject(response: string) {
 }
 
 function normalizeExtractedOrder(order: ExtractedOrder): ExtractedOrder {
+  const isoDate = /^\d{4}-\d{2}-\d{2}$/.test(order.estimated_delivery_date.trim())
+    ? order.estimated_delivery_date.trim()
+    : "";
+  const email = order.customer.email.trim().toLowerCase();
   return {
     customer: {
       display_name: order.customer.display_name.trim(),
       phone: order.customer.phone.replace(/\D/g, ""),
+      email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "",
+      doc_number: order.customer.doc_number.replace(/\D/g, ""),
       address: order.customer.address.trim(),
       city: order.customer.city.trim(),
+      needs_summary: order.customer.needs_summary.trim(),
+      references: order.customer.references.trim(),
     },
     items: order.items.map((item) => ({
       description: item.description.trim(),
@@ -74,6 +88,8 @@ function normalizeExtractedOrder(order: ExtractedOrder): ExtractedOrder {
       unit_price: Math.max(0, Math.round(Number.isFinite(item.unit_price) ? item.unit_price : 0)),
     })),
     notes: order.notes.trim(),
+    urgency: order.urgency.trim(),
+    estimated_delivery_date: isoDate,
     total_estimated: Math.max(
       0,
       Math.round(Number.isFinite(order.total_estimated) ? order.total_estimated : 0),
@@ -105,10 +121,18 @@ export const parseWhatsAppOrder = createServerFn({ method: "POST" })
           "Extrae pedidos de WhatsApp en español de Colombia para un ERP de muebles a la medida. " +
           "Responde únicamente un objeto JSON válido, sin markdown, sin comentarios y sin texto adicional. " +
           "No inventes datos. Usa cadenas vacías o 0 cuando un dato no aparezca. " +
-          "Los teléfonos deben contener sólo dígitos. Los precios deben ser números enteros en pesos colombianos, sin puntos, comas ni símbolos.",
+          "Los teléfonos deben contener sólo dígitos colombianos (sin +57, sin espacios). " +
+          "Los documentos (cédula/NIT) sólo dígitos. " +
+          "Los precios deben ser números enteros en pesos colombianos, sin puntos, comas ni símbolos. " +
+          "needs_summary: una frase breve (máx 200 caracteres) que explique qué necesita el cliente (tipo de mueble, espacio, estilo). " +
+          "references: medidas, materiales, colores, acabados o enlaces que mencione el cliente. " +
+          "urgency: si el cliente menciona urgencia o fechas clave, resume en una frase. " +
+          "estimated_delivery_date: si se menciona una fecha de entrega, devuélvela en formato YYYY-MM-DD; si no, vacío.",
         prompt:
-          "Devuelve exactamente esta estructura: " +
-          '{"customer":{"display_name":"","phone":"","address":"","city":""},"items":[{"description":"","quantity":1,"unit_price":0}],"notes":"","total_estimated":0}' +
+          "Devuelve exactamente esta estructura JSON: " +
+          '{"customer":{"display_name":"","phone":"","email":"","doc_number":"","address":"","city":"","needs_summary":"","references":""},' +
+          '"items":[{"description":"","quantity":1,"unit_price":0}],' +
+          '"notes":"","urgency":"","estimated_delivery_date":"","total_estimated":0}' +
           `\n\nConversación:\n${data.text}`,
       });
 

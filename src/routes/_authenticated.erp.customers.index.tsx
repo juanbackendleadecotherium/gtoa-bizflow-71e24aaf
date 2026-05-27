@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Search, Loader2 } from "lucide-react";
+import { Plus, Search, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
@@ -79,9 +79,16 @@ function CustomersPage() {
           <h1 className="font-display text-2xl font-semibold">Clientes</h1>
           <p className="text-sm text-muted-foreground">Cartera de la marca activa.</p>
         </div>
-        <Button onClick={() => setCreating(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> Nuevo cliente
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" className="gap-2">
+            <Link to="/erp/orders/whatsapp">
+              <Sparkles className="h-4 w-4" /> Crear con IA (WhatsApp)
+            </Link>
+          </Button>
+          <Button onClick={() => setCreating(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> Nuevo cliente
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4 relative max-w-sm">
