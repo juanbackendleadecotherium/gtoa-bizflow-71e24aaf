@@ -54,7 +54,9 @@ function WhatsAppCapture() {
       if (!c.display_name.trim()) throw new Error("El nombre del cliente es obligatorio");
       if (extracted.items.length === 0) throw new Error("Agrega al menos un item");
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const userId = user?.id;
 
       // 1) Find or create customer (match by phone within brand)
@@ -139,7 +141,11 @@ function WhatsAppCapture() {
     if (!extracted) return;
     setExtracted({ ...extracted, customer: { ...extracted.customer, [field]: value } });
   };
-  const updateItem = (idx: number, field: "description" | "quantity" | "unit_price", value: string) => {
+  const updateItem = (
+    idx: number,
+    field: "description" | "quantity" | "unit_price",
+    value: string,
+  ) => {
     if (!extracted) return;
     const items = [...extracted.items];
     items[idx] = {
@@ -164,7 +170,10 @@ function WhatsAppCapture() {
 
   return (
     <>
-      <Link to="/erp/orders" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-4">
+      <Link
+        to="/erp/orders"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-4"
+      >
         <ArrowLeft className="h-3 w-3" /> Pedidos
       </Link>
       <div className="flex items-center gap-2 mb-1">
@@ -172,7 +181,8 @@ function WhatsAppCapture() {
         <h1 className="font-display text-2xl font-semibold">Nuevo pedido desde WhatsApp</h1>
       </div>
       <p className="text-sm text-muted-foreground mb-6">
-        Pega la conversación o el resumen del cliente y la IA extrae cliente, productos y observaciones.
+        Pega la conversación o el resumen del cliente y la IA extrae cliente, productos y
+        observaciones.
       </p>
 
       <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
@@ -190,9 +200,13 @@ function WhatsAppCapture() {
             disabled={parseMutation.isPending || rawText.trim().length < 10}
           >
             {parseMutation.isPending ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analizando…</>
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analizando…
+              </>
             ) : (
-              <><Sparkles className="h-4 w-4 mr-2" /> Extraer con IA</>
+              <>
+                <Sparkles className="h-4 w-4 mr-2" /> Extraer con IA
+              </>
             )}
           </Button>
         </div>
@@ -204,26 +218,41 @@ function WhatsAppCapture() {
             <p className="sm:col-span-2 text-sm font-medium">Cliente detectado</p>
             <div>
               <Label className="text-xs mb-1.5 block text-muted-foreground">Nombre *</Label>
-              <Input value={extracted.customer.display_name} onChange={(e) => updateCustomer("display_name", e.target.value)} />
+              <Input
+                value={extracted.customer.display_name}
+                onChange={(e) => updateCustomer("display_name", e.target.value)}
+              />
             </div>
             <div>
               <Label className="text-xs mb-1.5 block text-muted-foreground">Teléfono</Label>
-              <Input value={extracted.customer.phone} onChange={(e) => updateCustomer("phone", e.target.value)} />
+              <Input
+                value={extracted.customer.phone}
+                onChange={(e) => updateCustomer("phone", e.target.value)}
+              />
             </div>
             <div>
               <Label className="text-xs mb-1.5 block text-muted-foreground">Dirección</Label>
-              <Input value={extracted.customer.address} onChange={(e) => updateCustomer("address", e.target.value)} />
+              <Input
+                value={extracted.customer.address}
+                onChange={(e) => updateCustomer("address", e.target.value)}
+              />
             </div>
             <div>
               <Label className="text-xs mb-1.5 block text-muted-foreground">Ciudad</Label>
-              <Input value={extracted.customer.city} onChange={(e) => updateCustomer("city", e.target.value)} />
+              <Input
+                value={extracted.customer.city}
+                onChange={(e) => updateCustomer("city", e.target.value)}
+              />
             </div>
           </div>
 
           <div className="rounded-xl border border-border bg-surface p-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-medium">Productos</p>
-              <Button size="sm" variant="outline" onClick={addItem}><Plus className="h-3.5 w-3.5 mr-1" />Agregar</Button>
+              <Button size="sm" variant="outline" onClick={addItem}>
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Agregar
+              </Button>
             </div>
             <div className="space-y-2">
               {extracted.items.map((it, idx) => (
@@ -236,28 +265,41 @@ function WhatsAppCapture() {
                   />
                   <Input
                     className="col-span-2 text-right"
-                    type="number" step="0.01" min="0"
+                    type="number"
+                    step="0.01"
+                    min="0"
                     value={it.quantity}
                     onChange={(e) => updateItem(idx, "quantity", e.target.value)}
                   />
                   <Input
                     className="col-span-2 text-right"
-                    type="number" step="1" min="0"
+                    type="number"
+                    step="1"
+                    min="0"
                     value={it.unit_price}
                     onChange={(e) => updateItem(idx, "unit_price", e.target.value)}
                   />
-                  <Button size="icon" variant="ghost" className="col-span-1" onClick={() => removeItem(idx)}>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="col-span-1"
+                    onClick={() => removeItem(idx)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               ))}
               {extracted.items.length === 0 && (
-                <p className="text-xs text-muted-foreground">Sin productos detectados. Agrega manualmente.</p>
+                <p className="text-xs text-muted-foreground">
+                  Sin productos detectados. Agrega manualmente.
+                </p>
               )}
             </div>
             <div className="mt-4 text-right text-sm">
               <span className="text-muted-foreground mr-2">Subtotal estimado</span>
-              <span className="font-display font-semibold text-lg tabular-nums">{formatMoney(subtotal)}</span>
+              <span className="font-display font-semibold text-lg tabular-nums">
+                {formatMoney(subtotal)}
+              </span>
             </div>
           </div>
 
@@ -271,13 +313,21 @@ function WhatsAppCapture() {
               />
             </div>
             <div>
-              <Label className="text-xs mb-1.5 block text-muted-foreground">Fecha estimada de entrega</Label>
-              <Input type="date" value={estimatedDate} onChange={(e) => setEstimatedDate(e.target.value)} />
+              <Label className="text-xs mb-1.5 block text-muted-foreground">
+                Fecha estimada de entrega
+              </Label>
+              <Input
+                type="date"
+                value={estimatedDate}
+                onChange={(e) => setEstimatedDate(e.target.value)}
+              />
             </div>
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setExtracted(null)}>Descartar</Button>
+            <Button variant="ghost" onClick={() => setExtracted(null)}>
+              Descartar
+            </Button>
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
               {saveMutation.isPending ? "Guardando…" : "Crear pedido"}
             </Button>

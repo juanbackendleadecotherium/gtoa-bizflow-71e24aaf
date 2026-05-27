@@ -41,7 +41,9 @@ function extractJsonObject(response: string) {
   const end = cleaned.lastIndexOf("}");
 
   if (start === -1 || end === -1 || end <= start) {
-    throw new Error("La IA no devolvió datos estructurados. Intenta pegar un resumen más claro del pedido.");
+    throw new Error(
+      "La IA no devolvió datos estructurados. Intenta pegar un resumen más claro del pedido.",
+    );
   }
 
   const json = cleaned
@@ -52,7 +54,9 @@ function extractJsonObject(response: string) {
   try {
     return JSON.parse(json);
   } catch {
-    throw new Error("La respuesta de IA llegó incompleta. Intenta con una conversación más corta o más resumida.");
+    throw new Error(
+      "La respuesta de IA llegó incompleta. Intenta con una conversación más corta o más resumida.",
+    );
   }
 }
 
@@ -70,7 +74,10 @@ function normalizeExtractedOrder(order: ExtractedOrder): ExtractedOrder {
       unit_price: Math.max(0, Math.round(Number.isFinite(item.unit_price) ? item.unit_price : 0)),
     })),
     notes: order.notes.trim(),
-    total_estimated: Math.max(0, Math.round(Number.isFinite(order.total_estimated) ? order.total_estimated : 0)),
+    total_estimated: Math.max(
+      0,
+      Math.round(Number.isFinite(order.total_estimated) ? order.total_estimated : 0),
+    ),
   };
 }
 
@@ -80,7 +87,10 @@ export const parseWhatsAppOrder = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) {
-      return { success: false, message: "La IA no está configurada todavía. Revisa LOVABLE_API_KEY en el proyecto." };
+      return {
+        success: false,
+        message: "La IA no está configurada todavía. Revisa LOVABLE_API_KEY en el proyecto.",
+      };
     }
 
     const gateway = createLovableAiGatewayProvider(key);
