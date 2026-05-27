@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
@@ -62,9 +62,14 @@ function OrdersPage() {
           <h1 className="font-display text-2xl font-semibold">Pedidos</h1>
           <p className="text-sm text-muted-foreground">Registra y da seguimiento a los pedidos de la marca.</p>
         </div>
-        <Button asChild className="gap-2">
-          <Link to="/erp/orders/new"><Plus className="h-4 w-4" /> Nuevo pedido</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" className="gap-2">
+            <Link to="/erp/orders/new/whatsapp"><Sparkles className="h-4 w-4 text-accent" /> Desde WhatsApp</Link>
+          </Button>
+          <Button asChild className="gap-2">
+            <Link to="/erp/orders/new"><Plus className="h-4 w-4" /> Nuevo pedido</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4 flex gap-2 flex-wrap">
