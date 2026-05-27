@@ -112,6 +112,56 @@ export type Database = {
           },
         ]
       }
+      order_audit_log: {
+        Row: {
+          action: string
+          changed_by: string | null
+          changed_by_email: string | null
+          created_at: string
+          entity: string
+          entity_id: string | null
+          field: string | null
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          order_id: string
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          entity: string
+          entity_id?: string | null
+          field?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          order_id: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          entity?: string
+          entity_id?: string | null
+          field?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_audit_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
