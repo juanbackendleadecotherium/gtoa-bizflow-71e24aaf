@@ -34,7 +34,7 @@ function extractJsonObject(response: string) {
   const cleaned = response
     .replace(/```json\s*/gi, "")
     .replace(/```/g, "")
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    .replace(/\p{Cc}/gu, "")
     .trim();
 
   const start = cleaned.indexOf("{");
