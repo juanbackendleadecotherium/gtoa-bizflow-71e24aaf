@@ -50,7 +50,7 @@ export function OrderItemsEditor({
                   <Input
                     type="text"
                     inputMode="decimal"
-                    className="text-right [appearance:textfield]"
+                    className="text-right"
                     value={it.quantity === 0 ? "" : String(it.quantity)}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -64,7 +64,7 @@ export function OrderItemsEditor({
                   <Input
                     type="text"
                     inputMode="decimal"
-                    className="text-right [appearance:textfield]"
+                    className="text-right"
                     value={it.unit_price === 0 ? "" : String(it.unit_price)}
                     onChange={(e) => {
                       const val = e.target.value;
