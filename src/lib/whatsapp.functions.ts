@@ -35,6 +35,37 @@ const ExtractedSchema = z.object({
 });
 
 type ExtractedOrder = z.infer<typeof ExtractedSchema>;
+
+function extractJsonObject(response: string) {
+  const cleaned = response
+    .replace(/```json\s*/gi, "")
+    .replace(/```/g, "")
+    .replace(/\p{Cc}/gu, "")
+    .trim();
+
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error(
+      "La IA no devolvió datos estructurados. Intenta pegar un resumen más claro del pedido.",
+    );
+  }
+
+  const json = cleaned
+    .slice(start, end + 1)
+    .replace(/,\s*}/g, "}")
+    .replace(/,\s*]/g, "]");
+
+  try {
+    return JSON.parse(json);
+  } catch {
+    throw new Error(
+      "La respuesta de IA llegó incompleta. Intenta con una conversación más corta o más resumida.",
+    );
+  }
+}
+
 function normalizeExtractedOrder(order: ExtractedOrder): ExtractedOrder {
   const isoDate = /^\d{4}-\d{2}-\d{2}$/.test(order.estimated_delivery_date.trim())
     ? order.estimated_delivery_date.trim()
