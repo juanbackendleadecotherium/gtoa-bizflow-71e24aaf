@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { StatusBadge } from "@/features/orders/status-badge";
 import { OrderItemsEditor, formatMoney } from "@/features/orders/order-items-editor";
+import { MoneyInput } from "@/features/orders/money-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
@@ -291,11 +292,11 @@ function OrderDetail() {
               <div className="grid sm:grid-cols-3 gap-3 mt-4">
                 <div>
                   <Label className="text-xs mb-1.5 block text-muted-foreground">Descuento</Label>
-                  <Input type="number" step="0.01" min="0" value={editDiscount} onChange={(e) => setEditDiscount(Number(e.target.value))} />
+                  <MoneyInput value={editDiscount} onValueChange={setEditDiscount} />
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block text-muted-foreground">Impuesto</Label>
-                  <Input type="number" step="0.01" min="0" value={editTax} onChange={(e) => setEditTax(Number(e.target.value))} />
+                  <MoneyInput value={editTax} onValueChange={setEditTax} />
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block text-muted-foreground">Entrega estimada</Label>

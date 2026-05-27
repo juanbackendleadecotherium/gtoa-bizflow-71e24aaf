@@ -1,11 +1,11 @@
-import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/features/orders/money-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
 
 function parseDecimal(val: string) {
-  const cleaned = val.replace(/,/g, "").replace(/^\./, "0.");
+  const cleaned = val.replace(/\./g, "").replace(",", ".");
   const num = parseFloat(cleaned);
   return isNaN(num) ? null : num;
 }
@@ -61,21 +61,14 @@ export function OrderItemsEditor({
                   />
                 </td>
                 <td className="px-2 py-1.5">
-                  <Input
-                    type="text"
-                    inputMode="decimal"
+                  <MoneyInput
                     className="text-right"
-                    value={it.unit_price === 0 ? "" : String(it.unit_price)}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === "") { update(idx, { unit_price: 0 }); return; }
-                      const num = parseDecimal(val);
-                      if (num !== null) update(idx, { unit_price: num });
-                    }}
+                    value={Number(it.unit_price) || 0}
+                    onValueChange={(n) => update(idx, { unit_price: n })}
                   />
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums">
-                  {(Number(it.quantity || 0) * Number(it.unit_price || 0)).toFixed(2)}
+                  {formatMoney(Number(it.quantity || 0) * Number(it.unit_price || 0))}
                 </td>
                 <td className="px-2 py-1.5">
                   <Button type="button" size="icon" variant="ghost" onClick={() => remove(idx)}>
@@ -88,7 +81,7 @@ export function OrderItemsEditor({
           <tfoot>
             <tr className="border-t border-border bg-muted/20">
               <td colSpan={3} className="px-3 py-2 text-right text-xs uppercase tracking-wider text-muted-foreground">Subtotal</td>
-              <td className="px-3 py-2 text-right font-semibold tabular-nums">{subtotal.toFixed(2)}</td>
+              <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatMoney(subtotal)}</td>
               <td></td>
             </tr>
           </tfoot>
