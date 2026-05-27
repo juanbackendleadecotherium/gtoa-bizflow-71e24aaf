@@ -462,14 +462,14 @@ export function NewCustomerDialog({
                       onChange={(e) => updateItem(idx, "description", e.target.value)}
                     />
                     <Input
-                      className="col-span-2 text-right [appearance:textfield]"
+                      className="col-span-2 text-right"
                       type="text"
                       inputMode="decimal"
                       value={it.quantity === 0 ? "" : String(it.quantity)}
                       onChange={(e) => updateItem(idx, "quantity", e.target.value)}
                     />
                     <Input
-                      className="col-span-2 text-right [appearance:textfield]"
+                      className="col-span-2 text-right"
                       type="text"
                       inputMode="decimal"
                       value={it.unit_price === 0 ? "" : String(it.unit_price)}
