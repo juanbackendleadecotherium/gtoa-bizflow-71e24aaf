@@ -266,14 +266,18 @@ export type Database = {
           created_by: string | null
           customer_id: string
           discount: number
+          estimated_delivery_date: string | null
           id: string
           notes: string | null
           order_number: string
+          seller_id: string | null
+          source: string
           status_id: string
           subtotal: number
           tax: number
           total: number
           updated_at: string
+          whatsapp_raw: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -282,14 +286,18 @@ export type Database = {
           created_by?: string | null
           customer_id: string
           discount?: number
+          estimated_delivery_date?: string | null
           id?: string
           notes?: string | null
           order_number: string
+          seller_id?: string | null
+          source?: string
           status_id: string
           subtotal?: number
           tax?: number
           total?: number
           updated_at?: string
+          whatsapp_raw?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -298,14 +306,18 @@ export type Database = {
           created_by?: string | null
           customer_id?: string
           discount?: number
+          estimated_delivery_date?: string | null
           id?: string
           notes?: string | null
           order_number?: string
+          seller_id?: string | null
+          source?: string
           status_id?: string
           subtotal?: number
           tax?: number
           total?: number
           updated_at?: string
+          whatsapp_raw?: string | null
         }
         Relationships: [
           {
@@ -433,7 +445,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "operativo" | "finanzas" | "ventas"
+      app_role: "admin" | "operativo" | "finanzas" | "ventas" | "vendedor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -561,7 +573,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "operativo", "finanzas", "ventas"],
+      app_role: ["admin", "operativo", "finanzas", "ventas", "vendedor"],
     },
   },
 } as const
