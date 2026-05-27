@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { parseWhatsAppOrder } from "@/lib/whatsapp.functions";
 import { formatMoney } from "@/features/orders/order-items-editor";
+import { MoneyInput } from "@/features/orders/money-input";
 
 import {
   Dialog,
@@ -468,12 +469,10 @@ export function NewCustomerDialog({
                       value={it.quantity === 0 ? "" : String(it.quantity)}
                       onChange={(e) => updateItem(idx, "quantity", e.target.value)}
                     />
-                    <Input
+                    <MoneyInput
                       className="col-span-2 text-right"
-                      type="text"
-                      inputMode="decimal"
-                      value={it.unit_price === 0 ? "" : String(it.unit_price)}
-                      onChange={(e) => updateItem(idx, "unit_price", e.target.value)}
+                      value={Number(it.unit_price) || 0}
+                      onValueChange={(n) => updateItem(idx, "unit_price", String(n))}
                     />
                     <Button
                       type="button"
