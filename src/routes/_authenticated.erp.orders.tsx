@@ -64,7 +64,7 @@ function OrdersPage() {
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline" className="gap-2">
-            <Link to="/erp/orders/new/whatsapp"><Sparkles className="h-4 w-4 text-accent" /> Desde WhatsApp</Link>
+            <Link to="/erp/orders/whatsapp"><Sparkles className="h-4 w-4 text-accent" /> Desde WhatsApp</Link>
           </Button>
           <Button asChild className="gap-2">
             <Link to="/erp/orders/new"><Plus className="h-4 w-4" /> Nuevo pedido</Link>

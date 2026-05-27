@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatMoney } from "@/features/orders/order-items-editor";
 
-export const Route = createFileRoute("/_authenticated/erp/orders/new/whatsapp")({
+export const Route = createFileRoute("/_authenticated/erp/orders/whatsapp")({
   component: WhatsAppCapture,
 });
 
