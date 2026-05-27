@@ -70,7 +70,7 @@ function WhatsAppCapture() {
       if (!extracted || !selectedBrandId) throw new Error("Falta marca o datos");
       const c = extracted.customer;
       if (!c.display_name.trim()) throw new Error("El nombre del cliente es obligatorio");
-      if (extracted.items.length === 0) throw new Error("Agrega al menos un item");
+      if (extracted.items.length === 0) throw new Error("Agrega al menos un producto");
 
       const {
         data: { user },
