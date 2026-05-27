@@ -37,7 +37,11 @@ function WhatsAppCapture() {
   const parseMutation = useMutation({
     mutationFn: async () => parseFn({ data: { text: rawText } }),
     onSuccess: (data) => {
-      setExtracted(data as Extracted);
+      if (!data.success) {
+        toast.error(data.message);
+        return;
+      }
+      setExtracted(data.order);
       toast.success("Datos extraídos. Revisa antes de guardar.");
     },
     onError: (e: Error) => toast.error(e.message || "No se pudo procesar el texto"),
