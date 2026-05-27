@@ -121,10 +121,18 @@ export const parseWhatsAppOrder = createServerFn({ method: "POST" })
           "Extrae pedidos de WhatsApp en español de Colombia para un ERP de muebles a la medida. " +
           "Responde únicamente un objeto JSON válido, sin markdown, sin comentarios y sin texto adicional. " +
           "No inventes datos. Usa cadenas vacías o 0 cuando un dato no aparezca. " +
-          "Los teléfonos deben contener sólo dígitos. Los precios deben ser números enteros en pesos colombianos, sin puntos, comas ni símbolos.",
+          "Los teléfonos deben contener sólo dígitos colombianos (sin +57, sin espacios). " +
+          "Los documentos (cédula/NIT) sólo dígitos. " +
+          "Los precios deben ser números enteros en pesos colombianos, sin puntos, comas ni símbolos. " +
+          "needs_summary: una frase breve (máx 200 caracteres) que explique qué necesita el cliente (tipo de mueble, espacio, estilo). " +
+          "references: medidas, materiales, colores, acabados o enlaces que mencione el cliente. " +
+          "urgency: si el cliente menciona urgencia o fechas clave, resume en una frase. " +
+          "estimated_delivery_date: si se menciona una fecha de entrega, devuélvela en formato YYYY-MM-DD; si no, vacío.",
         prompt:
-          "Devuelve exactamente esta estructura: " +
-          '{"customer":{"display_name":"","phone":"","address":"","city":""},"items":[{"description":"","quantity":1,"unit_price":0}],"notes":"","total_estimated":0}' +
+          "Devuelve exactamente esta estructura JSON: " +
+          '{"customer":{"display_name":"","phone":"","email":"","doc_number":"","address":"","city":"","needs_summary":"","references":""},' +
+          '"items":[{"description":"","quantity":1,"unit_price":0}],' +
+          '"notes":"","urgency":"","estimated_delivery_date":"","total_estimated":0}' +
           `\n\nConversación:\n${data.text}`,
       });
 
