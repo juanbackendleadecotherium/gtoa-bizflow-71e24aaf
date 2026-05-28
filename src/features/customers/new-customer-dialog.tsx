@@ -198,6 +198,33 @@ export function NewCustomerDialog({
     onOpenChange(v);
   };
 
+  // Prefilled defaults: empresa = marca activa, nro factura = consecutivo por marca
+  useEffect(() => {
+    if (!open || !selectedBrand || !selectedBrandId) return;
+    setDraft((d) => ({
+      ...d,
+      customer: {
+        ...d.customer,
+        company: d.customer.company || selectedBrand.name,
+      },
+    }));
+    const prefix = brandInvoicePrefix(selectedBrand.name);
+    fetchNextInvoiceNumber(selectedBrandId, prefix)
+      .then((next) => {
+        setDraft((d) =>
+          d.order.invoice_number
+            ? d
+            : { ...d, order: { ...d.order, invoice_number: next } },
+        );
+      })
+      .catch(() => {
+        /* silencioso: el vendedor puede escribirlo manual */
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, selectedBrandId]);
+
+
+
   const parseMutation = useMutation({
     mutationFn: async () => parseFn({ data: { text: rawText } }),
     onSuccess: (data) => {
