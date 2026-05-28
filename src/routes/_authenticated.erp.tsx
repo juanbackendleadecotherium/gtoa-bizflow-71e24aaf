@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, ClipboardList, Settings,
-  LogOut, ChevronDown, Building2, ShieldCheck, Loader2, ArrowLeft,
+  LayoutDashboard, ClipboardList, Settings,
+  LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
