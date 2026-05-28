@@ -140,6 +140,37 @@ function buildCustomerNotes(c: CustomerDraft, urgency: string) {
   return parts.join("\n");
 }
 
+function brandInvoicePrefix(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "INV";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return words
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 4)
+    .toUpperCase();
+}
+
+async function fetchNextInvoiceNumber(brandId: string, prefix: string): Promise<string> {
+  const { data } = await supabase
+    .from("orders")
+    .select("invoice_number")
+    .eq("brand_id", brandId)
+    .ilike("invoice_number", `${prefix}-%`)
+    .order("invoice_number", { ascending: false })
+    .limit(50);
+  let max = 0;
+  for (const row of data ?? []) {
+    const m = String(row.invoice_number ?? "").match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > max) max = n;
+    }
+  }
+  return `${prefix}-${String(max + 1).padStart(4, "0")}`;
+}
+
+
 export function NewCustomerDialog({
   open,
   onOpenChange,
