@@ -281,61 +281,8 @@ export function NewCustomerDialog({
         data: { user },
       } = await supabase.auth.getUser();
       const userId = user?.id;
-      const customerNotes = buildCustomerNotes(c, draft.urgency);
 
-      // 1) Cliente: buscar por phone o doc_number dentro de la marca
-      let customerId: string | null = null;
-      if (c.phone.trim()) {
-        const { data: existing } = await supabase
-          .from("customers")
-          .select("id")
-          .eq("brand_id", selectedBrandId)
-          .eq("phone", c.phone.trim())
-          .maybeSingle();
-        if (existing) customerId = existing.id;
-      }
-      if (!customerId && c.doc_number.trim()) {
-        const { data: existing } = await supabase
-          .from("customers")
-          .select("id")
-          .eq("brand_id", selectedBrandId)
-          .eq("doc_number", c.doc_number.trim())
-          .maybeSingle();
-        if (existing) customerId = existing.id;
-      }
-
-      const customerPayload = {
-        brand_id: selectedBrandId,
-        display_name: c.display_name.trim(),
-        company: c.company.trim() || null,
-        person_type: c.person_type || null,
-        contact_type: c.contact_type,
-        doc_type: c.doc_type || null,
-        doc_number: c.doc_number.trim() || null,
-        phone: c.phone.trim() || null,
-        email: c.email.trim() || null,
-        department: c.department.trim() || null,
-        city: c.city.trim() || null,
-        address: c.address.trim() || null,
-        notes: customerNotes || null,
-      };
-
-      if (!customerId) {
-        const { data: newCustomer, error: custErr } = await supabase
-          .from("customers")
-          .insert({ ...customerPayload, created_by: userId } as never)
-          .select("id")
-          .single();
-        if (custErr) throw custErr;
-        customerId = newCustomer.id;
-      } else {
-        await supabase
-          .from("customers")
-          .update(customerPayload as never)
-          .eq("id", customerId);
-      }
-
-      // 2) Estado inicial
+      // Estado inicial de la marca
       const { data: status } = await supabase
         .from("order_statuses")
         .select("id")
@@ -346,16 +293,18 @@ export function NewCustomerDialog({
         .maybeSingle();
       if (!status) throw new Error("No hay estados configurados para esta marca");
 
-      const orderNotes = [draft.notes, draft.urgency && `Urgencia: ${draft.urgency}`]
-        .filter(Boolean)
-        .join("\n");
+      const notesParts: string[] = [];
+      if (c.needs_summary) notesParts.push(`Necesidad: ${c.needs_summary}`);
+      if (c.references) notesParts.push(`Referencias: ${c.references}`);
+      if (draft.urgency) notesParts.push(`Urgencia: ${draft.urgency}`);
+      if (draft.notes) notesParts.push(draft.notes);
+      const orderNotes = notesParts.join("\n");
 
-      // 3) Pedido
+      // Pedido con snapshot del cliente (sin tabla customers)
       const { data: order, error: orderErr } = await supabase
         .from("orders")
         .insert({
           brand_id: selectedBrandId,
-          customer_id: customerId,
           status_id: status.id,
           notes: orderNotes || null,
           order_number: "",
@@ -368,12 +317,22 @@ export function NewCustomerDialog({
           estimated_delivery_date: draft.order.estimated_delivery_date || null,
           payment_method: draft.order.payment_method || null,
           advance_amount: draft.order.advance_amount || 0,
+          customer_name: c.display_name.trim(),
+          customer_doc_type: c.doc_type || null,
+          customer_doc_number: c.doc_number.trim() || null,
+          customer_phone: c.phone.trim() || null,
+          customer_email: c.email.trim() || null,
+          customer_address: c.address.trim() || null,
+          customer_city: c.city.trim() || null,
+          customer_department: c.department.trim() || null,
+          customer_company: c.company.trim() || null,
+          customer_person_type: c.person_type || null,
+          customer_contact_type: c.contact_type || null,
         } as never)
         .select()
         .single();
       if (orderErr) throw orderErr;
 
-      // 4) Productos
       const itemsPayload = draft.items.map((it, idx) => ({
         order_id: order.id,
         description: it.description || "Sin descripción",
@@ -387,8 +346,7 @@ export function NewCustomerDialog({
       return order;
     },
     onSuccess: (order) => {
-      toast.success(`Cliente y pedido ${order.order_number} creados`);
-      qc.invalidateQueries({ queryKey: ["customers"] });
+      toast.success(`Pedido ${order.order_number} creado`);
       qc.invalidateQueries({ queryKey: ["orders"] });
       handleOpenChange(false);
       navigate({ to: "/erp/orders/$id", params: { id: order.id } });
