@@ -299,14 +299,29 @@ function OrderDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((it) => (
-                      <tr key={it.id} className="border-t border-border align-top">
-                        <td className="py-2 pr-3 break-words whitespace-pre-wrap">{it.description}</td>
-                        <td className="py-2 text-right tabular-nums">{Number(it.quantity)}</td>
-                        <td className="py-2 text-right tabular-nums">{formatMoney(it.unit_price)}</td>
-                        <td className="py-2 text-right tabular-nums">{formatMoney(it.line_total)}</td>
-                      </tr>
-                    ))}
+                    {items.map((it) => {
+                      const imgs: string[] = Array.isArray(it.images) ? it.images : [];
+                      return (
+                        <tr key={it.id} className="border-t border-border align-top">
+                          <td className="py-2 pr-3 break-words whitespace-pre-wrap">
+                            <p>{it.description}</p>
+                            {imgs.length > 0 && (
+                              <div className="mt-2 flex gap-1.5 flex-wrap">
+                                {imgs.map((u) => (
+                                  <a key={u} href={u} target="_blank" rel="noreferrer" className="block h-14 w-14 rounded border border-border overflow-hidden bg-muted hover:border-accent/60">
+                                    <img src={u} alt="" className="h-full w-full object-cover" />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2 text-right tabular-nums">{Number(it.quantity)}</td>
+                          <td className="py-2 text-right tabular-nums">{formatMoney(it.unit_price)}</td>
+                          <td className="py-2 text-right tabular-nums">{formatMoney(it.line_total)}</td>
+                        </tr>
+                      );
+                    })}
+
                   </tbody>
                   <tfoot>
                     <Row label="Subtotal" value={formatMoney(o.subtotal)} />
