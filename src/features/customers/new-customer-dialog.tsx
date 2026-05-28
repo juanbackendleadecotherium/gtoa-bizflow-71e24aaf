@@ -349,11 +349,42 @@ export function NewCustomerDialog({
         unit_price: Number(it.unit_price) || 0,
         sort_order: idx,
       }));
-      const { error: itemsErr } = await supabase.from("order_items").insert(itemsPayload);
+      const { data: insertedItems, error: itemsErr } = await supabase
+        .from("order_items")
+        .insert(itemsPayload)
+        .select("id, sort_order");
       if (itemsErr) throw itemsErr;
+
+      // Sube imágenes de cada producto y actualiza el registro
+      if (insertedItems && itemImages.length > 0) {
+        await Promise.all(
+          insertedItems.map(async (row) => {
+            const pending = itemImages[row.sort_order ?? 0];
+            if (!pending || pending.length === 0) return;
+            const urls = await uploadOrderImages(
+              pending.map((p) => p.file),
+              `items/${row.id}`,
+            );
+            await supabase
+              .from("order_items")
+              .update({ images: urls as never })
+              .eq("id", row.id);
+          }),
+        );
+      }
+
+      // Sube comprobante de pago y actualiza el pedido
+      if (paymentProof[0]) {
+        const url = await uploadOrderImage(paymentProof[0].file, `payments/${order.id}`);
+        await supabase
+          .from("orders")
+          .update({ payment_proof_url: url } as never)
+          .eq("id", order.id);
+      }
 
       return order;
     },
+
     onSuccess: (order) => {
       toast.success(`Pedido ${order.order_number} creado`);
       qc.invalidateQueries({ queryKey: ["orders"] });
