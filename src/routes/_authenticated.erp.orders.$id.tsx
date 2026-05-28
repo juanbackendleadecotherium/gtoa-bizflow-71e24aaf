@@ -420,50 +420,6 @@ function OrderDetail() {
   );
 }
 
-type AuditRow = {
-  id: string;
-  created_at: string;
-  changed_by: string | null;
-  changed_by_email: string | null;
-  action: string;
-  entity: string;
-  field: string | null;
-  old_value: unknown;
-  new_value: unknown;
-};
-
-const FIELD_LABELS: Record<string, string> = {
-  notes: "Notas",
-  discount: "Descuento",
-  tax: "Impuesto",
-  customer_id: "Cliente",
-  estimated_delivery_date: "Entrega estimada",
-  seller_id: "Vendedor",
-};
-
-function describeAction(a: AuditRow) {
-  if (a.action === "item_insert") return "Producto agregado";
-  if (a.action === "item_update") return "Producto modificado";
-  if (a.action === "item_delete") return "Producto eliminado";
-  return FIELD_LABELS[a.field ?? ""] ?? "Pedido actualizado";
-}
-
-function fmtVal(v: unknown): string {
-  if (v === null || v === undefined) return "—";
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
-}
-
-function describeChange(a: AuditRow) {
-  if (a.entity === "order_item") {
-    const n = a.new_value as any;
-    const o = a.old_value as any;
-    if (a.action === "item_insert") return `${n?.description ?? ""} · ${n?.quantity ?? 0} × ${n?.unit_price ?? 0}`;
-    if (a.action === "item_delete") return `${o?.description ?? ""} · ${o?.quantity ?? 0} × ${o?.unit_price ?? 0}`;
-    return `"${o?.description}" (${o?.quantity}×${o?.unit_price}) → "${n?.description}" (${n?.quantity}×${n?.unit_price})`;
-  }
-  return `${fmtVal(a.old_value)} → ${fmtVal(a.new_value)}`;
-}
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
