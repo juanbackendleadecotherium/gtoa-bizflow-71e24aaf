@@ -34,8 +34,10 @@ function OrderDetail() {
       const { data, error } = await supabase
         .from("orders")
         .select(`
-          id, order_number, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date,
-          customer:customers(id, display_name, email, phone),
+          id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date,
+          payment_method, advance_amount,
+          customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
+          customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
           items:order_items(id, description, quantity, unit_price, line_total, sort_order)
         `)
@@ -222,9 +224,8 @@ function OrderDetail() {
   const o = orderQuery.data as any;
   if (!o) return <p className="text-sm text-muted-foreground">Pedido no encontrado.</p>;
 
-  const customer = o.customer as any;
-  const status = o.status as any;
   const items = ((o.items as any[] | null) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
+  const status = o.status as any;
 
   return (
     <>
@@ -234,8 +235,10 @@ function OrderDetail() {
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1 truncate">{o.order_number}</p>
-          <h1 className="font-display text-2xl font-semibold break-words">{customer?.display_name}</h1>
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1 truncate">
+            {o.order_number}{o.invoice_number ? ` · Fact. ${o.invoice_number}` : ""}
+          </p>
+          <h1 className="font-display text-2xl font-semibold break-words">{o.customer_name ?? "Sin cliente"}</h1>
           <p className="text-sm text-muted-foreground">
             Creado {new Date(o.created_at).toLocaleString("es-CO")}
           </p>
@@ -420,15 +423,27 @@ function OrderDetail() {
         </div>
 
         <aside className="space-y-5">
-          <div className="rounded-xl border border-border bg-surface p-5">
-            <p className="text-sm font-medium mb-3">Cliente</p>
-            <p className="text-sm font-semibold">{customer?.display_name}</p>
-            {customer?.email && <p className="text-xs text-muted-foreground">{customer.email}</p>}
-            {customer?.phone && <p className="text-xs text-muted-foreground">{customer.phone}</p>}
-            {customer?.id && (
-              <Button variant="link" size="sm" asChild className="px-0 mt-2">
-                <Link to="/erp/customers/$id" params={{ id: customer.id }}>Ver ficha →</Link>
-              </Button>
+          <div className="rounded-xl border border-border bg-surface p-5 space-y-1.5">
+            <p className="text-sm font-medium mb-2">Cliente</p>
+            <p className="text-sm font-semibold">{o.customer_name ?? "—"}</p>
+            {o.customer_company && <p className="text-xs text-muted-foreground">{o.customer_company}</p>}
+            {o.customer_doc_number && (
+              <p className="text-xs text-muted-foreground">
+                {(o.customer_doc_type ? `${o.customer_doc_type} ` : "")}{o.customer_doc_number}
+              </p>
+            )}
+            {o.customer_phone && <p className="text-xs text-muted-foreground">{o.customer_phone}</p>}
+            {o.customer_email && <p className="text-xs text-muted-foreground">{o.customer_email}</p>}
+            {(o.customer_address || o.customer_city || o.customer_department) && (
+              <p className="text-xs text-muted-foreground">
+                {[o.customer_address, o.customer_city, o.customer_department].filter(Boolean).join(", ")}
+              </p>
+            )}
+            {(o.payment_method || o.advance_amount > 0) && (
+              <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground space-y-0.5">
+                {o.payment_method && <p>Pago: <span className="text-foreground">{o.payment_method}</span></p>}
+                {o.advance_amount > 0 && <p>Abono: <span className="text-foreground tabular-nums">{formatMoney(o.advance_amount)}</span></p>}
+              </div>
             )}
           </div>
 

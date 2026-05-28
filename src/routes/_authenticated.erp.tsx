@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, ClipboardList, Settings,
-  LogOut, ChevronDown, Building2, ShieldCheck, Loader2, ArrowLeft,
+  LayoutDashboard, ClipboardList, Settings,
+  LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -46,7 +46,6 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { label: "Dashboard", to: "/erp", icon: LayoutDashboard, exact: true },
-  { label: "Clientes", to: "/erp/customers", icon: Users },
   { label: "Pedidos", to: "/erp/orders", icon: ClipboardList },
   { label: "Estados", to: "/erp/settings/statuses", icon: Settings, adminOnly: true },
 ];

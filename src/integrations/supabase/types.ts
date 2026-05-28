@@ -327,7 +327,18 @@ export type Database = {
           brand_id: string
           created_at: string
           created_by: string | null
-          customer_id: string
+          customer_address: string | null
+          customer_city: string | null
+          customer_company: string | null
+          customer_contact_type: string | null
+          customer_department: string | null
+          customer_doc_number: string | null
+          customer_doc_type: string | null
+          customer_email: string | null
+          customer_id: string | null
+          customer_name: string
+          customer_person_type: string | null
+          customer_phone: string | null
           discount: number
           estimated_delivery_date: string | null
           id: string
@@ -351,7 +362,18 @@ export type Database = {
           brand_id: string
           created_at?: string
           created_by?: string | null
-          customer_id: string
+          customer_address?: string | null
+          customer_city?: string | null
+          customer_company?: string | null
+          customer_contact_type?: string | null
+          customer_department?: string | null
+          customer_doc_number?: string | null
+          customer_doc_type?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name: string
+          customer_person_type?: string | null
+          customer_phone?: string | null
           discount?: number
           estimated_delivery_date?: string | null
           id?: string
@@ -375,7 +397,18 @@ export type Database = {
           brand_id?: string
           created_at?: string
           created_by?: string | null
-          customer_id?: string
+          customer_address?: string | null
+          customer_city?: string | null
+          customer_company?: string | null
+          customer_contact_type?: string | null
+          customer_department?: string | null
+          customer_doc_number?: string | null
+          customer_doc_type?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name?: string
+          customer_person_type?: string | null
+          customer_phone?: string | null
           discount?: number
           estimated_delivery_date?: string | null
           id?: string
