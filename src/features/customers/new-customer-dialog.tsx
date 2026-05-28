@@ -12,6 +12,10 @@ import {
   Trash2,
   WandSparkles,
   MessageSquareText,
+  Building2,
+  Receipt,
+  CreditCard,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,42 +37,102 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+
+// ---------- Catálogos ----------
+const DOC_TYPES = [
+  { value: "CC", label: "CC · Cédula de ciudadanía" },
+  { value: "CE", label: "CE · Cédula de extranjería" },
+  { value: "NIT", label: "NIT" },
+  { value: "TI", label: "TI · Tarjeta de identidad" },
+  { value: "PA", label: "PA · Pasaporte" },
+  { value: "PEP", label: "PEP · Permiso especial" },
+  { value: "RC", label: "RC · Registro civil" },
+  { value: "NIUP", label: "NIUP" },
+] as const;
+
+const PAYMENT_METHODS = [
+  { value: "efectivo", label: "Efectivo" },
+  { value: "transferencia", label: "Transferencia" },
+  { value: "tarjeta", label: "Tarjeta" },
+  { value: "nequi", label: "Nequi" },
+  { value: "daviplata", label: "Daviplata" },
+  { value: "credito", label: "Crédito" },
+  { value: "cheque", label: "Cheque" },
+  { value: "otro", label: "Otro" },
+] as const;
+
+// ---------- Tipos ----------
+type CustomerDraft = {
+  display_name: string;
+  company: string;
+  person_type: "" | "natural" | "juridica";
+  contact_type: "cliente" | "proveedor";
+  doc_type: string;
+  doc_number: string;
+  phone: string;
+  email: string;
+  department: string;
+  city: string;
+  address: string;
+  needs_summary: string;
+  references: string;
+};
+
+type OrderDraft = {
+  invoice_number: string;
+  sale_date: string;
+  estimated_delivery_date: string;
+  payment_method: string;
+  advance_amount: number;
+};
 
 type Draft = {
-  customer: {
-    display_name: string;
-    phone: string;
-    email: string;
-    doc_number: string;
-    address: string;
-    city: string;
-    needs_summary: string;
-    references: string;
-  };
+  customer: CustomerDraft;
+  order: OrderDraft;
   items: { description: string; quantity: number; unit_price: number }[];
   notes: string;
   urgency: string;
-  estimated_delivery_date: string;
 };
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const EMPTY: Draft = {
   customer: {
     display_name: "",
+    company: "",
+    person_type: "",
+    contact_type: "cliente",
+    doc_type: "",
+    doc_number: "",
     phone: "",
     email: "",
-    doc_number: "",
-    address: "",
+    department: "",
     city: "",
+    address: "",
     needs_summary: "",
     references: "",
+  },
+  order: {
+    invoice_number: "",
+    sale_date: todayISO(),
+    estimated_delivery_date: "",
+    payment_method: "",
+    advance_amount: 0,
   },
   items: [],
   notes: "",
   urgency: "",
-  estimated_delivery_date: "",
 };
 
-function buildCustomerNotes(c: Draft["customer"], urgency: string) {
+function buildCustomerNotes(c: CustomerDraft, urgency: string) {
   const parts: string[] = [];
   if (c.needs_summary) parts.push(`Necesidad: ${c.needs_summary}`);
   if (c.references) parts.push(`Referencias: ${c.references}`);
@@ -94,7 +158,7 @@ export function NewCustomerDialog({
 
   const reset = () => {
     setRawText("");
-    setDraft(EMPTY);
+    setDraft({ ...EMPTY, order: { ...EMPTY.order, sale_date: todayISO() } });
     setAiOpen(true);
   };
 
@@ -110,13 +174,37 @@ export function NewCustomerDialog({
         toast.error(data.message);
         return;
       }
-      setDraft({
-        customer: data.order.customer,
-        items: data.order.items,
-        notes: data.order.notes,
-        urgency: data.order.urgency,
-        estimated_delivery_date: data.order.estimated_delivery_date,
-      });
+      const ext = data.order;
+      setDraft((d) => ({
+        customer: {
+          display_name: ext.customer.display_name || d.customer.display_name,
+          company: ext.customer.company || d.customer.company,
+          person_type:
+            (ext.customer.person_type as CustomerDraft["person_type"]) || d.customer.person_type,
+          contact_type:
+            (ext.customer.contact_type as CustomerDraft["contact_type"]) || d.customer.contact_type,
+          doc_type: ext.customer.doc_type || d.customer.doc_type,
+          doc_number: ext.customer.doc_number || d.customer.doc_number,
+          phone: ext.customer.phone || d.customer.phone,
+          email: ext.customer.email || d.customer.email,
+          department: ext.customer.department || d.customer.department,
+          city: ext.customer.city || d.customer.city,
+          address: ext.customer.address || d.customer.address,
+          needs_summary: ext.customer.needs_summary || d.customer.needs_summary,
+          references: ext.customer.references || d.customer.references,
+        },
+        order: {
+          invoice_number: ext.order.invoice_number || d.order.invoice_number,
+          sale_date: ext.order.sale_date || d.order.sale_date,
+          estimated_delivery_date:
+            ext.order.estimated_delivery_date || d.order.estimated_delivery_date,
+          payment_method: ext.order.payment_method || d.order.payment_method,
+          advance_amount: ext.order.advance_amount || d.order.advance_amount,
+        },
+        items: ext.items.length > 0 ? ext.items : d.items,
+        notes: ext.notes || d.notes,
+        urgency: ext.urgency || d.urgency,
+      }));
       setAiOpen(false);
       toast.success("Datos extraídos. Revisa antes de guardar.");
     },
@@ -127,7 +215,7 @@ export function NewCustomerDialog({
     mutationFn: async () => {
       if (!selectedBrandId) throw new Error("Selecciona una marca");
       const c = draft.customer;
-      if (!c.display_name.trim()) throw new Error("El nombre del cliente es obligatorio");
+      if (!c.display_name.trim()) throw new Error("El nombre / razón social es obligatorio");
       if (draft.items.length === 0)
         throw new Error("Agrega al menos un producto para crear el pedido");
 
@@ -137,6 +225,7 @@ export function NewCustomerDialog({
       const userId = user?.id;
       const customerNotes = buildCustomerNotes(c, draft.urgency);
 
+      // 1) Cliente: buscar por phone o doc_number dentro de la marca
       let customerId: string | null = null;
       if (c.phone.trim()) {
         const { data: existing } = await supabase
@@ -147,31 +236,48 @@ export function NewCustomerDialog({
           .maybeSingle();
         if (existing) customerId = existing.id;
       }
+      if (!customerId && c.doc_number.trim()) {
+        const { data: existing } = await supabase
+          .from("customers")
+          .select("id")
+          .eq("brand_id", selectedBrandId)
+          .eq("doc_number", c.doc_number.trim())
+          .maybeSingle();
+        if (existing) customerId = existing.id;
+      }
+
+      const customerPayload = {
+        brand_id: selectedBrandId,
+        display_name: c.display_name.trim(),
+        company: c.company.trim() || null,
+        person_type: c.person_type || null,
+        contact_type: c.contact_type,
+        doc_type: c.doc_type || null,
+        doc_number: c.doc_number.trim() || null,
+        phone: c.phone.trim() || null,
+        email: c.email.trim() || null,
+        department: c.department.trim() || null,
+        city: c.city.trim() || null,
+        address: c.address.trim() || null,
+        notes: customerNotes || null,
+      };
+
       if (!customerId) {
         const { data: newCustomer, error: custErr } = await supabase
           .from("customers")
-          .insert({
-            brand_id: selectedBrandId,
-            display_name: c.display_name.trim(),
-            phone: c.phone.trim() || null,
-            email: c.email.trim() || null,
-            doc_number: c.doc_number.trim() || null,
-            address: c.address.trim() || null,
-            city: c.city.trim() || null,
-            notes: customerNotes || null,
-            created_by: userId,
-          } as never)
+          .insert({ ...customerPayload, created_by: userId } as never)
           .select("id")
           .single();
         if (custErr) throw custErr;
         customerId = newCustomer.id;
-      } else if (customerNotes) {
+      } else {
         await supabase
           .from("customers")
-          .update({ notes: customerNotes } as never)
+          .update(customerPayload as never)
           .eq("id", customerId);
       }
 
+      // 2) Estado inicial
       const { data: status } = await supabase
         .from("order_statuses")
         .select("id")
@@ -186,6 +292,7 @@ export function NewCustomerDialog({
         .filter(Boolean)
         .join("\n");
 
+      // 3) Pedido
       const { data: order, error: orderErr } = await supabase
         .from("orders")
         .insert({
@@ -198,12 +305,17 @@ export function NewCustomerDialog({
           seller_id: userId,
           source: rawText ? "whatsapp" : "manual",
           whatsapp_raw: rawText || null,
-          estimated_delivery_date: draft.estimated_delivery_date || null,
+          invoice_number: draft.order.invoice_number.trim() || null,
+          sale_date: draft.order.sale_date || null,
+          estimated_delivery_date: draft.order.estimated_delivery_date || null,
+          payment_method: draft.order.payment_method || null,
+          advance_amount: draft.order.advance_amount || 0,
         } as never)
         .select()
         .single();
       if (orderErr) throw orderErr;
 
+      // 4) Productos
       const itemsPayload = draft.items.map((it, idx) => ({
         order_id: order.id,
         description: it.description || "Sin descripción",
@@ -226,8 +338,10 @@ export function NewCustomerDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const updateCustomer = (field: keyof Draft["customer"], value: string) =>
+  const setC = <K extends keyof CustomerDraft>(field: K, value: CustomerDraft[K]) =>
     setDraft((d) => ({ ...d, customer: { ...d.customer, [field]: value } }));
+  const setO = <K extends keyof OrderDraft>(field: K, value: OrderDraft[K]) =>
+    setDraft((d) => ({ ...d, order: { ...d.order, [field]: value } }));
 
   const updateItem = (
     idx: number,
@@ -253,28 +367,20 @@ export function NewCustomerDialog({
     setDraft((d) => ({ ...d, items: d.items.filter((_, i) => i !== idx) }));
 
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
-  const hasDetected =
-    draft.customer.display_name.trim().length > 0 || draft.items.length > 0;
+  const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
+  const isJuridica = draft.customer.person_type === "juridica";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0 gap-0 bg-background">
-        {/* Hero header */}
+        {/* Hero */}
         <div className="relative px-6 pt-6 pb-5 border-b border-border bg-gradient-to-br from-accent/10 via-background to-background">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)",
-              backgroundSize: "18px 18px",
-            }}
-          />
           <DialogHeader className="relative">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="grid place-items-center h-10 w-10 rounded-xl bg-accent text-accent-foreground shadow-sm">
                 <User className="h-5 w-5" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <DialogTitle className="font-display text-xl">Nuevo cliente</DialogTitle>
                 <DialogDescription className="text-xs">
                   Crea el cliente y su primer pedido en un solo paso.
@@ -290,13 +396,14 @@ export function NewCustomerDialog({
         </div>
 
         <div className="p-6 space-y-5">
-          {/* AI Capture */}
+          {/* IA */}
           <section
-            className={`rounded-2xl border transition-colors ${
+            className={cn(
+              "rounded-2xl border transition-colors",
               aiOpen
                 ? "border-accent/40 bg-gradient-to-br from-accent/[0.06] to-transparent"
-                : "border-border bg-surface"
-            }`}
+                : "border-border bg-surface",
+            )}
           >
             <button
               type="button"
@@ -314,7 +421,7 @@ export function NewCustomerDialog({
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Pega la conversación y la IA arma cliente + pedido por ti.
+                  Pega la conversación y la IA llena el formulario por ti.
                 </p>
               </div>
               <span className="text-xs text-muted-foreground">{aiOpen ? "Ocultar" : "Mostrar"}</span>
@@ -332,7 +439,7 @@ export function NewCustomerDialog({
                     className="pl-9 font-mono text-xs resize-y"
                   />
                 </div>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <p className="text-[11px] text-muted-foreground">
                     También puedes diligenciar manualmente abajo.
                   </p>
@@ -358,52 +465,127 @@ export function NewCustomerDialog({
             )}
           </section>
 
-          {/* Customer */}
+          {/* Identificación */}
           <SectionCard
             icon={<User className="h-4 w-4" />}
+            title="Identificación del contacto"
+            subtitle="Tipo de persona, tipo de contacto y documento."
+          >
+            <div className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <FieldBlock label="Tipo de persona">
+                  <SegmentedTwo
+                    value={draft.customer.person_type}
+                    onChange={(v) => setC("person_type", v as CustomerDraft["person_type"])}
+                    options={[
+                      { value: "natural", label: "Persona natural" },
+                      { value: "juridica", label: "Persona jurídica" },
+                    ]}
+                  />
+                </FieldBlock>
+                <FieldBlock label="Tipo de contacto">
+                  <SegmentedTwo
+                    value={draft.customer.contact_type}
+                    onChange={(v) => setC("contact_type", v as CustomerDraft["contact_type"])}
+                    options={[
+                      { value: "cliente", label: "Cliente" },
+                      { value: "proveedor", label: "Proveedor" },
+                    ]}
+                  />
+                </FieldBlock>
+              </div>
+
+              <div className="grid sm:grid-cols-12 gap-4">
+                <FieldBlock label="Tipo de identificación" className="sm:col-span-5">
+                  <Select
+                    value={draft.customer.doc_type || undefined}
+                    onValueChange={(v) => setC("doc_type", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DOC_TYPES.map((d) => (
+                        <SelectItem key={d.value} value={d.value}>
+                          {d.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldBlock>
+                <FieldBlock label="Número de identificación" className="sm:col-span-7">
+                  <Input
+                    value={draft.customer.doc_number}
+                    onChange={(e) => setC("doc_number", e.target.value)}
+                    inputMode="numeric"
+                    placeholder="Sólo dígitos"
+                  />
+                </FieldBlock>
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* Datos del cliente */}
+          <SectionCard
+            icon={<Building2 className="h-4 w-4" />}
             title="Datos del cliente"
-            subtitle={hasDetected ? "Revisa la información detectada" : "Completa los datos básicos"}
+            subtitle="Nombre, contacto y ubicación."
           >
             <div className="grid sm:grid-cols-2 gap-4">
-              <FieldBlock label="Nombre / razón social *">
+              <FieldBlock label={isJuridica ? "Razón social *" : "Nombre del cliente *"}>
                 <Input
                   value={draft.customer.display_name}
-                  onChange={(e) => updateCustomer("display_name", e.target.value)}
-                  placeholder="Ej. Andrea Restrepo"
+                  onChange={(e) => setC("display_name", e.target.value)}
+                  placeholder={isJuridica ? "Ej. Muebles ACME S.A.S." : "Ej. Andrea Restrepo"}
                 />
               </FieldBlock>
-              <FieldBlock label="Teléfono">
+              <FieldBlock label="Empresa">
+                <Input
+                  value={draft.customer.company}
+                  onChange={(e) => setC("company", e.target.value)}
+                  placeholder="Empresa o lugar de trabajo (opcional)"
+                />
+              </FieldBlock>
+              <FieldBlock label="Celular">
                 <Input
                   value={draft.customer.phone}
-                  onChange={(e) => updateCustomer("phone", e.target.value)}
+                  onChange={(e) => setC("phone", e.target.value)}
+                  inputMode="tel"
                   placeholder="3001234567"
                 />
               </FieldBlock>
-              <FieldBlock label="Email">
+              <FieldBlock label="Correo">
                 <Input
                   type="email"
                   value={draft.customer.email}
-                  onChange={(e) => updateCustomer("email", e.target.value)}
+                  onChange={(e) => setC("email", e.target.value)}
                   placeholder="cliente@correo.com"
                 />
               </FieldBlock>
-              <FieldBlock label="Cédula / NIT">
+              <FieldBlock label="Departamento">
                 <Input
-                  value={draft.customer.doc_number}
-                  onChange={(e) => updateCustomer("doc_number", e.target.value)}
+                  value={draft.customer.department}
+                  onChange={(e) => setC("department", e.target.value)}
+                  placeholder="Ej. Antioquia"
                 />
               </FieldBlock>
               <FieldBlock label="Ciudad">
                 <Input
                   value={draft.customer.city}
-                  onChange={(e) => updateCustomer("city", e.target.value)}
+                  onChange={(e) => setC("city", e.target.value)}
+                  placeholder="Ej. Medellín"
                 />
               </FieldBlock>
-              <FieldBlock label="Dirección">
-                <Input
-                  value={draft.customer.address}
-                  onChange={(e) => updateCustomer("address", e.target.value)}
-                />
+              <FieldBlock label="Dirección" className="sm:col-span-2">
+                <div className="relative">
+                  <MapPin className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    value={draft.customer.address}
+                    onChange={(e) => setC("address", e.target.value)}
+                    placeholder="Calle, número, barrio…"
+                  />
+                </div>
               </FieldBlock>
             </div>
 
@@ -412,7 +594,7 @@ export function NewCustomerDialog({
                 <Textarea
                   rows={2}
                   value={draft.customer.needs_summary}
-                  onChange={(e) => updateCustomer("needs_summary", e.target.value)}
+                  onChange={(e) => setC("needs_summary", e.target.value)}
                   placeholder="Ej. Cocina integral en L para apartamento, acabado mate."
                 />
               </FieldBlock>
@@ -420,7 +602,7 @@ export function NewCustomerDialog({
                 <Textarea
                   rows={2}
                   value={draft.customer.references}
-                  onChange={(e) => updateCustomer("references", e.target.value)}
+                  onChange={(e) => setC("references", e.target.value)}
                   placeholder="Medidas, colores, enlaces, fotos descritas…"
                 />
               </FieldBlock>
@@ -430,7 +612,38 @@ export function NewCustomerDialog({
             </div>
           </SectionCard>
 
-          {/* Items */}
+          {/* Facturación */}
+          <SectionCard
+            icon={<Receipt className="h-4 w-4" />}
+            title="Facturación y fechas"
+            subtitle="Número de factura y fechas clave."
+          >
+            <div className="grid sm:grid-cols-3 gap-4">
+              <FieldBlock label="Nro Factura">
+                <Input
+                  value={draft.order.invoice_number}
+                  onChange={(e) => setO("invoice_number", e.target.value)}
+                  placeholder="Ej. CD-1686"
+                />
+              </FieldBlock>
+              <FieldBlock label="Fecha de venta">
+                <Input
+                  type="date"
+                  value={draft.order.sale_date}
+                  onChange={(e) => setO("sale_date", e.target.value)}
+                />
+              </FieldBlock>
+              <FieldBlock label="Fecha de entrega">
+                <Input
+                  type="date"
+                  value={draft.order.estimated_delivery_date}
+                  onChange={(e) => setO("estimated_delivery_date", e.target.value)}
+                />
+              </FieldBlock>
+            </div>
+          </SectionCard>
+
+          {/* Productos */}
           <SectionCard
             icon={<Package className="h-4 w-4" />}
             title="Productos del pedido"
@@ -457,20 +670,20 @@ export function NewCustomerDialog({
                     className="grid grid-cols-12 gap-2 items-center rounded-lg border border-border bg-surface p-2"
                   >
                     <Input
-                      className="col-span-7"
+                      className="col-span-12 sm:col-span-7"
                       placeholder="Descripción"
                       value={it.description}
                       onChange={(e) => updateItem(idx, "description", e.target.value)}
                     />
                     <Input
-                      className="col-span-2 text-right"
+                      className="col-span-3 sm:col-span-2 text-right"
                       type="text"
                       inputMode="decimal"
                       value={it.quantity === 0 ? "" : String(it.quantity)}
                       onChange={(e) => updateItem(idx, "quantity", e.target.value)}
                     />
                     <MoneyInput
-                      className="col-span-2 text-right"
+                      className="col-span-7 sm:col-span-2 text-right"
                       value={Number(it.unit_price) || 0}
                       onValueChange={(n) => updateItem(idx, "unit_price", String(n))}
                     />
@@ -478,7 +691,7 @@ export function NewCustomerDialog({
                       type="button"
                       size="icon"
                       variant="ghost"
-                      className="col-span-1"
+                      className="col-span-2 sm:col-span-1"
                       onClick={() => removeItem(idx)}
                     >
                       <Trash2 className="h-4 w-4 text-muted-foreground" />
@@ -495,35 +708,66 @@ export function NewCustomerDialog({
             )}
           </SectionCard>
 
-          {/* Order details */}
+          {/* Pago */}
           <SectionCard
-            icon={<FileText className="h-4 w-4" />}
-            title="Detalles del pedido"
-            subtitle="Notas internas y fechas clave."
+            icon={<CreditCard className="h-4 w-4" />}
+            title="Pago"
+            subtitle="Modalidad y abono inicial."
           >
             <div className="grid sm:grid-cols-2 gap-4">
-              <FieldBlock label="Observaciones" className="sm:col-span-2">
+              <FieldBlock label="Modalidad de pago">
+                <Select
+                  value={draft.order.payment_method || undefined}
+                  onValueChange={(v) => setO("payment_method", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldBlock>
+              <FieldBlock label="Abono">
+                <MoneyInput
+                  value={draft.order.advance_amount}
+                  onValueChange={(n) => setO("advance_amount", n)}
+                />
+              </FieldBlock>
+            </div>
+            {subtotal > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-2 text-xs rounded-lg border border-border bg-surface p-3">
+                <Stat label="Total" value={formatMoney(subtotal)} />
+                <Stat label="Abono" value={formatMoney(draft.order.advance_amount || 0)} accent />
+                <Stat label="Saldo" value={formatMoney(saldo)} strong />
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Notas */}
+          <SectionCard
+            icon={<FileText className="h-4 w-4" />}
+            title="Observaciones"
+            subtitle="Notas internas y urgencia."
+          >
+            <div className="grid sm:grid-cols-2 gap-4">
+              <FieldBlock label="Notas" className="sm:col-span-2">
                 <Textarea
                   rows={3}
                   value={draft.notes}
                   onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
-                  placeholder="Notas, instrucciones, condiciones especiales…"
+                  placeholder="Instrucciones, condiciones especiales…"
                 />
               </FieldBlock>
-              <FieldBlock label="Urgencia">
+              <FieldBlock label="Urgencia" className="sm:col-span-2">
                 <Input
                   value={draft.urgency}
                   onChange={(e) => setDraft((d) => ({ ...d, urgency: e.target.value }))}
                   placeholder="Ej. Necesita antes del 15 de junio"
-                />
-              </FieldBlock>
-              <FieldBlock label="Fecha estimada de entrega">
-                <Input
-                  type="date"
-                  value={draft.estimated_delivery_date}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, estimated_delivery_date: e.target.value }))
-                  }
                 />
               </FieldBlock>
             </div>
@@ -531,11 +775,11 @@ export function NewCustomerDialog({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 px-6 py-4 border-t border-border bg-background/95 backdrop-blur flex items-center justify-between gap-3">
+        <div className="sticky bottom-0 px-6 py-4 border-t border-border bg-background/95 backdrop-blur flex items-center justify-between gap-3 flex-wrap">
           <p className="text-[11px] text-muted-foreground">
             Se creará el cliente y el pedido inicial en estado activo.
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 ml-auto">
             <Button variant="ghost" onClick={() => handleOpenChange(false)}>
               Cancelar
             </Button>
@@ -559,6 +803,7 @@ export function NewCustomerDialog({
   );
 }
 
+// ---------- Subcomponentes ----------
 function SectionCard({
   icon,
   title,
@@ -574,7 +819,7 @@ function SectionCard({
 }) {
   return (
     <section className="rounded-2xl border border-border bg-surface p-5">
-      <div className="flex items-start justify-between gap-3 mb-4">
+      <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="grid place-items-center h-9 w-9 rounded-lg bg-accent/10 text-accent">
             {icon}
@@ -606,6 +851,66 @@ function FieldBlock({
         {label}
       </Label>
       {children}
+    </div>
+  );
+}
+
+function SegmentedTwo({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {options.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "h-10 px-3 rounded-md border text-xs font-medium transition-colors",
+              active
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border bg-surface hover:border-accent/40 text-foreground",
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent,
+  strong,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+  strong?: boolean;
+}) {
+  return (
+    <div className="text-center">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "tabular-nums mt-0.5",
+          strong ? "font-display font-semibold text-base" : "font-medium",
+          accent && "text-accent",
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }
