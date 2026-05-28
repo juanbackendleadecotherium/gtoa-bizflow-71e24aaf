@@ -94,8 +94,13 @@ function OrderDetail() {
   const [editETA, setEditETA] = useState<string>("");
   const [editItems, setEditItems] = useState<(OrderItemInput & { id?: string })[]>([]);
 
+  // Hydration: only sync from server when NOT editing or when the order id changes.
+  // This prevents losing in-progress edits when other queries (status, history, audit)
+  // are invalidated and re-fetch the order.
+  const hydratedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!orderQuery.data) return;
+    if (editing && hydratedFor.current === id) return;
     const o = orderQuery.data as any;
     setEditNotes(o.notes ?? "");
     setEditDiscount(Number(o.discount ?? 0));
@@ -106,7 +111,8 @@ function OrderDetail() {
       id: it.id, description: it.description, quantity: Number(it.quantity),
       unit_price: Number(it.unit_price), sort_order: it.sort_order,
     })));
-  }, [orderQuery.data]);
+    hydratedFor.current = id;
+  }, [orderQuery.data, editing, id]);
 
   const changeStatus = useMutation({
     mutationFn: async () => {
