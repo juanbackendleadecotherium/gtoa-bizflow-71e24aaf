@@ -413,14 +413,31 @@ export function NewCustomerDialog({
       return { ...d, items };
     });
 
-  const addItem = () =>
+  const addItem = () => {
     setDraft((d) => ({
       ...d,
       items: [...d.items, { description: "", quantity: 1, unit_price: 0 }],
     }));
+    setItemImages((arr) => [...arr, []]);
+  };
 
-  const removeItem = (idx: number) =>
+  const removeItem = (idx: number) => {
     setDraft((d) => ({ ...d, items: d.items.filter((_, i) => i !== idx) }));
+    setItemImages((arr) => {
+      const removed = arr[idx] ?? [];
+      removed.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      return arr.filter((_, i) => i !== idx);
+    });
+  };
+
+  const setImagesForItem = (idx: number, next: PendingImage[]) =>
+    setItemImages((arr) => {
+      const copy = [...arr];
+      while (copy.length <= idx) copy.push([]);
+      copy[idx] = next;
+      return copy;
+    });
+
 
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
   const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
