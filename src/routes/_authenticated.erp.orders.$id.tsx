@@ -34,8 +34,10 @@ function OrderDetail() {
       const { data, error } = await supabase
         .from("orders")
         .select(`
-          id, order_number, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date,
-          customer:customers(id, display_name, email, phone),
+          id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date,
+          payment_method, advance_amount,
+          customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
+          customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
           items:order_items(id, description, quantity, unit_price, line_total, sort_order)
         `)
