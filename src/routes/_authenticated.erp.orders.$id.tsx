@@ -423,15 +423,27 @@ function OrderDetail() {
         </div>
 
         <aside className="space-y-5">
-          <div className="rounded-xl border border-border bg-surface p-5">
-            <p className="text-sm font-medium mb-3">Cliente</p>
-            <p className="text-sm font-semibold">{customer?.display_name}</p>
-            {customer?.email && <p className="text-xs text-muted-foreground">{customer.email}</p>}
-            {customer?.phone && <p className="text-xs text-muted-foreground">{customer.phone}</p>}
-            {customer?.id && (
-              <Button variant="link" size="sm" asChild className="px-0 mt-2">
-                <Link to="/erp/customers/$id" params={{ id: customer.id }}>Ver ficha →</Link>
-              </Button>
+          <div className="rounded-xl border border-border bg-surface p-5 space-y-1.5">
+            <p className="text-sm font-medium mb-2">Cliente</p>
+            <p className="text-sm font-semibold">{o.customer_name ?? "—"}</p>
+            {o.customer_company && <p className="text-xs text-muted-foreground">{o.customer_company}</p>}
+            {o.customer_doc_number && (
+              <p className="text-xs text-muted-foreground">
+                {(o.customer_doc_type ? `${o.customer_doc_type} ` : "")}{o.customer_doc_number}
+              </p>
+            )}
+            {o.customer_phone && <p className="text-xs text-muted-foreground">{o.customer_phone}</p>}
+            {o.customer_email && <p className="text-xs text-muted-foreground">{o.customer_email}</p>}
+            {(o.customer_address || o.customer_city || o.customer_department) && (
+              <p className="text-xs text-muted-foreground">
+                {[o.customer_address, o.customer_city, o.customer_department].filter(Boolean).join(", ")}
+              </p>
+            )}
+            {(o.payment_method || o.advance_amount > 0) && (
+              <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground space-y-0.5">
+                {o.payment_method && <p>Pago: <span className="text-foreground">{o.payment_method}</span></p>}
+                {o.advance_amount > 0 && <p>Abono: <span className="text-foreground tabular-nums">{formatMoney(o.advance_amount)}</span></p>}
+              </div>
             )}
           </div>
 
