@@ -117,19 +117,30 @@ function OrderDetail() {
   const changeStatus = useMutation({
     mutationFn: async () => {
       if (!newStatus) throw new Error("Selecciona un estado");
+      const beforeIso = new Date(Date.now() - 1000).toISOString();
       const { error } = await supabase.from("orders").update({ status_id: newStatus }).eq("id", id);
       if (error) throw error;
-      if (statusNote.trim()) {
+      const hadNote = !!statusNote.trim();
+      if (hadNote) {
+        // Find the history row created by the trigger for THIS status change
         const { data: rows } = await supabase
           .from("order_status_history").select("id")
-          .eq("order_id", id).order("created_at", { ascending: false }).limit(1);
+          .eq("order_id", id)
+          .eq("to_status_id", newStatus)
+          .gte("created_at", beforeIso)
+          .order("created_at", { ascending: false }).limit(1);
         if (rows && rows[0]) {
           await supabase.from("order_status_history").update({ note: statusNote.trim() }).eq("id", rows[0].id);
         }
       }
+      return { hadNote };
     },
-    onSuccess: () => {
-      toast.success("Estado actualizado");
+    onSuccess: (res) => {
+      toast.success(
+        res?.hadNote
+          ? "Estado actualizado · nota guardada en el historial"
+          : "Estado actualizado",
+      );
       setStatusNote(""); setNewStatus("");
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["order-history", id] });
