@@ -445,7 +445,23 @@ function OrderDetail() {
                 {o.advance_amount > 0 && <p>Abono: <span className="text-foreground tabular-nums">{formatMoney(o.advance_amount)}</span></p>}
               </div>
             )}
+            {o.payment_proof_url && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                  Comprobante de pago
+                </p>
+                <a
+                  href={o.payment_proof_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-lg overflow-hidden border border-border bg-muted aspect-video hover:border-accent/60 transition-colors"
+                >
+                  <img src={o.payment_proof_url} alt="Comprobante de pago" className="w-full h-full object-cover" />
+                </a>
+              </div>
+            )}
           </div>
+
 
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-sm font-medium mb-3">Cambiar estado</p>
