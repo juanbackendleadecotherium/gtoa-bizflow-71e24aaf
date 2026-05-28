@@ -58,8 +58,11 @@ export type Database = {
           address: string | null
           brand_id: string
           city: string | null
+          company: string | null
+          contact_type: string
           created_at: string
           created_by: string | null
+          department: string | null
           display_name: string
           doc_number: string | null
           doc_type: string | null
@@ -67,6 +70,7 @@ export type Database = {
           id: string
           is_active: boolean
           notes: string | null
+          person_type: string | null
           phone: string | null
           updated_at: string
         }
@@ -74,8 +78,11 @@ export type Database = {
           address?: string | null
           brand_id: string
           city?: string | null
+          company?: string | null
+          contact_type?: string
           created_at?: string
           created_by?: string | null
+          department?: string | null
           display_name: string
           doc_number?: string | null
           doc_type?: string | null
@@ -83,6 +90,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          person_type?: string | null
           phone?: string | null
           updated_at?: string
         }
@@ -90,8 +98,11 @@ export type Database = {
           address?: string | null
           brand_id?: string
           city?: string | null
+          company?: string | null
+          contact_type?: string
           created_at?: string
           created_by?: string | null
+          department?: string | null
           display_name?: string
           doc_number?: string | null
           doc_type?: string | null
@@ -99,6 +110,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          person_type?: string | null
           phone?: string | null
           updated_at?: string
         }
@@ -310,6 +322,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          advance_amount: number
           assigned_to: string | null
           brand_id: string
           created_at: string
@@ -318,8 +331,11 @@ export type Database = {
           discount: number
           estimated_delivery_date: string | null
           id: string
+          invoice_number: string | null
           notes: string | null
           order_number: string
+          payment_method: string | null
+          sale_date: string | null
           seller_id: string | null
           source: string
           status_id: string
@@ -330,6 +346,7 @@ export type Database = {
           whatsapp_raw: string | null
         }
         Insert: {
+          advance_amount?: number
           assigned_to?: string | null
           brand_id: string
           created_at?: string
@@ -338,8 +355,11 @@ export type Database = {
           discount?: number
           estimated_delivery_date?: string | null
           id?: string
+          invoice_number?: string | null
           notes?: string | null
           order_number: string
+          payment_method?: string | null
+          sale_date?: string | null
           seller_id?: string | null
           source?: string
           status_id: string
@@ -350,6 +370,7 @@ export type Database = {
           whatsapp_raw?: string | null
         }
         Update: {
+          advance_amount?: number
           assigned_to?: string | null
           brand_id?: string
           created_at?: string
@@ -358,8 +379,11 @@ export type Database = {
           discount?: number
           estimated_delivery_date?: string | null
           id?: string
+          invoice_number?: string | null
           notes?: string | null
           order_number?: string
+          payment_method?: string | null
+          sale_date?: string | null
           seller_id?: string | null
           source?: string
           status_id?: string
