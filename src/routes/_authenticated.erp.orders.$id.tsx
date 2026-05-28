@@ -256,7 +256,12 @@ function OrderDetail() {
             </Button>
           ) : (
             <>
-              <Button variant="ghost" size="sm" className="gap-2" onClick={() => { setEditing(false); }}>
+              <Button variant="ghost" size="sm" className="gap-2" onClick={() => {
+                if (confirm("¿Descartar los cambios sin guardar?")) {
+                  hydratedFor.current = null;
+                  setEditing(false);
+                }
+              }}>
                 <X className="h-4 w-4" /> Cancelar
               </Button>
               <Button size="sm" onClick={() => saveEdit.mutate()} disabled={saveEdit.isPending}>
