@@ -188,17 +188,24 @@ export function NewCustomerDialog({
   const [rawText, setRawText] = useState("");
   const [aiOpen, setAiOpen] = useState(true);
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [paymentProof, setPaymentProof] = useState<PendingImage[]>([]);
+  const [itemImages, setItemImages] = useState<PendingImage[][]>([]);
 
   const reset = () => {
     setRawText("");
     setDraft({ ...EMPTY, order: { ...EMPTY.order, sale_date: todayISO() } });
     setAiOpen(true);
+    paymentProof.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    itemImages.flat().forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    setPaymentProof([]);
+    setItemImages([]);
   };
 
   const handleOpenChange = (v: boolean) => {
     if (!v) reset();
     onOpenChange(v);
   };
+
 
   // Prefilled defaults: empresa = marca activa, nro factura = consecutivo por marca
   useEffect(() => {
