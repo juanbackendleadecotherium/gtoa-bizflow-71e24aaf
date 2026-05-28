@@ -493,6 +493,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_order_status: {
+        Args: { p_note?: string; p_order_id: string; p_status_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "operativo" | "finanzas" | "ventas" | "vendedor"
