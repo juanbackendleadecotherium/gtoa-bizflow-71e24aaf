@@ -869,7 +869,19 @@ export function NewCustomerDialog({
               </div>
             )}
 
+            <div className="mt-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                Comprobante de pago
+              </p>
+              <ImageUploader
+                pending={paymentProof}
+                onChangePending={setPaymentProof}
+                label="Subir comprobante"
+                hint="Foto del recibo, transferencia o consignación. Se comprime antes de subir."
+              />
+            </div>
           </SectionCard>
+
 
           {/* Notas */}
           <SectionCard
