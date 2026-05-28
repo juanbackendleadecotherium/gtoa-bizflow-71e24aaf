@@ -35,11 +35,11 @@ function OrderDetail() {
         .from("orders")
         .select(`
           id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date,
-          payment_method, advance_amount,
+          payment_method, advance_amount, payment_proof_url,
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
-          items:order_items(id, description, quantity, unit_price, line_total, sort_order)
+          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images)
         `)
         .eq("id", id).maybeSingle();
       if (error) throw error;
@@ -299,14 +299,29 @@ function OrderDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((it) => (
-                      <tr key={it.id} className="border-t border-border align-top">
-                        <td className="py-2 pr-3 break-words whitespace-pre-wrap">{it.description}</td>
-                        <td className="py-2 text-right tabular-nums">{Number(it.quantity)}</td>
-                        <td className="py-2 text-right tabular-nums">{formatMoney(it.unit_price)}</td>
-                        <td className="py-2 text-right tabular-nums">{formatMoney(it.line_total)}</td>
-                      </tr>
-                    ))}
+                    {items.map((it) => {
+                      const imgs: string[] = Array.isArray(it.images) ? it.images : [];
+                      return (
+                        <tr key={it.id} className="border-t border-border align-top">
+                          <td className="py-2 pr-3 break-words whitespace-pre-wrap">
+                            <p>{it.description}</p>
+                            {imgs.length > 0 && (
+                              <div className="mt-2 flex gap-1.5 flex-wrap">
+                                {imgs.map((u) => (
+                                  <a key={u} href={u} target="_blank" rel="noreferrer" className="block h-14 w-14 rounded border border-border overflow-hidden bg-muted hover:border-accent/60">
+                                    <img src={u} alt="" className="h-full w-full object-cover" />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2 text-right tabular-nums">{Number(it.quantity)}</td>
+                          <td className="py-2 text-right tabular-nums">{formatMoney(it.unit_price)}</td>
+                          <td className="py-2 text-right tabular-nums">{formatMoney(it.line_total)}</td>
+                        </tr>
+                      );
+                    })}
+
                   </tbody>
                   <tfoot>
                     <Row label="Subtotal" value={formatMoney(o.subtotal)} />
@@ -318,25 +333,38 @@ function OrderDetail() {
 
                 {/* Mobile: tarjetas */}
                 <div className="md:hidden space-y-3">
-                  {items.map((it) => (
-                    <div key={it.id} className="rounded-lg border border-border p-3">
-                      <p className="text-sm font-medium break-words whitespace-pre-wrap mb-2">{it.description}</p>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <p className="text-muted-foreground uppercase tracking-wider">Cant.</p>
-                          <p className="tabular-nums font-medium mt-0.5">{Number(it.quantity)}</p>
+                  {items.map((it) => {
+                    const imgs: string[] = Array.isArray(it.images) ? it.images : [];
+                    return (
+                      <div key={it.id} className="rounded-lg border border-border p-3">
+                        <p className="text-sm font-medium break-words whitespace-pre-wrap mb-2">{it.description}</p>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div>
+                            <p className="text-muted-foreground uppercase tracking-wider">Cant.</p>
+                            <p className="tabular-nums font-medium mt-0.5">{Number(it.quantity)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-muted-foreground uppercase tracking-wider">Precio</p>
+                            <p className="tabular-nums font-medium mt-0.5">{formatMoney(it.unit_price)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-muted-foreground uppercase tracking-wider">Total</p>
+                            <p className="tabular-nums font-semibold mt-0.5">{formatMoney(it.line_total)}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-muted-foreground uppercase tracking-wider">Precio</p>
-                          <p className="tabular-nums font-medium mt-0.5">{formatMoney(it.unit_price)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-muted-foreground uppercase tracking-wider">Total</p>
-                          <p className="tabular-nums font-semibold mt-0.5">{formatMoney(it.line_total)}</p>
-                        </div>
+                        {imgs.length > 0 && (
+                          <div className="mt-2 flex gap-1.5 flex-wrap">
+                            {imgs.map((u) => (
+                              <a key={u} href={u} target="_blank" rel="noreferrer" className="block h-14 w-14 rounded border border-border overflow-hidden bg-muted">
+                                <img src={u} alt="" className="h-full w-full object-cover" />
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+
                   <div className="rounded-lg border border-border p-3 space-y-1.5 text-sm">
                     <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span className="tabular-nums">{formatMoney(o.subtotal)}</span></div>
                     <div className="flex justify-between text-muted-foreground"><span>Descuento</span><span className="tabular-nums">- {formatMoney(o.discount)}</span></div>
@@ -445,7 +473,23 @@ function OrderDetail() {
                 {o.advance_amount > 0 && <p>Abono: <span className="text-foreground tabular-nums">{formatMoney(o.advance_amount)}</span></p>}
               </div>
             )}
+            {o.payment_proof_url && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                  Comprobante de pago
+                </p>
+                <a
+                  href={o.payment_proof_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-lg overflow-hidden border border-border bg-muted aspect-video hover:border-accent/60 transition-colors"
+                >
+                  <img src={o.payment_proof_url} alt="Comprobante de pago" className="w-full h-full object-cover" />
+                </a>
+              </div>
+            )}
           </div>
+
 
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-sm font-medium mb-3">Cambiar estado</p>

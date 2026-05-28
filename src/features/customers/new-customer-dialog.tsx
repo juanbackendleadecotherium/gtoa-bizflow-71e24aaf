@@ -24,6 +24,8 @@ import { useBrand } from "@/features/brands/brand-context";
 import { parseWhatsAppOrder } from "@/lib/whatsapp.functions";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { MoneyInput } from "@/features/orders/money-input";
+import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
+import { uploadOrderImage, uploadOrderImages } from "@/lib/image-upload";
 
 import {
   Dialog,
@@ -186,17 +188,24 @@ export function NewCustomerDialog({
   const [rawText, setRawText] = useState("");
   const [aiOpen, setAiOpen] = useState(true);
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [paymentProof, setPaymentProof] = useState<PendingImage[]>([]);
+  const [itemImages, setItemImages] = useState<PendingImage[][]>([]);
 
   const reset = () => {
     setRawText("");
     setDraft({ ...EMPTY, order: { ...EMPTY.order, sale_date: todayISO() } });
     setAiOpen(true);
+    paymentProof.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    itemImages.flat().forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    setPaymentProof([]);
+    setItemImages([]);
   };
 
   const handleOpenChange = (v: boolean) => {
     if (!v) reset();
     onOpenChange(v);
   };
+
 
   // Prefilled defaults: empresa = marca activa, nro factura = consecutivo por marca
   useEffect(() => {
@@ -340,11 +349,42 @@ export function NewCustomerDialog({
         unit_price: Number(it.unit_price) || 0,
         sort_order: idx,
       }));
-      const { error: itemsErr } = await supabase.from("order_items").insert(itemsPayload);
+      const { data: insertedItems, error: itemsErr } = await supabase
+        .from("order_items")
+        .insert(itemsPayload)
+        .select("id, sort_order");
       if (itemsErr) throw itemsErr;
+
+      // Sube imágenes de cada producto y actualiza el registro
+      if (insertedItems && itemImages.length > 0) {
+        await Promise.all(
+          insertedItems.map(async (row) => {
+            const pending = itemImages[row.sort_order ?? 0];
+            if (!pending || pending.length === 0) return;
+            const urls = await uploadOrderImages(
+              pending.map((p) => p.file),
+              `items/${row.id}`,
+            );
+            await supabase
+              .from("order_items")
+              .update({ images: urls as never })
+              .eq("id", row.id);
+          }),
+        );
+      }
+
+      // Sube comprobante de pago y actualiza el pedido
+      if (paymentProof[0]) {
+        const url = await uploadOrderImage(paymentProof[0].file, `payments/${order.id}`);
+        await supabase
+          .from("orders")
+          .update({ payment_proof_url: url } as never)
+          .eq("id", order.id);
+      }
 
       return order;
     },
+
     onSuccess: (order) => {
       toast.success(`Pedido ${order.order_number} creado`);
       qc.invalidateQueries({ queryKey: ["orders"] });
@@ -373,14 +413,31 @@ export function NewCustomerDialog({
       return { ...d, items };
     });
 
-  const addItem = () =>
+  const addItem = () => {
     setDraft((d) => ({
       ...d,
       items: [...d.items, { description: "", quantity: 1, unit_price: 0 }],
     }));
+    setItemImages((arr) => [...arr, []]);
+  };
 
-  const removeItem = (idx: number) =>
+  const removeItem = (idx: number) => {
     setDraft((d) => ({ ...d, items: d.items.filter((_, i) => i !== idx) }));
+    setItemImages((arr) => {
+      const removed = arr[idx] ?? [];
+      removed.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      return arr.filter((_, i) => i !== idx);
+    });
+  };
+
+  const setImagesForItem = (idx: number, next: PendingImage[]) =>
+    setItemImages((arr) => {
+      const copy = [...arr];
+      while (copy.length <= idx) copy.push([]);
+      copy[idx] = next;
+      return copy;
+    });
+
 
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
   const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
@@ -683,37 +740,52 @@ export function NewCustomerDialog({
                 {draft.items.map((it, idx) => (
                   <div
                     key={idx}
-                    className="grid grid-cols-12 gap-2 items-center rounded-lg border border-border bg-surface p-2"
+                    className="rounded-lg border border-border bg-surface p-3 space-y-3"
                   >
-                    <Input
-                      className="col-span-12 sm:col-span-7"
-                      placeholder="Descripción"
-                      value={it.description}
-                      onChange={(e) => updateItem(idx, "description", e.target.value)}
-                    />
-                    <Input
-                      className="col-span-3 sm:col-span-2 text-right"
-                      type="text"
-                      inputMode="decimal"
-                      value={it.quantity === 0 ? "" : String(it.quantity)}
-                      onChange={(e) => updateItem(idx, "quantity", e.target.value)}
-                    />
-                    <MoneyInput
-                      className="col-span-7 sm:col-span-2 text-right"
-                      value={Number(it.unit_price) || 0}
-                      onValueChange={(n) => updateItem(idx, "unit_price", String(n))}
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="col-span-2 sm:col-span-1"
-                      onClick={() => removeItem(idx)}
-                    >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
+                    <div className="grid grid-cols-12 gap-2 items-center">
+                      <Input
+                        className="col-span-12 sm:col-span-7"
+                        placeholder="Descripción"
+                        value={it.description}
+                        onChange={(e) => updateItem(idx, "description", e.target.value)}
+                      />
+                      <Input
+                        className="col-span-3 sm:col-span-2 text-right"
+                        type="text"
+                        inputMode="decimal"
+                        value={it.quantity === 0 ? "" : String(it.quantity)}
+                        onChange={(e) => updateItem(idx, "quantity", e.target.value)}
+                      />
+                      <MoneyInput
+                        className="col-span-7 sm:col-span-2 text-right"
+                        value={Number(it.unit_price) || 0}
+                        onValueChange={(n) => updateItem(idx, "unit_price", String(n))}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="col-span-2 sm:col-span-1"
+                        onClick={() => removeItem(idx)}
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                        Imágenes de referencia
+                      </p>
+                      <ImageUploader
+                        multiple
+                        pending={itemImages[idx] ?? []}
+                        onChangePending={(next) => setImagesForItem(idx, next)}
+                        label="Agregar referencias"
+                        hint="Se comprimen automáticamente antes de subir."
+                      />
+                    </div>
                   </div>
                 ))}
+
                 <div className="flex items-center justify-end pt-1">
                   <span className="text-xs text-muted-foreground mr-2">Subtotal estimado</span>
                   <span className="font-display font-semibold text-lg tabular-nums">
@@ -797,7 +869,19 @@ export function NewCustomerDialog({
               </div>
             )}
 
+            <div className="mt-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                Comprobante de pago
+              </p>
+              <ImageUploader
+                pending={paymentProof}
+                onChangePending={setPaymentProof}
+                label="Subir comprobante"
+                hint="Foto del recibo, transferencia o consignación. Se comprime antes de subir."
+              />
+            </div>
           </SectionCard>
+
 
           {/* Notas */}
           <SectionCard
