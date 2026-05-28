@@ -232,23 +232,30 @@ function OrderDetail() {
         <ArrowLeft className="h-3 w-3" /> Pedidos
       </Link>
 
-      <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1">{o.order_number}</p>
-          <h1 className="font-display text-2xl font-semibold">{customer?.display_name}</h1>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1 truncate">{o.order_number}</p>
+          <h1 className="font-display text-2xl font-semibold break-words">{customer?.display_name}</h1>
           <p className="text-sm text-muted-foreground">
             Creado {new Date(o.created_at).toLocaleString("es-CO")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {status && <StatusBadge name={status.name} color={status.color} />}
           {!editing ? (
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
-              <Pencil className="h-4 w-4" /> Editar
-            </Button>
-          ) : (
             <>
-              <Button variant="ghost" size="sm" className="gap-2" onClick={() => {
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
+                <Pencil className="h-4 w-4" /> Editar
+              </Button>
+              <Button variant="outline" size="icon" className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                onClick={() => { if (confirm("¿Eliminar este pedido?")) deleteMutation.mutate(); }}
+                aria-label="Eliminar pedido">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <div className="flex w-full sm:w-auto gap-2">
+              <Button variant="ghost" size="sm" className="gap-2 flex-1 sm:flex-none" onClick={() => {
                 if (confirm("¿Descartar los cambios sin guardar?")) {
                   hydratedFor.current = null;
                   setEditing(false);
@@ -256,15 +263,11 @@ function OrderDetail() {
               }}>
                 <X className="h-4 w-4" /> Cancelar
               </Button>
-              <Button size="sm" onClick={() => saveEdit.mutate()} disabled={saveEdit.isPending}>
+              <Button size="sm" className="flex-1 sm:flex-none" onClick={() => saveEdit.mutate()} disabled={saveEdit.isPending}>
                 {saveEdit.isPending ? "Guardando…" : "Guardar cambios"}
               </Button>
-            </>
+            </div>
           )}
-          <Button variant="outline" size="sm" className="gap-2 text-destructive border-destructive/40 hover:bg-destructive/10"
-            onClick={() => { if (confirm("¿Eliminar este pedido?")) deleteMutation.mutate(); }}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
