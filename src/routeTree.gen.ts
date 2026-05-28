@@ -19,7 +19,6 @@ import { Route as AuthenticatedErpCustomersRouteImport } from './routes/_authent
 import { Route as AuthenticatedErpOrdersIndexRouteImport } from './routes/_authenticated.erp.orders.index'
 import { Route as AuthenticatedErpCustomersIndexRouteImport } from './routes/_authenticated.erp.customers.index'
 import { Route as AuthenticatedErpSettingsStatusesRouteImport } from './routes/_authenticated.erp.settings.statuses'
-import { Route as AuthenticatedErpOrdersWhatsappRouteImport } from './routes/_authenticated.erp.orders.whatsapp'
 import { Route as AuthenticatedErpOrdersNewRouteImport } from './routes/_authenticated.erp.orders.new'
 import { Route as AuthenticatedErpOrdersIdRouteImport } from './routes/_authenticated.erp.orders.$id'
 import { Route as AuthenticatedErpCustomersIdRouteImport } from './routes/_authenticated.erp.customers.$id'
@@ -77,12 +76,6 @@ const AuthenticatedErpSettingsStatusesRoute =
     path: '/settings/statuses',
     getParentRoute: () => AuthenticatedErpRoute,
   } as any)
-const AuthenticatedErpOrdersWhatsappRoute =
-  AuthenticatedErpOrdersWhatsappRouteImport.update({
-    id: '/whatsapp',
-    path: '/whatsapp',
-    getParentRoute: () => AuthenticatedErpOrdersRoute,
-  } as any)
 const AuthenticatedErpOrdersNewRoute =
   AuthenticatedErpOrdersNewRouteImport.update({
     id: '/new',
@@ -112,7 +105,6 @@ export interface FileRoutesByFullPath {
   '/erp/customers/$id': typeof AuthenticatedErpCustomersIdRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/orders/new': typeof AuthenticatedErpOrdersNewRoute
-  '/erp/orders/whatsapp': typeof AuthenticatedErpOrdersWhatsappRoute
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/erp/customers/': typeof AuthenticatedErpCustomersIndexRoute
   '/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
@@ -124,7 +116,6 @@ export interface FileRoutesByTo {
   '/erp/customers/$id': typeof AuthenticatedErpCustomersIdRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/orders/new': typeof AuthenticatedErpOrdersNewRoute
-  '/erp/orders/whatsapp': typeof AuthenticatedErpOrdersWhatsappRoute
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/erp/customers': typeof AuthenticatedErpCustomersIndexRoute
   '/erp/orders': typeof AuthenticatedErpOrdersIndexRoute
@@ -141,7 +132,6 @@ export interface FileRoutesById {
   '/_authenticated/erp/customers/$id': typeof AuthenticatedErpCustomersIdRoute
   '/_authenticated/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/_authenticated/erp/orders/new': typeof AuthenticatedErpOrdersNewRoute
-  '/_authenticated/erp/orders/whatsapp': typeof AuthenticatedErpOrdersWhatsappRoute
   '/_authenticated/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/_authenticated/erp/customers/': typeof AuthenticatedErpCustomersIndexRoute
   '/_authenticated/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
@@ -158,7 +148,6 @@ export interface FileRouteTypes {
     | '/erp/customers/$id'
     | '/erp/orders/$id'
     | '/erp/orders/new'
-    | '/erp/orders/whatsapp'
     | '/erp/settings/statuses'
     | '/erp/customers/'
     | '/erp/orders/'
@@ -170,7 +159,6 @@ export interface FileRouteTypes {
     | '/erp/customers/$id'
     | '/erp/orders/$id'
     | '/erp/orders/new'
-    | '/erp/orders/whatsapp'
     | '/erp/settings/statuses'
     | '/erp/customers'
     | '/erp/orders'
@@ -186,7 +174,6 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/customers/$id'
     | '/_authenticated/erp/orders/$id'
     | '/_authenticated/erp/orders/new'
-    | '/_authenticated/erp/orders/whatsapp'
     | '/_authenticated/erp/settings/statuses'
     | '/_authenticated/erp/customers/'
     | '/_authenticated/erp/orders/'
@@ -270,13 +257,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpSettingsStatusesRouteImport
       parentRoute: typeof AuthenticatedErpRoute
     }
-    '/_authenticated/erp/orders/whatsapp': {
-      id: '/_authenticated/erp/orders/whatsapp'
-      path: '/whatsapp'
-      fullPath: '/erp/orders/whatsapp'
-      preLoaderRoute: typeof AuthenticatedErpOrdersWhatsappRouteImport
-      parentRoute: typeof AuthenticatedErpOrdersRoute
-    }
     '/_authenticated/erp/orders/new': {
       id: '/_authenticated/erp/orders/new'
       path: '/new'
@@ -320,7 +300,6 @@ const AuthenticatedErpCustomersRouteWithChildren =
 interface AuthenticatedErpOrdersRouteChildren {
   AuthenticatedErpOrdersIdRoute: typeof AuthenticatedErpOrdersIdRoute
   AuthenticatedErpOrdersNewRoute: typeof AuthenticatedErpOrdersNewRoute
-  AuthenticatedErpOrdersWhatsappRoute: typeof AuthenticatedErpOrdersWhatsappRoute
   AuthenticatedErpOrdersIndexRoute: typeof AuthenticatedErpOrdersIndexRoute
 }
 
@@ -328,7 +307,6 @@ const AuthenticatedErpOrdersRouteChildren: AuthenticatedErpOrdersRouteChildren =
   {
     AuthenticatedErpOrdersIdRoute: AuthenticatedErpOrdersIdRoute,
     AuthenticatedErpOrdersNewRoute: AuthenticatedErpOrdersNewRoute,
-    AuthenticatedErpOrdersWhatsappRoute: AuthenticatedErpOrdersWhatsappRoute,
     AuthenticatedErpOrdersIndexRoute: AuthenticatedErpOrdersIndexRoute,
   }
 

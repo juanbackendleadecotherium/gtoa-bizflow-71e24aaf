@@ -8,16 +8,42 @@ const InputSchema = z.object({
   text: z.string().min(10, "Pega la conversación de WhatsApp").max(20000),
 });
 
+const DOC_TYPES = ["CC", "CE", "NIT", "TI", "PA", "PEP", "RC", "NIUP"] as const;
+const PERSON_TYPES = ["natural", "juridica"] as const;
+const CONTACT_TYPES = ["cliente", "proveedor"] as const;
+const PAYMENT_METHODS = [
+  "efectivo",
+  "transferencia",
+  "tarjeta",
+  "nequi",
+  "daviplata",
+  "credito",
+  "cheque",
+  "otro",
+] as const;
+
 const ExtractedSchema = z.object({
   customer: z.object({
     display_name: z.string().catch(""),
+    company: z.string().catch(""),
+    person_type: z.string().catch(""),
+    contact_type: z.string().catch(""),
+    doc_type: z.string().catch(""),
+    doc_number: z.string().catch(""),
     phone: z.string().catch(""),
     email: z.string().catch(""),
-    doc_number: z.string().catch(""),
-    address: z.string().catch(""),
+    department: z.string().catch(""),
     city: z.string().catch(""),
+    address: z.string().catch(""),
     needs_summary: z.string().catch(""),
     references: z.string().catch(""),
+  }),
+  order: z.object({
+    invoice_number: z.string().catch(""),
+    sale_date: z.string().catch(""),
+    estimated_delivery_date: z.string().catch(""),
+    payment_method: z.string().catch(""),
+    advance_amount: z.coerce.number().catch(0),
   }),
   items: z
     .array(
@@ -30,8 +56,6 @@ const ExtractedSchema = z.object({
     .catch([]),
   notes: z.string().catch(""),
   urgency: z.string().catch(""),
-  estimated_delivery_date: z.string().catch(""),
-  total_estimated: z.coerce.number().catch(0),
 });
 
 type ExtractedOrder = z.infer<typeof ExtractedSchema>;
@@ -66,21 +90,44 @@ function extractJsonObject(response: string) {
   }
 }
 
+function pickEnum<T extends readonly string[]>(value: string, options: T): "" | T[number] {
+  const v = value.trim().toLowerCase();
+  if (!v) return "";
+  const hit = options.find((o) => o.toLowerCase() === v);
+  return (hit as T[number]) ?? "";
+}
+
+function isoDate(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim()) ? value.trim() : "";
+}
+
 function normalizeExtractedOrder(order: ExtractedOrder): ExtractedOrder {
-  const isoDate = /^\d{4}-\d{2}-\d{2}$/.test(order.estimated_delivery_date.trim())
-    ? order.estimated_delivery_date.trim()
-    : "";
   const email = order.customer.email.trim().toLowerCase();
   return {
     customer: {
       display_name: order.customer.display_name.trim(),
+      company: order.customer.company.trim(),
+      person_type: pickEnum(order.customer.person_type, PERSON_TYPES),
+      contact_type: pickEnum(order.customer.contact_type, CONTACT_TYPES) || "cliente",
+      doc_type: pickEnum(order.customer.doc_type.toUpperCase(), DOC_TYPES),
+      doc_number: order.customer.doc_number.replace(/\D/g, ""),
       phone: order.customer.phone.replace(/\D/g, ""),
       email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "",
-      doc_number: order.customer.doc_number.replace(/\D/g, ""),
-      address: order.customer.address.trim(),
+      department: order.customer.department.trim(),
       city: order.customer.city.trim(),
+      address: order.customer.address.trim(),
       needs_summary: order.customer.needs_summary.trim(),
       references: order.customer.references.trim(),
+    },
+    order: {
+      invoice_number: order.order.invoice_number.trim(),
+      sale_date: isoDate(order.order.sale_date),
+      estimated_delivery_date: isoDate(order.order.estimated_delivery_date),
+      payment_method: pickEnum(order.order.payment_method, PAYMENT_METHODS),
+      advance_amount: Math.max(
+        0,
+        Math.round(Number.isFinite(order.order.advance_amount) ? order.order.advance_amount : 0),
+      ),
     },
     items: order.items.map((item) => ({
       description: item.description.trim(),
@@ -89,11 +136,6 @@ function normalizeExtractedOrder(order: ExtractedOrder): ExtractedOrder {
     })),
     notes: order.notes.trim(),
     urgency: order.urgency.trim(),
-    estimated_delivery_date: isoDate,
-    total_estimated: Math.max(
-      0,
-      Math.round(Number.isFinite(order.total_estimated) ? order.total_estimated : 0),
-    ),
   };
 }
 
@@ -104,7 +146,7 @@ export const parseWhatsAppOrder = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) {
       return {
-        success: false,
+        success: false as const,
         message: "La IA no está configurada todavía. Revisa LOVABLE_API_KEY en el proyecto.",
       };
     }
@@ -116,32 +158,38 @@ export const parseWhatsAppOrder = createServerFn({ method: "POST" })
       const { text } = await generateText({
         model,
         temperature: 0,
-        maxOutputTokens: 1800,
+        maxOutputTokens: 2200,
         system:
           "Extrae pedidos de WhatsApp en español de Colombia para un ERP de muebles a la medida. " +
           "Responde únicamente un objeto JSON válido, sin markdown, sin comentarios y sin texto adicional. " +
           "No inventes datos. Usa cadenas vacías o 0 cuando un dato no aparezca. " +
-          "Los teléfonos deben contener sólo dígitos colombianos (sin +57, sin espacios). " +
-          "Los documentos (cédula/NIT) sólo dígitos. " +
-          "Los precios deben ser números enteros en pesos colombianos, sin puntos, comas ni símbolos. " +
-          "needs_summary: una frase breve (máx 200 caracteres) que explique qué necesita el cliente (tipo de mueble, espacio, estilo). " +
+          "person_type: 'natural' si es persona natural, 'juridica' si es empresa/razón social. Vacío si no se sabe. " +
+          "contact_type: 'cliente' por defecto, 'proveedor' solo si claramente lo es. " +
+          "doc_type: una de CC, CE, NIT, TI, PA, PEP, RC, NIUP (en mayúsculas). " +
+          "Teléfonos y documentos: sólo dígitos colombianos. " +
+          "department y city: nombres en español sin abreviar. " +
+          "payment_method: una de efectivo, transferencia, tarjeta, nequi, daviplata, credito, cheque, otro. " +
+          "advance_amount, unit_price: enteros en pesos COP, sin separadores ni símbolos. " +
+          "sale_date y estimated_delivery_date en formato YYYY-MM-DD si se mencionan. " +
+          "invoice_number: si el vendedor menciona un número de factura/remisión, cópialo tal cual. " +
+          "needs_summary: una frase breve (máx 200 caracteres) que explique qué necesita el cliente. " +
           "references: medidas, materiales, colores, acabados o enlaces que mencione el cliente. " +
-          "urgency: si el cliente menciona urgencia o fechas clave, resume en una frase. " +
-          "estimated_delivery_date: si se menciona una fecha de entrega, devuélvela en formato YYYY-MM-DD; si no, vacío.",
+          "urgency: si menciona urgencia o fechas clave, resume en una frase.",
         prompt:
-          "Devuelve exactamente esta estructura JSON: " +
-          '{"customer":{"display_name":"","phone":"","email":"","doc_number":"","address":"","city":"","needs_summary":"","references":""},' +
+          "Devuelve EXACTAMENTE esta estructura JSON: " +
+          '{"customer":{"display_name":"","company":"","person_type":"","contact_type":"cliente","doc_type":"","doc_number":"","phone":"","email":"","department":"","city":"","address":"","needs_summary":"","references":""},' +
+          '"order":{"invoice_number":"","sale_date":"","estimated_delivery_date":"","payment_method":"","advance_amount":0},' +
           '"items":[{"description":"","quantity":1,"unit_price":0}],' +
-          '"notes":"","urgency":"","estimated_delivery_date":"","total_estimated":0}' +
+          '"notes":"","urgency":""}' +
           `\n\nConversación:\n${data.text}`,
       });
 
       const parsed = ExtractedSchema.parse(extractJsonObject(text));
-      return { success: true, order: normalizeExtractedOrder(parsed) };
+      return { success: true as const, order: normalizeExtractedOrder(parsed) };
     } catch (error) {
       console.error("[WhatsApp AI] Extraction failed", error);
       return {
-        success: false,
+        success: false as const,
         message:
           error instanceof Error
             ? error.message
