@@ -224,9 +224,8 @@ function OrderDetail() {
   const o = orderQuery.data as any;
   if (!o) return <p className="text-sm text-muted-foreground">Pedido no encontrado.</p>;
 
-  const customer = o.customer as any;
-  const status = o.status as any;
   const items = ((o.items as any[] | null) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
+  const status = o.status as any;
 
   return (
     <>
@@ -236,8 +235,10 @@ function OrderDetail() {
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1 truncate">{o.order_number}</p>
-          <h1 className="font-display text-2xl font-semibold break-words">{customer?.display_name}</h1>
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1 truncate">
+            {o.order_number}{o.invoice_number ? ` · Fact. ${o.invoice_number}` : ""}
+          </p>
+          <h1 className="font-display text-2xl font-semibold break-words">{o.customer_name ?? "Sin cliente"}</h1>
           <p className="text-sm text-muted-foreground">
             Creado {new Date(o.created_at).toLocaleString("es-CO")}
           </p>
