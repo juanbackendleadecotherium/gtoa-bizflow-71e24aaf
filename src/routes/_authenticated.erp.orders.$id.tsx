@@ -117,23 +117,14 @@ function OrderDetail() {
   const changeStatus = useMutation({
     mutationFn: async () => {
       if (!newStatus) throw new Error("Selecciona un estado");
-      const beforeIso = new Date(Date.now() - 1000).toISOString();
-      const { error } = await supabase.from("orders").update({ status_id: newStatus }).eq("id", id);
+      const note = statusNote.trim() || null;
+      const { error } = await supabase.rpc("update_order_status", {
+        p_order_id: id,
+        p_status_id: newStatus,
+        p_note: note,
+      });
       if (error) throw error;
-      const hadNote = !!statusNote.trim();
-      if (hadNote) {
-        // Find the history row created by the trigger for THIS status change
-        const { data: rows } = await supabase
-          .from("order_status_history").select("id")
-          .eq("order_id", id)
-          .eq("to_status_id", newStatus)
-          .gte("created_at", beforeIso)
-          .order("created_at", { ascending: false }).limit(1);
-        if (rows && rows[0]) {
-          await supabase.from("order_status_history").update({ note: statusNote.trim() }).eq("id", rows[0].id);
-        }
-      }
-      return { hadNote };
+      return { hadNote: !!note };
     },
     onSuccess: (res) => {
       toast.success(
