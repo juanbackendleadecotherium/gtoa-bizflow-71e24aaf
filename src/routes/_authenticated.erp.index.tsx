@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ClipboardList, Users, Settings, ArrowRight } from "lucide-react";
+import { ClipboardList, Settings, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 
@@ -15,14 +15,11 @@ function ErpDashboard() {
     queryKey: ["erp-stats", selectedBrandId],
     enabled: !!selectedBrandId,
     queryFn: async () => {
-      const [customers, orders] = await Promise.all([
-        supabase.from("customers").select("id", { count: "exact", head: true }).eq("brand_id", selectedBrandId!),
-        supabase.from("orders").select("id", { count: "exact", head: true }).eq("brand_id", selectedBrandId!),
-      ]);
-      return {
-        customers: customers.count ?? 0,
-        orders: orders.count ?? 0,
-      };
+      const orders = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("brand_id", selectedBrandId!);
+      return { orders: orders.count ?? 0 };
     },
   });
 
@@ -45,19 +42,17 @@ function ErpDashboard() {
         </p>
         <h1 className="font-display text-3xl font-semibold mb-2">Panel operativo</h1>
         <p className="text-muted-foreground">
-          Gestiona clientes y pedidos de la marca activa.
+          Toda la operación gira alrededor de los pedidos de la marca activa.
         </p>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-4 mb-8">
-        <Stat label="Clientes" value={statsQuery.data?.customers ?? "—"} />
+      <div className="grid sm:grid-cols-2 gap-4 mb-8">
         <Stat label="Pedidos" value={statsQuery.data?.orders ?? "—"} />
         <Stat label="Tu rol" value={roles.length > 0 ? roles.join(", ") : "Sin rol"} muted />
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <ActionCard to="/erp/customers" icon={Users} title="Clientes" desc="Cartera de clientes de la marca." />
-        <ActionCard to="/erp/orders" icon={ClipboardList} title="Pedidos" desc="Registra y da seguimiento a pedidos." />
+        <ActionCard to="/erp/orders" icon={ClipboardList} title="Pedidos" desc="Crea, edita y haz seguimiento a los pedidos." />
         {isAdmin && (
           <ActionCard to="/erp/settings/statuses" icon={Settings} title="Estados" desc="Configura el flujo de estados de la marca." />
         )}
@@ -75,7 +70,7 @@ function Stat({ label, value, muted }: { label: string; value: string | number; 
   );
 }
 
-function ActionCard({ to, icon: Icon, title, desc }: { to: string; icon: typeof Users; title: string; desc: string }) {
+function ActionCard({ to, icon: Icon, title, desc }: { to: string; icon: typeof ClipboardList; title: string; desc: string }) {
   return (
     <Link to={to} className="group rounded-xl border border-border bg-surface p-5 hover:border-accent hover:shadow-sm transition-all">
       <div className="flex items-center justify-between mb-3">
