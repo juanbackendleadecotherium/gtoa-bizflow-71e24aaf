@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Lock, Shield } from "lucide-react";
+import espacioLogo from "@/assets/brands/espacio-mobiliario.png";
+import casaLogo from "@/assets/brands/casa-diseno.png";
+import montenegroLogo from "@/assets/brands/montenegro.webp";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,12 +20,14 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-const brands = [
-  { name: "Espacio Inmobiliario", token: "bg-brand-espacio" },
-  { name: "Montenegro Design",    token: "bg-brand-montenegro" },
-  { name: "Casa Diseño",          token: "bg-brand-casa" },
-  { name: "Getova",                 token: "bg-brand-getova" },
+type BrandItem = { name: string; logo?: string; token?: string };
+const brands: BrandItem[] = [
+  { name: "Espacio Mobiliario", logo: espacioLogo },
+  { name: "Montenegro Design",  logo: montenegroLogo },
+  { name: "Casa Diseño",        logo: casaLogo },
+  { name: "Grupo Getova",       token: "bg-brand-getova" },
 ];
+
 
 function LandingPage() {
   return (
@@ -115,21 +120,36 @@ function LandingPage() {
           </div>
 
           <div className="mt-20">
-            <p className="text-center text-[11px] uppercase tracking-[0.25em] text-muted-foreground mb-5">
+            <p className="text-center text-[11px] uppercase tracking-[0.25em] text-muted-foreground mb-6">
               Marcas operadas
             </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {brands.map((b) => (
-                <div
-                  key={b.name}
-                  className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-1.5 text-sm"
-                >
-                  <span className={`h-2 w-2 rounded-full ${b.token}`} />
-                  {b.name}
-                </div>
-              ))}
+            <div className="flex flex-wrap justify-center items-center gap-4">
+              {brands.map((b) =>
+                b.logo ? (
+                  <div
+                    key={b.name}
+                    className="flex items-center justify-center rounded-xl bg-white px-6 py-4 h-20 w-48 shadow-sm border border-border"
+                  >
+                    <img
+                      src={b.logo}
+                      alt={b.name}
+                      className="max-h-12 max-w-full object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    key={b.name}
+                    className="flex items-center justify-center rounded-xl border border-dashed border-border bg-surface px-6 py-4 h-20 w-48 text-sm font-medium"
+                  >
+                    <span className={`h-2 w-2 rounded-full mr-2 ${b.token}`} />
+                    {b.name}
+                  </div>
+                ),
+              )}
             </div>
           </div>
+
         </div>
       </main>
 
