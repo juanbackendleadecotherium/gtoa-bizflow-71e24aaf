@@ -117,11 +117,11 @@ function OrderDetail() {
   const changeStatus = useMutation({
     mutationFn: async () => {
       if (!newStatus) throw new Error("Selecciona un estado");
-      const note = statusNote.trim() || null;
+      const note = statusNote.trim();
       const { error } = await supabase.rpc("update_order_status", {
         p_order_id: id,
         p_status_id: newStatus,
-        p_note: note,
+        p_note: note || undefined,
       });
       if (error) throw error;
       return { hadNote: !!note };
