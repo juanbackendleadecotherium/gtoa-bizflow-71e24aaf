@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { StatusBadge } from "@/features/orders/status-badge";
 import { OrderItemsEditor, formatMoney } from "@/features/orders/order-items-editor";
 import { MoneyInput } from "@/features/orders/money-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
+import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -93,8 +94,13 @@ function OrderDetail() {
   const [editETA, setEditETA] = useState<string>("");
   const [editItems, setEditItems] = useState<(OrderItemInput & { id?: string })[]>([]);
 
+  // Hydration: only sync from server when NOT editing or when the order id changes.
+  // This prevents losing in-progress edits when other queries (status, history, audit)
+  // are invalidated and re-fetch the order.
+  const hydratedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!orderQuery.data) return;
+    if (editing && hydratedFor.current === id) return;
     const o = orderQuery.data as any;
     setEditNotes(o.notes ?? "");
     setEditDiscount(Number(o.discount ?? 0));
@@ -105,24 +111,36 @@ function OrderDetail() {
       id: it.id, description: it.description, quantity: Number(it.quantity),
       unit_price: Number(it.unit_price), sort_order: it.sort_order,
     })));
-  }, [orderQuery.data]);
+    hydratedFor.current = id;
+  }, [orderQuery.data, editing, id]);
 
   const changeStatus = useMutation({
     mutationFn: async () => {
       if (!newStatus) throw new Error("Selecciona un estado");
+      const beforeIso = new Date(Date.now() - 1000).toISOString();
       const { error } = await supabase.from("orders").update({ status_id: newStatus }).eq("id", id);
       if (error) throw error;
-      if (statusNote.trim()) {
+      const hadNote = !!statusNote.trim();
+      if (hadNote) {
+        // Find the history row created by the trigger for THIS status change
         const { data: rows } = await supabase
           .from("order_status_history").select("id")
-          .eq("order_id", id).order("created_at", { ascending: false }).limit(1);
+          .eq("order_id", id)
+          .eq("to_status_id", newStatus)
+          .gte("created_at", beforeIso)
+          .order("created_at", { ascending: false }).limit(1);
         if (rows && rows[0]) {
           await supabase.from("order_status_history").update({ note: statusNote.trim() }).eq("id", rows[0].id);
         }
       }
+      return { hadNote };
     },
-    onSuccess: () => {
-      toast.success("Estado actualizado");
+    onSuccess: (res) => {
+      toast.success(
+        res?.hadNote
+          ? "Estado actualizado · nota guardada en el historial"
+          : "Estado actualizado",
+      );
       setStatusNote(""); setNewStatus("");
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["order-history", id] });
@@ -189,6 +207,7 @@ function OrderDetail() {
     onSuccess: () => {
       toast.success("Pedido actualizado");
       setEditing(false);
+      hydratedFor.current = null;
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["order-audit", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
@@ -238,7 +257,12 @@ function OrderDetail() {
             </Button>
           ) : (
             <>
-              <Button variant="ghost" size="sm" className="gap-2" onClick={() => { setEditing(false); }}>
+              <Button variant="ghost" size="sm" className="gap-2" onClick={() => {
+                if (confirm("¿Descartar los cambios sin guardar?")) {
+                  hydratedFor.current = null;
+                  setEditing(false);
+                }
+              }}>
                 <X className="h-4 w-4" /> Cancelar
               </Button>
               <Button size="sm" onClick={() => saveEdit.mutate()} disabled={saveEdit.isPending}>
@@ -327,20 +351,23 @@ function OrderDetail() {
             ) : (historyQuery.data ?? []).length === 0 ? (
               <p className="text-xs text-muted-foreground">Sin movimientos.</p>
             ) : (
-              <ol className="space-y-3">
+              <ol className="space-y-4">
                 {historyQuery.data!.map((h: any) => (
-                  <li key={h.id} className="flex items-start gap-3 text-sm">
-                    <span className="text-xs text-muted-foreground w-32 shrink-0">
-                      {new Date(h.created_at).toLocaleString("es-CO")}
-                    </span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {h.from && <StatusBadge name={h.from.name} color={h.from.color} />}
-                        {h.from && <span className="text-muted-foreground">→</span>}
-                        {h.to && <StatusBadge name={h.to.name} color={h.to.color} />}
-                      </div>
-                      {h.note && <p className="text-xs text-muted-foreground mt-1">{h.note}</p>}
+                  <li key={h.id} className="text-sm">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      {h.from && <StatusBadge name={h.from.name} color={h.from.color} />}
+                      {h.from && <span className="text-muted-foreground">→</span>}
+                      {h.to && <StatusBadge name={h.to.name} color={h.to.color} />}
+                      <span className="text-xs text-muted-foreground ml-1">
+                        {new Date(h.created_at).toLocaleString("es-CO")}
+                      </span>
                     </div>
+                    {h.note && (
+                      <div className="flex gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm text-foreground/90">
+                        <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                        <span className="whitespace-pre-wrap">{h.note}</span>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ol>
@@ -354,23 +381,8 @@ function OrderDetail() {
             </div>
             {auditQuery.isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : (auditQuery.data ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">Sin cambios registrados todavía.</p>
             ) : (
-              <ol className="space-y-2.5">
-                {auditQuery.data!.map((a) => (
-                  <li key={a.id} className="text-sm border-l-2 border-border pl-3">
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(a.created_at).toLocaleString("es-CO")}
-                      </span>
-                      <span className="text-xs font-medium">{a.changed_by_email ?? "—"}</span>
-                      <span className="text-xs uppercase tracking-wider text-accent">{describeAction(a)}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{describeChange(a)}</p>
-                  </li>
-                ))}
-              </ol>
+              <AuditTimeline entries={(auditQuery.data ?? []) as AuditRow[]} />
             )}
           </div>
         </div>
@@ -390,28 +402,36 @@ function OrderDetail() {
 
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-sm font-medium mb-3">Cambiar estado</p>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs mb-1.5 block text-muted-foreground">Nuevo estado</Label>
-                <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona…" /></SelectTrigger>
-                  <SelectContent>
-                    {(statusesQuery.data ?? [])
-                      .filter((s) => s.id !== o.status_id)
-                      .map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+            {editing ? (
+              <div className="rounded-lg bg-muted/40 px-3 py-3 text-xs text-muted-foreground">
+                Estás editando el pedido. Guarda o cancela los cambios antes de actualizar el estado para no perder lo que estás escribiendo.
               </div>
-              <div>
-                <Label className="text-xs mb-1.5 block text-muted-foreground">Nota (opcional)</Label>
-                <Textarea rows={2} value={statusNote} onChange={(e) => setStatusNote(e.target.value)} />
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs mb-1.5 block text-muted-foreground">Nuevo estado</Label>
+                  <Select value={newStatus} onValueChange={setNewStatus}>
+                    <SelectTrigger><SelectValue placeholder="Selecciona…" /></SelectTrigger>
+                    <SelectContent>
+                      {(statusesQuery.data ?? [])
+                        .filter((s) => s.id !== o.status_id)
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block text-muted-foreground">
+                    Nota (opcional) — quedará en el historial de estados
+                  </Label>
+                  <Textarea rows={2} value={statusNote} onChange={(e) => setStatusNote(e.target.value)} placeholder="Ej. Cliente confirmó por WhatsApp" />
+                </div>
+                <Button onClick={() => changeStatus.mutate()} disabled={!newStatus || changeStatus.isPending} className="w-full">
+                  {changeStatus.isPending ? "Actualizando…" : "Actualizar estado"}
+                </Button>
               </div>
-              <Button onClick={() => changeStatus.mutate()} disabled={!newStatus || changeStatus.isPending} className="w-full">
-                {changeStatus.isPending ? "Actualizando…" : "Actualizar estado"}
-              </Button>
-            </div>
+            )}
           </div>
         </aside>
       </div>
@@ -419,50 +439,6 @@ function OrderDetail() {
   );
 }
 
-type AuditRow = {
-  id: string;
-  created_at: string;
-  changed_by: string | null;
-  changed_by_email: string | null;
-  action: string;
-  entity: string;
-  field: string | null;
-  old_value: unknown;
-  new_value: unknown;
-};
-
-const FIELD_LABELS: Record<string, string> = {
-  notes: "Notas",
-  discount: "Descuento",
-  tax: "Impuesto",
-  customer_id: "Cliente",
-  estimated_delivery_date: "Entrega estimada",
-  seller_id: "Vendedor",
-};
-
-function describeAction(a: AuditRow) {
-  if (a.action === "item_insert") return "Producto agregado";
-  if (a.action === "item_update") return "Producto modificado";
-  if (a.action === "item_delete") return "Producto eliminado";
-  return FIELD_LABELS[a.field ?? ""] ?? "Pedido actualizado";
-}
-
-function fmtVal(v: unknown): string {
-  if (v === null || v === undefined) return "—";
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
-}
-
-function describeChange(a: AuditRow) {
-  if (a.entity === "order_item") {
-    const n = a.new_value as any;
-    const o = a.old_value as any;
-    if (a.action === "item_insert") return `${n?.description ?? ""} · ${n?.quantity ?? 0} × ${n?.unit_price ?? 0}`;
-    if (a.action === "item_delete") return `${o?.description ?? ""} · ${o?.quantity ?? 0} × ${o?.unit_price ?? 0}`;
-    return `"${o?.description}" (${o?.quantity}×${o?.unit_price}) → "${n?.description}" (${n?.quantity}×${n?.unit_price})`;
-  }
-  return `${fmtVal(a.old_value)} → ${fmtVal(a.new_value)}`;
-}
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
