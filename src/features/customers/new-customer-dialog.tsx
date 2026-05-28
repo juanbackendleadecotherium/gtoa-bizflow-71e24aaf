@@ -798,12 +798,47 @@ export function NewCustomerDialog({
               </FieldBlock>
             </div>
             {subtotal > 0 && (
-              <div className="mt-3 grid grid-cols-3 gap-2 text-xs rounded-lg border border-border bg-surface p-3">
-                <Stat label="Total" value={formatMoney(subtotal)} />
-                <Stat label="Abono" value={formatMoney(draft.order.advance_amount || 0)} accent />
-                <Stat label="Saldo" value={formatMoney(saldo)} strong />
+              <div className="mt-3 space-y-2">
+                <div className="grid grid-cols-3 gap-2 text-xs rounded-lg border border-border bg-surface p-3">
+                  <Stat label="Total" value={formatMoney(subtotal)} />
+                  <Stat label="Abono" value={formatMoney(draft.order.advance_amount || 0)} accent />
+                  <Stat label="Saldo" value={formatMoney(saldo)} strong />
+                </div>
+                {(() => {
+                  const abono = draft.order.advance_amount || 0;
+                  const pctAbono = subtotal > 0 ? Math.min(100, (abono / subtotal) * 100) : 0;
+                  const pctSaldo = 100 - pctAbono;
+                  return (
+                    <div className="rounded-lg border border-accent/30 bg-accent/[0.04] p-3 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span>
+                          Abonado <span className="text-accent font-medium">{pctAbono.toFixed(1)}%</span>
+                        </span>
+                        <span>
+                          Pendiente <span className="text-foreground font-medium">{pctSaldo.toFixed(1)}%</span>
+                        </span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-border overflow-hidden flex">
+                        <div
+                          className="h-full bg-accent transition-all"
+                          style={{ width: `${pctAbono}%` }}
+                        />
+                        <div
+                          className="h-full bg-foreground/70 transition-all"
+                          style={{ width: `${pctSaldo}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Queda debiendo{" "}
+                        <span className="font-medium text-foreground">{formatMoney(saldo)}</span>
+                        {" "}({pctSaldo.toFixed(1)}% del total).
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             )}
+
           </SectionCard>
 
           {/* Notas */}
