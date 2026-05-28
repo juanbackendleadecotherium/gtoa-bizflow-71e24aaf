@@ -740,37 +740,52 @@ export function NewCustomerDialog({
                 {draft.items.map((it, idx) => (
                   <div
                     key={idx}
-                    className="grid grid-cols-12 gap-2 items-center rounded-lg border border-border bg-surface p-2"
+                    className="rounded-lg border border-border bg-surface p-3 space-y-3"
                   >
-                    <Input
-                      className="col-span-12 sm:col-span-7"
-                      placeholder="Descripción"
-                      value={it.description}
-                      onChange={(e) => updateItem(idx, "description", e.target.value)}
-                    />
-                    <Input
-                      className="col-span-3 sm:col-span-2 text-right"
-                      type="text"
-                      inputMode="decimal"
-                      value={it.quantity === 0 ? "" : String(it.quantity)}
-                      onChange={(e) => updateItem(idx, "quantity", e.target.value)}
-                    />
-                    <MoneyInput
-                      className="col-span-7 sm:col-span-2 text-right"
-                      value={Number(it.unit_price) || 0}
-                      onValueChange={(n) => updateItem(idx, "unit_price", String(n))}
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="col-span-2 sm:col-span-1"
-                      onClick={() => removeItem(idx)}
-                    >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
+                    <div className="grid grid-cols-12 gap-2 items-center">
+                      <Input
+                        className="col-span-12 sm:col-span-7"
+                        placeholder="Descripción"
+                        value={it.description}
+                        onChange={(e) => updateItem(idx, "description", e.target.value)}
+                      />
+                      <Input
+                        className="col-span-3 sm:col-span-2 text-right"
+                        type="text"
+                        inputMode="decimal"
+                        value={it.quantity === 0 ? "" : String(it.quantity)}
+                        onChange={(e) => updateItem(idx, "quantity", e.target.value)}
+                      />
+                      <MoneyInput
+                        className="col-span-7 sm:col-span-2 text-right"
+                        value={Number(it.unit_price) || 0}
+                        onValueChange={(n) => updateItem(idx, "unit_price", String(n))}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="col-span-2 sm:col-span-1"
+                        onClick={() => removeItem(idx)}
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                        Imágenes de referencia
+                      </p>
+                      <ImageUploader
+                        multiple
+                        pending={itemImages[idx] ?? []}
+                        onChangePending={(next) => setImagesForItem(idx, next)}
+                        label="Agregar referencias"
+                        hint="Se comprimen automáticamente antes de subir."
+                      />
+                    </div>
                   </div>
                 ))}
+
                 <div className="flex items-center justify-end pt-1">
                   <span className="text-xs text-muted-foreground mr-2">Subtotal estimado</span>
                   <span className="font-display font-semibold text-lg tabular-nums">
