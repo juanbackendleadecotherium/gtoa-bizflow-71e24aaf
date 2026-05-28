@@ -1,69 +1,118 @@
+# Fix móvil del header del pedido + nota en historial de estados
 
-## Objetivo
+## Problema 1 — Scroll horizontal en móvil
 
-Hacer que la auditoría sea fácil de leer para un vendedor, y que al editar un pedido no se pierdan los cambios cuando se actualiza el estado (o cualquier otra cosa en paralelo). Además, dejar visible la nota del cambio de estado.
+En `src/routes/_authenticated.erp.orders.$id.tsx` el contenedor de acciones del header (`<div className="flex items-center gap-2">` línea 252) **no permite wrap**, así que con badge "En producción" + Cancelar + Guardar cambios + Eliminar se sale del viewport de 390px y aparece scroll horizontal cortando el botón rojo.
 
----
+**Fix de presentación (sin tocar lógica):**
+- Cambiar ese contenedor a `flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end`.
+- Hacer que en modo edición los botones "Cancelar" y "Guardar cambios" tomen `flex-1 sm:flex-none` para que en móvil cada uno ocupe la mitad de la línea y no se acumulen.
+- Mover el botón "Eliminar" fuera del bloque de acciones de edición y dejarlo siempre como icono compacto al final, alineado a la derecha incluso cuando hay wrap.
+- Añadir `min-w-0` al título (`<h1>`) y al wrapper de info de la izquierda para que un nombre largo nunca empuje el layout.
 
-## 1. Auditoría de cambios — versión amigable
+No se va a tocar `OrderItemsEditor` — su grid ya es responsivo; el scroll viene únicamente del header.
 
-Rediseñar la tarjeta "Auditoría de cambios" para que un no-técnico la entienda de un vistazo.
+## Problema 2 — La nota del cambio de estado no aparece en el historial
 
-**Cambios visuales**
-- Timeline vertical con punto de color por tipo de acción (verde = agregado, ámbar = modificado, rojo = eliminado, azul = cambio de datos del pedido).
-- Cabecera de cada evento en una sola línea legible:
-  `Pedro (pedro@…) · agregó un producto · hace 5 min`
-  Fecha en formato relativo ("hace 5 min", "ayer 3:42 p.m."), con la fecha completa en tooltip.
-- Cuerpo del evento traducido a lenguaje natural, no JSON:
-  - **Producto agregado** → `CAMA 180×190 · 1 unidad · $5.000.000`
-  - **Producto modificado** → mostrar solo los campos que cambiaron, uno por línea:
-    `Precio: $0 → $1.500.000`
-    `Cantidad: 1 → 2`
-  - **Producto eliminado** → `Se eliminó "SOFA NUBE…" (1 × $1.500.000)`
-  - **Pedido** (notas, descuento, impuesto, fecha, vendedor, cliente):
-    `Descuento: $0 → $200.000`
-    `Entrega estimada: 28/05/2026 → 30/05/2026`
-    Para notas largas, recorte con "ver más".
-- Dinero siempre con `formatMoney` (separador de miles, sin código bruto tipo `1500000`).
-- Agrupar eventos del mismo usuario en un rango de < 2 min en un solo bloque (evita ruido cuando se editan varios campos a la vez).
-- Filtro simple arriba: `Todo / Productos / Datos del pedido / Estados` (chips).
+Causa real (auditada en migración `20260521044015_...sql`):
+1. El trigger `log_order_status_change` inserta la fila en `order_status_history` **sin nota** cuando hay UPDATE de `status_id`.
+2. El cliente luego hace `supabase.from("order_status_history").update({ note })`.
+3. Pero la tabla **solo tiene policy de SELECT** ("no insert/update/delete policies → only triggers write"). El UPDATE desde el cliente es bloqueado silenciosamente por RLS → la nota nunca se guarda. Por eso en la captura aparece "Borrador → Confirmado" sin nota a pesar de haberla escrito.
 
-**Implementación**
-- Nuevo componente `src/features/orders/audit-timeline.tsx` que recibe `entries` y renderiza el timeline.
-- Helpers `describeAction` y `describeChange` se mueven ahí y se reescriben con los formatos anteriores; el mapeo de `field` usa etiquetas en español (`notes → Notas`, `discount → Descuento`, `tax → Impuesto`, `estimated_delivery_date → Entrega estimada`, `customer_id → Cliente`, `seller_id → Vendedor`).
-- Fecha relativa: helper local pequeño (sin dependencias nuevas).
+**Fix correcto — pasar la nota al trigger vía variable de sesión** (atómico, no depende de un segundo UPDATE):
 
----
+Nueva migración SQL:
 
-## 2. No perder lo que se está editando
+```sql
+-- Permitir que el trigger lea una nota proporcionada por el cliente
+CREATE OR REPLACE FUNCTION public.log_order_status_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_note text;
+BEGIN
+  -- lee la nota opcional que el cliente seteó con set_config('app.status_note', ...)
+  v_note := nullif(current_setting('app.status_note', true), '');
 
-**Problema raíz:** el `useEffect` que sincroniza el formulario de edición con `orderQuery.data` se vuelve a disparar cada vez que se invalida `["order", id]` (cambio de estado, refresco de auditoría, etc.), sobrescribiendo `editItems`, `editNotes`, `editDiscount`, `editTax`, `editETA` con los valores del servidor.
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.order_status_history (order_id, from_status_id, to_status_id, changed_by, note)
+    VALUES (NEW.id, NULL, NEW.status_id, NEW.created_by, COALESCE(v_note, 'Pedido creado'));
+    RETURN NEW;
+  ELSIF TG_OP = 'UPDATE' AND NEW.status_id IS DISTINCT FROM OLD.status_id THEN
+    INSERT INTO public.order_status_history (order_id, from_status_id, to_status_id, changed_by, note)
+    VALUES (NEW.id, OLD.status_id, NEW.status_id, auth.uid(), v_note);
+    RETURN NEW;
+  END IF;
+  RETURN NEW;
+END;
+$$;
 
-**Solución**
-- El efecto de hidratación solo corre cuando `editing` es `false` o cuando el id del pedido cambia. Mientras `editing === true`, el estado local manda y nunca se pisa.
-- Agregar "dirty flag": si el usuario tiene cambios sin guardar y pulsa "Cancelar", confirmar antes de descartar.
-- Bloquear el botón "Actualizar estado" mientras `editing === true` con un tooltip: "Guarda o cancela los cambios del pedido antes de cambiar el estado". Esto evita la condición de carrera donde un cambio de estado refresca y borra lo que se estaba editando.
-  - Alternativa contemplada: permitirlo y solo evitar el reset. Elegimos bloquear porque guardar el pedido y el estado en operaciones separadas mientras hay ediciones a medias es propenso a errores (el producto nuevo aún no existe en BD cuando se intenta cambiar el estado).
+-- Permitir a usuarios autenticados setear esa GUC en su sesión
+GRANT EXECUTE ON FUNCTION public.log_order_status_change() TO authenticated;
+```
 
----
+Y un pequeño RPC para que el cliente pueda setear el GUC sin necesidad de permisos especiales:
 
-## 3. Nota del cambio de estado: dónde queda y cómo se ve
+```sql
+CREATE OR REPLACE FUNCTION public.set_status_note(p_note text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  PERFORM set_config('app.status_note', COALESCE(p_note, ''), true); -- true = LOCAL
+END;
+$$;
 
-Hoy la nota se guarda en `order_status_history.note` y se renderiza dentro de "Historial de estados", pero queda muy pequeña debajo de los badges.
+GRANT EXECUTE ON FUNCTION public.set_status_note(text) TO authenticated;
+```
 
-**Cambios**
-- En "Historial de estados" mostrar la nota en un bloque destacado (fondo `muted/40`, ícono de mensaje), no como texto secundario diminuto.
-- Si la nota existe, también incluir en la auditoría un evento "Cambió el estado: En producción · Nota: …" para que el vendedor vea todo en un solo timeline.
-- Toast al guardar: "Estado actualizado · nota guardada en el historial" cuando se incluyó nota, para confirmar dónde quedó.
+**Cambio en el cliente** (`src/routes/_authenticated.erp.orders.$id.tsx`, mutación `changeStatus`):
+- Reemplazar la lógica actual (UPDATE orders + UPDATE post-hoc del historial) por:
+  1. `await supabase.rpc('set_status_note', { p_note: statusNote.trim() })`
+  2. `await supabase.from('orders').update({ status_id: newStatus }).eq('id', id)`
+- Eliminar la búsqueda manual de la fila de historial y su UPDATE.
 
-**Fiabilidad de la nota (técnico)**
-Hoy se actualiza la última fila de `order_status_history` por `created_at desc limit 1`, lo cual es frágil bajo concurrencia. Se mejora envolviéndolo: tras `update orders.status_id`, buscar la fila de historial cuyo `to_status_id = newStatus` y `created_at >= timestampAntesDelUpdate`. Sigue siendo client-side (no requiere migración) y es seguro para un solo usuario editando.
+Nota técnica: el `set_config(..., true)` es LOCAL a la transacción. PostgREST envuelve cada request en su propia transacción, así que necesitamos que ambas llamadas vayan juntas. Como PostgREST no garantiza misma transacción entre RPC y UPDATE, lo haremos así de robusto: convertir todo a **un solo RPC** `update_order_status(p_order_id, p_status_id, p_note)` que dentro hace `set_config` LOCAL + UPDATE de orders en la misma transacción. Esa es la forma garantizada.
 
----
+Versión final del RPC (reemplaza a `set_status_note`):
 
-## Archivos a tocar
+```sql
+CREATE OR REPLACE FUNCTION public.update_order_status(
+  p_order_id uuid,
+  p_status_id uuid,
+  p_note text DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER  -- respeta RLS del usuario sobre orders
+SET search_path = public
+AS $$
+BEGIN
+  PERFORM set_config('app.status_note', COALESCE(p_note, ''), true);
+  UPDATE public.orders SET status_id = p_status_id WHERE id = p_order_id;
+END;
+$$;
 
-- `src/routes/_authenticated.erp.orders.$id.tsx` — efecto de hidratación condicionado a `!editing`, bloqueo del panel de estado mientras se edita, integración del nuevo timeline, mejora visual de la nota en historial, toast informativo.
-- `src/features/orders/audit-timeline.tsx` — nuevo componente con el render amigable, helpers de formato y agrupación.
+GRANT EXECUTE ON FUNCTION public.update_order_status(uuid, uuid, text) TO authenticated;
+```
 
-Sin cambios de base de datos ni de esquema.
+El cliente queda en una sola llamada:
+```ts
+await supabase.rpc('update_order_status', {
+  p_order_id: id, p_status_id: newStatus, p_note: statusNote.trim() || null,
+});
+```
+
+## Archivos a modificar
+- `src/routes/_authenticated.erp.orders.$id.tsx` — header responsive + simplificación de `changeStatus`.
+- Nueva migración `supabase/migrations/<timestamp>_status_note_via_trigger.sql` con la función trigger actualizada y el RPC `update_order_status`.
+
+## Verificación
+- Móvil 390px: el header no genera scroll horizontal; el botón rojo de eliminar queda visible.
+- Cambiar estado con nota → la nota aparece bajo la transición correspondiente en "Historial de estados".
+- Cambiar estado sin nota → no rompe (nota queda NULL, no se muestra burbuja).
