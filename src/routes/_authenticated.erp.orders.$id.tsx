@@ -207,6 +207,7 @@ function OrderDetail() {
     onSuccess: () => {
       toast.success("Pedido actualizado");
       setEditing(false);
+      hydratedFor.current = null;
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["order-audit", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
