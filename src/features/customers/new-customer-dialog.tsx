@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
@@ -140,6 +140,37 @@ function buildCustomerNotes(c: CustomerDraft, urgency: string) {
   return parts.join("\n");
 }
 
+function brandInvoicePrefix(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "INV";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return words
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 4)
+    .toUpperCase();
+}
+
+async function fetchNextInvoiceNumber(brandId: string, prefix: string): Promise<string> {
+  const { data } = await supabase
+    .from("orders")
+    .select("invoice_number")
+    .eq("brand_id", brandId)
+    .ilike("invoice_number", `${prefix}-%`)
+    .order("invoice_number", { ascending: false })
+    .limit(50);
+  let max = 0;
+  for (const row of data ?? []) {
+    const m = String(row.invoice_number ?? "").match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > max) max = n;
+    }
+  }
+  return `${prefix}-${String(max + 1).padStart(4, "0")}`;
+}
+
+
 export function NewCustomerDialog({
   open,
   onOpenChange,
@@ -166,6 +197,33 @@ export function NewCustomerDialog({
     if (!v) reset();
     onOpenChange(v);
   };
+
+  // Prefilled defaults: empresa = marca activa, nro factura = consecutivo por marca
+  useEffect(() => {
+    if (!open || !selectedBrand || !selectedBrandId) return;
+    setDraft((d) => ({
+      ...d,
+      customer: {
+        ...d.customer,
+        company: d.customer.company || selectedBrand.name,
+      },
+    }));
+    const prefix = brandInvoicePrefix(selectedBrand.name);
+    fetchNextInvoiceNumber(selectedBrandId, prefix)
+      .then((next) => {
+        setDraft((d) =>
+          d.order.invoice_number
+            ? d
+            : { ...d, order: { ...d.order, invoice_number: next } },
+        );
+      })
+      .catch(() => {
+        /* silencioso: el vendedor puede escribirlo manual */
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, selectedBrandId]);
+
+
 
   const parseMutation = useMutation({
     mutationFn: async () => parseFn({ data: { text: rawText } }),
@@ -740,12 +798,47 @@ export function NewCustomerDialog({
               </FieldBlock>
             </div>
             {subtotal > 0 && (
-              <div className="mt-3 grid grid-cols-3 gap-2 text-xs rounded-lg border border-border bg-surface p-3">
-                <Stat label="Total" value={formatMoney(subtotal)} />
-                <Stat label="Abono" value={formatMoney(draft.order.advance_amount || 0)} accent />
-                <Stat label="Saldo" value={formatMoney(saldo)} strong />
+              <div className="mt-3 space-y-2">
+                <div className="grid grid-cols-3 gap-2 text-xs rounded-lg border border-border bg-surface p-3">
+                  <Stat label="Total" value={formatMoney(subtotal)} />
+                  <Stat label="Abono" value={formatMoney(draft.order.advance_amount || 0)} accent />
+                  <Stat label="Saldo" value={formatMoney(saldo)} strong />
+                </div>
+                {(() => {
+                  const abono = draft.order.advance_amount || 0;
+                  const pctAbono = subtotal > 0 ? Math.min(100, (abono / subtotal) * 100) : 0;
+                  const pctSaldo = 100 - pctAbono;
+                  return (
+                    <div className="rounded-lg border border-accent/30 bg-accent/[0.04] p-3 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span>
+                          Abonado <span className="text-accent font-medium">{pctAbono.toFixed(1)}%</span>
+                        </span>
+                        <span>
+                          Pendiente <span className="text-foreground font-medium">{pctSaldo.toFixed(1)}%</span>
+                        </span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-border overflow-hidden flex">
+                        <div
+                          className="h-full bg-accent transition-all"
+                          style={{ width: `${pctAbono}%` }}
+                        />
+                        <div
+                          className="h-full bg-foreground/70 transition-all"
+                          style={{ width: `${pctSaldo}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Queda debiendo{" "}
+                        <span className="font-medium text-foreground">{formatMoney(saldo)}</span>
+                        {" "}({pctSaldo.toFixed(1)}% del total).
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             )}
+
           </SectionCard>
 
           {/* Notas */}
