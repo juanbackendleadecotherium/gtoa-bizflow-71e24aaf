@@ -14,6 +14,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { BrandProvider, useBrand } from "@/features/brands/brand-context";
 
