@@ -179,6 +179,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          images: Json
           line_total: number
           order_id: string
           quantity: number
@@ -190,6 +191,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          images?: Json
           line_total?: number
           order_id: string
           quantity?: number
@@ -201,6 +203,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          images?: Json
           line_total?: number
           order_id?: string
           quantity?: number
@@ -346,6 +349,7 @@ export type Database = {
           notes: string | null
           order_number: string
           payment_method: string | null
+          payment_proof_url: string | null
           sale_date: string | null
           seller_id: string | null
           source: string
@@ -381,6 +385,7 @@ export type Database = {
           notes?: string | null
           order_number: string
           payment_method?: string | null
+          payment_proof_url?: string | null
           sale_date?: string | null
           seller_id?: string | null
           source?: string
@@ -416,6 +421,7 @@ export type Database = {
           notes?: string | null
           order_number?: string
           payment_method?: string | null
+          payment_proof_url?: string | null
           sale_date?: string | null
           seller_id?: string | null
           source?: string
