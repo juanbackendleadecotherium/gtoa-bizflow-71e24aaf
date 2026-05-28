@@ -24,6 +24,8 @@ import { useBrand } from "@/features/brands/brand-context";
 import { parseWhatsAppOrder } from "@/lib/whatsapp.functions";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { MoneyInput } from "@/features/orders/money-input";
+import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
+import { uploadOrderImage, uploadOrderImages } from "@/lib/image-upload";
 
 import {
   Dialog,
