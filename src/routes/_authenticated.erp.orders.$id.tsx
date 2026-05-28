@@ -402,28 +402,36 @@ function OrderDetail() {
 
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-sm font-medium mb-3">Cambiar estado</p>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs mb-1.5 block text-muted-foreground">Nuevo estado</Label>
-                <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona…" /></SelectTrigger>
-                  <SelectContent>
-                    {(statusesQuery.data ?? [])
-                      .filter((s) => s.id !== o.status_id)
-                      .map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+            {editing ? (
+              <div className="rounded-lg bg-muted/40 px-3 py-3 text-xs text-muted-foreground">
+                Estás editando el pedido. Guarda o cancela los cambios antes de actualizar el estado para no perder lo que estás escribiendo.
               </div>
-              <div>
-                <Label className="text-xs mb-1.5 block text-muted-foreground">Nota (opcional)</Label>
-                <Textarea rows={2} value={statusNote} onChange={(e) => setStatusNote(e.target.value)} />
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs mb-1.5 block text-muted-foreground">Nuevo estado</Label>
+                  <Select value={newStatus} onValueChange={setNewStatus}>
+                    <SelectTrigger><SelectValue placeholder="Selecciona…" /></SelectTrigger>
+                    <SelectContent>
+                      {(statusesQuery.data ?? [])
+                        .filter((s) => s.id !== o.status_id)
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block text-muted-foreground">
+                    Nota (opcional) — quedará en el historial de estados
+                  </Label>
+                  <Textarea rows={2} value={statusNote} onChange={(e) => setStatusNote(e.target.value)} placeholder="Ej. Cliente confirmó por WhatsApp" />
+                </div>
+                <Button onClick={() => changeStatus.mutate()} disabled={!newStatus || changeStatus.isPending} className="w-full">
+                  {changeStatus.isPending ? "Actualizando…" : "Actualizar estado"}
+                </Button>
               </div>
-              <Button onClick={() => changeStatus.mutate()} disabled={!newStatus || changeStatus.isPending} className="w-full">
-                {changeStatus.isPending ? "Actualizando…" : "Actualizar estado"}
-              </Button>
-            </div>
+            )}
           </div>
         </aside>
       </div>
