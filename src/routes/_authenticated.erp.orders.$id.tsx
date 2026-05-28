@@ -333,25 +333,38 @@ function OrderDetail() {
 
                 {/* Mobile: tarjetas */}
                 <div className="md:hidden space-y-3">
-                  {items.map((it) => (
-                    <div key={it.id} className="rounded-lg border border-border p-3">
-                      <p className="text-sm font-medium break-words whitespace-pre-wrap mb-2">{it.description}</p>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <p className="text-muted-foreground uppercase tracking-wider">Cant.</p>
-                          <p className="tabular-nums font-medium mt-0.5">{Number(it.quantity)}</p>
+                  {items.map((it) => {
+                    const imgs: string[] = Array.isArray(it.images) ? it.images : [];
+                    return (
+                      <div key={it.id} className="rounded-lg border border-border p-3">
+                        <p className="text-sm font-medium break-words whitespace-pre-wrap mb-2">{it.description}</p>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div>
+                            <p className="text-muted-foreground uppercase tracking-wider">Cant.</p>
+                            <p className="tabular-nums font-medium mt-0.5">{Number(it.quantity)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-muted-foreground uppercase tracking-wider">Precio</p>
+                            <p className="tabular-nums font-medium mt-0.5">{formatMoney(it.unit_price)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-muted-foreground uppercase tracking-wider">Total</p>
+                            <p className="tabular-nums font-semibold mt-0.5">{formatMoney(it.line_total)}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-muted-foreground uppercase tracking-wider">Precio</p>
-                          <p className="tabular-nums font-medium mt-0.5">{formatMoney(it.unit_price)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-muted-foreground uppercase tracking-wider">Total</p>
-                          <p className="tabular-nums font-semibold mt-0.5">{formatMoney(it.line_total)}</p>
-                        </div>
+                        {imgs.length > 0 && (
+                          <div className="mt-2 flex gap-1.5 flex-wrap">
+                            {imgs.map((u) => (
+                              <a key={u} href={u} target="_blank" rel="noreferrer" className="block h-14 w-14 rounded border border-border overflow-hidden bg-muted">
+                                <img src={u} alt="" className="h-full w-full object-cover" />
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+
                   <div className="rounded-lg border border-border p-3 space-y-1.5 text-sm">
                     <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span className="tabular-nums">{formatMoney(o.subtotal)}</span></div>
                     <div className="flex justify-between text-muted-foreground"><span>Descuento</span><span className="tabular-nums">- {formatMoney(o.discount)}</span></div>
