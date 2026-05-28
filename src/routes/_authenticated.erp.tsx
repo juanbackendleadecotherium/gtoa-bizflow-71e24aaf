@@ -1,8 +1,9 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, ClipboardList, Settings,
-  LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft,
+  LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft, Menu, X,
 } from "lucide-react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +14,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { BrandProvider, useBrand } from "@/features/brands/brand-context";
 
@@ -57,6 +61,7 @@ function Shell() {
   const { brands, selectedBrand, setSelectedBrandId, isAdmin } = useBrand();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
@@ -173,13 +178,72 @@ function Shell() {
 
           <div className="flex items-center gap-2">
             {isAdmin && (
-              <Badge variant="outline" className="gap-1 border-accent/40 text-accent">
+              <Badge variant="outline" className="gap-1 border-accent/40 text-accent hidden sm:inline-flex">
                 <ShieldCheck className="h-3 w-3" />Admin
               </Badge>
             )}
-            <Button variant="ghost" size="sm" onClick={handleSignOut} className="md:hidden">
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[280px] p-0 bg-sidebar text-sidebar-foreground border-sidebar-border">
+                <SheetHeader className="px-5 py-5 border-b border-sidebar-border text-left">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground grid place-items-center font-display font-bold shadow-md">G</div>
+                    <div className="leading-tight">
+                      <SheetTitle className="text-sm font-semibold text-sidebar-foreground">Grupo Getova</SheetTitle>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/60">ERP</p>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                <div className="px-3 pt-3">
+                  <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors">
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Volver al menú principal
+                  </Link>
+                </div>
+
+                <nav className="px-3 py-4 space-y-1">
+                  {NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
+                    const Icon = item.icon;
+                    const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
+                          isActive
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+
+                <div className="mt-auto px-3 py-4 border-t border-sidebar-border">
+                  <div className="flex items-center gap-3 rounded-md px-2 py-2">
+                    <div className="h-8 w-8 rounded-full bg-sidebar-primary text-sidebar-primary-foreground grid place-items-center text-xs font-semibold">
+                      {initials || "·"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{profile?.display_name || "Usuario"}</p>
+                      <p className="truncate text-[11px] text-sidebar-foreground/60">{profile?.email}</p>
+                    </div>
+                    <button onClick={() => { setMobileOpen(false); handleSignOut(); }} title="Cerrar sesión" className="rounded-md p-1.5 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/60">
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </header>
 
