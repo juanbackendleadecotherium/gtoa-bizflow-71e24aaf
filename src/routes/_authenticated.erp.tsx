@@ -61,6 +61,7 @@ function Shell() {
   const { brands, selectedBrand, setSelectedBrandId, isAdmin } = useBrand();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
