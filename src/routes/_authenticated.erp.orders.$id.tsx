@@ -334,20 +334,23 @@ function OrderDetail() {
             ) : (historyQuery.data ?? []).length === 0 ? (
               <p className="text-xs text-muted-foreground">Sin movimientos.</p>
             ) : (
-              <ol className="space-y-3">
+              <ol className="space-y-4">
                 {historyQuery.data!.map((h: any) => (
-                  <li key={h.id} className="flex items-start gap-3 text-sm">
-                    <span className="text-xs text-muted-foreground w-32 shrink-0">
-                      {new Date(h.created_at).toLocaleString("es-CO")}
-                    </span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {h.from && <StatusBadge name={h.from.name} color={h.from.color} />}
-                        {h.from && <span className="text-muted-foreground">→</span>}
-                        {h.to && <StatusBadge name={h.to.name} color={h.to.color} />}
-                      </div>
-                      {h.note && <p className="text-xs text-muted-foreground mt-1">{h.note}</p>}
+                  <li key={h.id} className="text-sm">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      {h.from && <StatusBadge name={h.from.name} color={h.from.color} />}
+                      {h.from && <span className="text-muted-foreground">→</span>}
+                      {h.to && <StatusBadge name={h.to.name} color={h.to.color} />}
+                      <span className="text-xs text-muted-foreground ml-1">
+                        {new Date(h.created_at).toLocaleString("es-CO")}
+                      </span>
                     </div>
+                    {h.note && (
+                      <div className="flex gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm text-foreground/90">
+                        <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                        <span className="whitespace-pre-wrap">{h.note}</span>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ol>
@@ -361,23 +364,8 @@ function OrderDetail() {
             </div>
             {auditQuery.isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : (auditQuery.data ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">Sin cambios registrados todavía.</p>
             ) : (
-              <ol className="space-y-2.5">
-                {auditQuery.data!.map((a) => (
-                  <li key={a.id} className="text-sm border-l-2 border-border pl-3">
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(a.created_at).toLocaleString("es-CO")}
-                      </span>
-                      <span className="text-xs font-medium">{a.changed_by_email ?? "—"}</span>
-                      <span className="text-xs uppercase tracking-wider text-accent">{describeAction(a)}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{describeChange(a)}</p>
-                  </li>
-                ))}
-              </ol>
+              <AuditTimeline entries={(auditQuery.data ?? []) as AuditRow[]} />
             )}
           </div>
         </div>
