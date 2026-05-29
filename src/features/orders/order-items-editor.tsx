@@ -34,8 +34,8 @@ function AutoTextarea({
     />
   );
 }
-import { MoneyInput } from "@/features/orders/money-input";
-import type { OrderItemInput } from "@/features/orders/schemas";
+
+
 
 function parseDecimal(val: string) {
   const cleaned = val.replace(/\./g, "").replace(",", ".");
