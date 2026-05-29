@@ -1,8 +1,39 @@
+import { useEffect, useRef } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/features/orders/money-input";
+import type { OrderItemInput } from "@/features/orders/schemas";
+
+function AutoTextarea({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <Textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="min-h-[40px] resize-none leading-snug overflow-hidden"
+    />
+  );
+}
 import { MoneyInput } from "@/features/orders/money-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
 
