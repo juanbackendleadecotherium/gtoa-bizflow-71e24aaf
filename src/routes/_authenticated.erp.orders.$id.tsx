@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { StatusBadge } from "@/features/orders/status-badge";
 import { OrderItemsEditor, formatMoney } from "@/features/orders/order-items-editor";
-import { MoneyInput } from "@/features/orders/money-input";
+import { AmountOrPercentInput } from "@/features/orders/amount-percent-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
 import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 
@@ -375,22 +375,36 @@ function OrderDetail() {
               </>
             )}
 
-            {editing && (
-              <div className="grid sm:grid-cols-3 gap-3 mt-4">
-                <div>
-                  <Label className="text-xs mb-1.5 block text-muted-foreground">Descuento</Label>
-                  <MoneyInput allowDecimals value={editDiscount} onValueChange={setEditDiscount} />
+            {editing && (() => {
+              const liveSubtotal = editItems.reduce(
+                (s, it) => s + Number(it.quantity || 0) * Number(it.unit_price || 0),
+                0,
+              );
+              return (
+                <div className="grid sm:grid-cols-3 gap-3 mt-4">
+                  <div>
+                    <Label className="text-xs mb-1.5 block text-muted-foreground">Descuento</Label>
+                    <AmountOrPercentInput
+                      value={editDiscount}
+                      onValueChange={setEditDiscount}
+                      subtotal={liveSubtotal}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block text-muted-foreground">Impuesto</Label>
+                    <AmountOrPercentInput
+                      value={editTax}
+                      onValueChange={setEditTax}
+                      subtotal={liveSubtotal}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block text-muted-foreground">Entrega estimada</Label>
+                    <Input type="date" value={editETA ?? ""} onChange={(e) => setEditETA(e.target.value)} />
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block text-muted-foreground">Impuesto</Label>
-                  <MoneyInput allowDecimals value={editTax} onValueChange={setEditTax} />
-                </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block text-muted-foreground">Entrega estimada</Label>
-                  <Input type="date" value={editETA ?? ""} onChange={(e) => setEditETA(e.target.value)} />
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           <div className="rounded-xl border border-border bg-surface p-5">

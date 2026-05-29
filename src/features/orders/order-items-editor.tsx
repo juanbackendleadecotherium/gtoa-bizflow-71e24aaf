@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,6 +6,36 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { MoneyInput } from "@/features/orders/money-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
+
+function AutoTextarea({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <Textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="min-h-[40px] resize-none leading-snug overflow-hidden"
+    />
+  );
+}
+
+
 
 function parseDecimal(val: string) {
   const cleaned = val.replace(/\./g, "").replace(",", ".");
@@ -51,12 +82,10 @@ export function OrderItemsEditor({
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block sm:hidden lg:block">
                   Descripción
                 </Label>
-                <Textarea
-                  rows={1}
+                <AutoTextarea
                   value={it.description}
-                  onChange={(e) => update(idx, { description: e.target.value })}
+                  onChange={(v) => update(idx, { description: v })}
                   placeholder="Ej. Sofá modular 3 puestos, tela nubuck color tabaco"
-                  className="min-h-[40px] resize-y leading-snug"
                 />
               </div>
 
