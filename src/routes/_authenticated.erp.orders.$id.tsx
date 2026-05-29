@@ -380,29 +380,52 @@ function OrderDetail() {
                 (s, it) => s + Number(it.quantity || 0) * Number(it.unit_price || 0),
                 0,
               );
+              const liveTotal = Math.max(0, liveSubtotal - editDiscount + editTax);
               return (
-                <div className="grid sm:grid-cols-3 gap-3 mt-4">
-                  <div>
-                    <Label className="text-xs mb-1.5 block text-muted-foreground">Descuento</Label>
-                    <AmountOrPercentInput
-                      value={editDiscount}
-                      onValueChange={setEditDiscount}
-                      subtotal={liveSubtotal}
-                    />
+                <>
+                  <div className="grid sm:grid-cols-3 gap-3 mt-4">
+                    <div>
+                      <Label className="text-xs mb-1.5 block text-muted-foreground">Descuento (%)</Label>
+                      <AmountOrPercentInput
+                        value={editDiscount}
+                        onValueChange={setEditDiscount}
+                        subtotal={liveSubtotal}
+                        label="Se descontará"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1.5 block text-muted-foreground">Impuesto (%)</Label>
+                      <AmountOrPercentInput
+                        value={editTax}
+                        onValueChange={setEditTax}
+                        subtotal={liveSubtotal}
+                        label="Se cobrará"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1.5 block text-muted-foreground">Entrega estimada</Label>
+                      <Input type="date" value={editETA ?? ""} onChange={(e) => setEditETA(e.target.value)} />
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block text-muted-foreground">Impuesto</Label>
-                    <AmountOrPercentInput
-                      value={editTax}
-                      onValueChange={setEditTax}
-                      subtotal={liveSubtotal}
-                    />
+                  <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3 space-y-1.5 text-sm">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Subtotal productos</span>
+                      <span className="tabular-nums">{formatMoney(liveSubtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Descuento</span>
+                      <span className="tabular-nums">- {formatMoney(editDiscount)}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Impuesto</span>
+                      <span className="tabular-nums">+ {formatMoney(editTax)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 mt-1 border-t border-border font-semibold text-base">
+                      <span>Total a cobrar</span>
+                      <span className="tabular-nums text-primary">{formatMoney(liveTotal)}</span>
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block text-muted-foreground">Entrega estimada</Label>
-                    <Input type="date" value={editETA ?? ""} onChange={(e) => setEditETA(e.target.value)} />
-                  </div>
-                </div>
+                </>
               );
             })()}
           </div>
