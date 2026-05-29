@@ -4,90 +4,63 @@ import { formatMoney } from "@/features/orders/order-items-editor";
 import type { ComponentProps } from "react";
 
 type Props = Omit<ComponentProps<typeof Input>, "value" | "onChange" | "type"> & {
+  /** Stored money value (computed = subtotal * pct / 100) */
   value: number;
   onValueChange: (n: number) => void;
   subtotal: number;
-  /** Helper hint shown below input */
-  hint?: string;
+  label?: string;
 };
 
-function formatMoneyDisplay(n: number) {
-  if (!n) return "";
-  return n.toLocaleString("es-CO", { maximumFractionDigits: 2 });
+function pctFromValue(value: number, subtotal: number) {
+  if (subtotal <= 0 || !value) return "";
+  const pct = (value / subtotal) * 100;
+  // Trim to 2 decimals, drop trailing zeros
+  return String(Math.round(pct * 100) / 100).replace(".", ",");
 }
 
-function parseInput(raw: string, subtotal: number): { text: string; value: number; isPct: boolean; pct: number | null } {
-  const trimmed = raw.trim();
-  const isPct = trimmed.endsWith("%");
-  if (isPct) {
-    const numStr = trimmed.slice(0, -1).replace(/\./g, "").replace(",", ".").replace(/[^\d.]/g, "");
-    const pct = numStr ? Number(numStr) : 0;
-    const value = subtotal > 0 ? Math.round(((subtotal * pct) / 100) * 100) / 100 : 0;
-    // Keep the user's raw text so they can keep typing freely
-    return { text: trimmed, value, isPct: true, pct: isNaN(pct) ? 0 : pct };
-  }
-  // Money mode
-  const cleaned = trimmed.replace(/[^\d,]/g, "");
-  const decIdx = cleaned.indexOf(",");
-  let intPart = decIdx >= 0 ? cleaned.slice(0, decIdx) : cleaned;
-  const decPart = decIdx >= 0 ? cleaned.slice(decIdx + 1).replace(/,/g, "").slice(0, 2) : "";
-  intPart = intPart.replace(/^0+(?=\d)/, "");
-  const intFmt = intPart ? Number(intPart).toLocaleString("es-CO") : "";
-  const text = decIdx >= 0 ? `${intFmt || "0"},${decPart}` : intFmt;
-  const numStr = `${intPart || "0"}${decPart ? "." + decPart : ""}`;
-  const value = intPart || decPart ? Number(numStr) : 0;
-  return { text, value, isPct: false, pct: null };
-}
+export function AmountOrPercentInput({ value, onValueChange, subtotal, label, ...rest }: Props) {
+  const [text, setText] = useState<string>(() => pctFromValue(value, subtotal));
 
-export function AmountOrPercentInput({ value, onValueChange, subtotal, hint, ...rest }: Props) {
-  const [text, setText] = useState<string>(() => formatMoneyDisplay(value));
-  const [isPct, setIsPct] = useState(false);
-
-  // Sync external value when not actively in percent mode
+  // When subtotal or external value changes (and user is not actively editing this field),
+  // recompute the displayed percentage so it stays in sync.
   useEffect(() => {
-    if (isPct) return;
-    const parsed = parseInput(text, subtotal).value;
-    if (parsed !== value) setText(formatMoneyDisplay(value));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-
-  // If in percent mode and subtotal changes, recompute amount
-  useEffect(() => {
-    if (!isPct) return;
-    const { value: v } = parseInput(text, subtotal);
-    if (v !== value) onValueChange(v);
+    const next = pctFromValue(value, subtotal);
+    // Only update if meaningfully different to avoid clobbering in-progress typing
+    const currentNum = Number(text.replace(",", ".")) || 0;
+    const nextNum = Number(next.replace(",", ".")) || 0;
+    if (Math.abs(currentNum - nextNum) > 0.01) setText(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subtotal]);
 
-  const currentPct = subtotal > 0 ? (value / subtotal) * 100 : 0;
-
   return (
     <div className="space-y-1">
-      <Input
-        {...rest}
-        type="text"
-        inputMode="decimal"
-        placeholder="0  o  10%"
-        value={text}
-        onChange={(e) => {
-          const parsed = parseInput(e.target.value, subtotal);
-          setText(parsed.text);
-          setIsPct(parsed.isPct);
-          onValueChange(parsed.value);
-        }}
-        onBlur={() => {
-          // On blur, if in money mode, normalize formatting
-          if (!isPct) setText(formatMoneyDisplay(value));
-        }}
-      />
+      <div className="relative">
+        <Input
+          {...rest}
+          type="text"
+          inputMode="decimal"
+          placeholder="0"
+          value={text}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/[^\d,.]/g, "").replace(".", ",");
+            // Only allow one comma
+            const parts = raw.split(",");
+            const clean = parts.length > 1 ? parts[0] + "," + parts.slice(1).join("").slice(0, 2) : raw;
+            setText(clean);
+            const pct = Number(clean.replace(",", ".")) || 0;
+            const money = subtotal > 0 ? Math.round(((subtotal * pct) / 100) * 100) / 100 : 0;
+            onValueChange(money);
+          }}
+          className="pr-8"
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">%</span>
+      </div>
       <p className="text-[11px] text-muted-foreground tabular-nums">
         {subtotal <= 0
-          ? hint ?? "Agrega productos para ver el equivalente"
-          : isPct
-            ? `= ${formatMoney(value)} sobre el subtotal`
-            : value > 0
-              ? `Equivale al ${currentPct.toLocaleString("es-CO", { maximumFractionDigits: 2 })}% del subtotal`
-              : "Puedes escribir un monto (200.000) o un porcentaje (10%)"}
+          ? "Agrega productos para calcular"
+          : value > 0
+            ? `${label ?? "Equivale a"}: ${formatMoney(value)}`
+            : "Ingresa el porcentaje a aplicar"}
       </p>
     </div>
   );
