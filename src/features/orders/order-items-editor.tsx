@@ -82,12 +82,10 @@ export function OrderItemsEditor({
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block sm:hidden lg:block">
                   Descripción
                 </Label>
-                <Textarea
-                  rows={1}
+                <AutoTextarea
                   value={it.description}
-                  onChange={(e) => update(idx, { description: e.target.value })}
+                  onChange={(v) => update(idx, { description: v })}
                   placeholder="Ej. Sofá modular 3 puestos, tela nubuck color tabaco"
-                  className="min-h-[40px] resize-y leading-snug"
                 />
               </div>
 
