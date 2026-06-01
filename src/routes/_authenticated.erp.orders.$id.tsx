@@ -307,7 +307,14 @@ function OrderDetail() {
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-sm font-medium mb-3">Productos</p>
             {editing ? (
-              <OrderItemsEditor items={editItems} onChange={setEditItems} />
+              <OrderItemsEditor
+                items={editItems}
+                onChange={setEditItems}
+                existingImages={editExistingImages}
+                pendingImages={editPendingImages}
+                onExistingImagesChange={setEditExistingImages}
+                onPendingImagesChange={setEditPendingImages}
+              />
             ) : (
               <>
                 {/* Desktop: tabla */}
