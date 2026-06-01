@@ -543,6 +543,9 @@ function OrderDetail() {
               <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground space-y-0.5">
                 {o.payment_method && <p>Pago: <span className="text-foreground">{o.payment_method}</span></p>}
                 {o.advance_amount > 0 && <p>Abono: <span className="text-foreground tabular-nums">{formatMoney(o.advance_amount)}</span></p>}
+                {o.advance_deposit_account && (
+                  <p>Cuenta destino: <span className="text-foreground">{formatDepositAccount(o.advance_deposit_account)}</span></p>
+                )}
               </div>
             )}
             {o.payment_proof_url && (
