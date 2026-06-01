@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { MoneyInput } from "@/features/orders/money-input";
+import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
 import type { OrderItemInput } from "@/features/orders/schemas";
 
 function AutoTextarea({
