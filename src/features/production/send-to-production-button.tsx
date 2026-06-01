@@ -26,8 +26,8 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
   const create = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.from("production_orders").insert({
-        order_id: orderId, brand_id: brandId,
-      }).select("id").single();
+        order_id: orderId, brand_id: brandId, code: "",
+      } as any).select("id").single();
       if (error) throw error;
       return data.id as string;
     },
