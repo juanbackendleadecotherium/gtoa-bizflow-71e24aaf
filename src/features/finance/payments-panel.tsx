@@ -55,6 +55,7 @@ export function PaymentsPanel({
       qc.invalidateQueries({ queryKey: ["order-audit", orderId] });
       qc.invalidateQueries({ queryKey: ["finance-dashboard"] });
       qc.invalidateQueries({ queryKey: ["finance-receivables"] });
+      qc.invalidateQueries({ queryKey: ["finance-accounts"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
