@@ -26,6 +26,7 @@ import { formatMoney } from "@/features/orders/order-items-editor";
 import { MoneyInput } from "@/features/orders/money-input";
 import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
 import { uploadOrderImage, uploadOrderImages } from "@/lib/image-upload";
+import { DEPOSIT_ACCOUNTS } from "@/features/finance/deposit-accounts";
 
 import {
   Dialog,
@@ -94,6 +95,7 @@ type OrderDraft = {
   estimated_delivery_date: string;
   payment_method: string;
   advance_amount: number;
+  advance_deposit_account: string;
 };
 
 type Draft = {
@@ -128,6 +130,7 @@ const EMPTY: Draft = {
     estimated_delivery_date: "",
     payment_method: "",
     advance_amount: 0,
+    advance_deposit_account: "",
   },
   items: [],
   notes: "",
@@ -267,6 +270,7 @@ export function NewCustomerDialog({
             ext.order.estimated_delivery_date || d.order.estimated_delivery_date,
           payment_method: ext.order.payment_method || d.order.payment_method,
           advance_amount: ext.order.advance_amount || d.order.advance_amount,
+          advance_deposit_account: d.order.advance_deposit_account,
         },
         items: ext.items.length > 0 ? ext.items : d.items,
         notes: ext.notes || d.notes,
@@ -326,6 +330,7 @@ export function NewCustomerDialog({
           estimated_delivery_date: draft.order.estimated_delivery_date || null,
           payment_method: draft.order.payment_method || null,
           advance_amount: draft.order.advance_amount || 0,
+          advance_deposit_account: draft.order.advance_deposit_account || null,
           customer_name: c.display_name.trim(),
           customer_doc_type: c.doc_type || null,
           customer_doc_number: c.doc_number.trim() || null,
@@ -825,8 +830,27 @@ export function NewCustomerDialog({
                   value={draft.order.advance_amount}
                   onValueChange={(n) => setO("advance_amount", n)}
                 />
-              </FieldBlock>
+            </FieldBlock>
             </div>
+            {(draft.order.advance_amount || 0) > 0 && (
+              <div className="mt-3">
+                <FieldBlock label="Cuenta destino del abono">
+                  <Select
+                    value={draft.order.advance_deposit_account || undefined}
+                    onValueChange={(v) => setO("advance_deposit_account", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="¿A qué cuenta llegó el abono?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEPOSIT_ACCOUNTS.map((a) => (
+                        <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldBlock>
+              </div>
+            )}
             {subtotal > 0 && (
               <div className="mt-3 space-y-2">
                 <div className="grid grid-cols-3 gap-2 text-xs rounded-lg border border-border bg-surface p-3">

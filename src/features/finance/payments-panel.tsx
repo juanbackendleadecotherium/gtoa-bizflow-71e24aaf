@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { useBrand } from "@/features/brands/brand-context";
 import { PaymentDialog } from "./payment-dialog";
+import { formatDepositAccount } from "./deposit-accounts";
 
 type Payment = {
   id: string;
@@ -18,6 +19,7 @@ type Payment = {
   note: string | null;
   proof_url: string | null;
   created_by_email: string | null;
+  deposit_account: string | null;
 };
 
 export function PaymentsPanel({
@@ -34,7 +36,7 @@ export function PaymentsPanel({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_payments")
-        .select("id, amount, paid_at, method, reference, note, proof_url, created_by_email")
+        .select("id, amount, paid_at, method, reference, note, proof_url, created_by_email, deposit_account")
         .eq("order_id", orderId)
         .order("paid_at", { ascending: false });
       if (error) throw error;
@@ -53,6 +55,7 @@ export function PaymentsPanel({
       qc.invalidateQueries({ queryKey: ["order-audit", orderId] });
       qc.invalidateQueries({ queryKey: ["finance-dashboard"] });
       qc.invalidateQueries({ queryKey: ["finance-receivables"] });
+      qc.invalidateQueries({ queryKey: ["finance-accounts"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -121,6 +124,11 @@ export function PaymentsPanel({
                   )}
                 </div>
               </div>
+              {p.deposit_account && (
+                <p className="mt-1 text-[10px] inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-foreground/80">
+                  → {formatDepositAccount(p.deposit_account)}
+                </p>
+              )}
               {p.note && <p className="mt-1 text-foreground/80">{p.note}</p>}
               {p.created_by_email && <p className="mt-0.5 text-[10px] text-muted-foreground">Registrado por {p.created_by_email}</p>}
             </li>

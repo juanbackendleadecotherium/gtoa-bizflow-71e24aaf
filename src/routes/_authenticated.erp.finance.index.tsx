@@ -5,6 +5,7 @@ import { TrendingUp, Wallet, Receipt, AlertCircle, Loader2 } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { formatMoney } from "@/features/orders/order-items-editor";
+import { formatDepositAccount } from "@/features/finance/deposit-accounts";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -72,6 +73,43 @@ function FinanceDashboard() {
     },
   });
 
+  // Recaudado por cuenta bancaria (mes seleccionado)
+  const accountsQuery = useQuery({
+    queryKey: ["finance-accounts", selectedBrandId, monthOffset],
+    enabled: !!selectedBrandId,
+    queryFn: async () => {
+      const [payRes, advRes] = await Promise.all([
+        supabase
+          .from("order_payments")
+          .select("amount, deposit_account, paid_at")
+          .eq("brand_id", selectedBrandId!)
+          .gte("paid_at", monthStart.toISOString().slice(0, 10))
+          .lt("paid_at", monthEnd.toISOString().slice(0, 10)),
+        supabase
+          .from("orders")
+          .select("advance_amount, advance_deposit_account, created_at")
+          .eq("brand_id", selectedBrandId!)
+          .gt("advance_amount", 0)
+          .gte("created_at", monthStart.toISOString())
+          .lt("created_at", monthEnd.toISOString()),
+      ]);
+      if (payRes.error) throw payRes.error;
+      if (advRes.error) throw advRes.error;
+      const acc = new Map<string, number>();
+      for (const p of payRes.data ?? []) {
+        const k = (p as any).deposit_account || "__sin_asignar__";
+        acc.set(k, (acc.get(k) ?? 0) + Number((p as any).amount));
+      }
+      for (const o of advRes.data ?? []) {
+        const k = (o as any).advance_deposit_account || "__sin_asignar__";
+        acc.set(k, (acc.get(k) ?? 0) + Number((o as any).advance_amount));
+      }
+      return Array.from(acc.entries())
+        .map(([account, total]) => ({ account, total }))
+        .sort((a, b) => b.total - a.total);
+    },
+  });
+
   const monthRows = q.data ?? [];
   const totalVendido = monthRows.reduce((s, r) => s + Number(r.total), 0);
   const totalRecaudado = monthRows.reduce((s, r) => s + Number(r.paid_total), 0);
@@ -110,6 +148,35 @@ function FinanceDashboard() {
         <Kpi icon={Receipt} label="Facturadas" value={`${facturadas} / ${ventasCount}`} sub="Con factura emitida" accent="text-violet-600 dark:text-violet-400" />
         <Kpi icon={AlertCircle} label="Cartera total" value={formatMoney(carteraTotal)} sub={`${carteraCount} con saldo`} accent="text-amber-600 dark:text-amber-400" />
       </div>
+
+      <div className="rounded-xl border border-border bg-surface p-5">
+        <p className="text-sm font-medium mb-1">Recaudado por cuenta</p>
+        <p className="text-xs text-muted-foreground mb-3">Suma de abonos iniciales y pagos del mes seleccionado.</p>
+        {(accountsQuery.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin movimientos registrados este mes.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {(accountsQuery.data ?? []).map((r) => {
+              const totalAccounts = (accountsQuery.data ?? []).reduce((s, x) => s + x.total, 0);
+              const pct = totalAccounts > 0 ? Math.round((r.total / totalAccounts) * 100) : 0;
+              const isUnassigned = r.account === "__sin_asignar__";
+              return (
+                <li key={r.account} className="flex items-center justify-between py-2 text-sm">
+                  <span className={isUnassigned ? "text-amber-700 dark:text-amber-400" : ""}>
+                    {isUnassigned ? "⚠ Sin cuenta asignada" : formatDepositAccount(r.account)}
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-[11px] text-muted-foreground tabular-nums">{pct}%</span>
+                    <span className="tabular-nums font-medium">{formatMoney(r.total)}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+
 
       <div className="rounded-xl border border-border bg-surface p-5">
         <p className="text-sm font-medium mb-3">Ventas del mes</p>

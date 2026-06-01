@@ -534,6 +534,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           created_by_email: string | null
+          deposit_account: string | null
           id: string
           method: string | null
           note: string | null
@@ -548,6 +549,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
+          deposit_account?: string | null
           id?: string
           method?: string | null
           note?: string | null
@@ -562,6 +564,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
+          deposit_account?: string | null
           id?: string
           method?: string | null
           note?: string | null
@@ -684,6 +687,7 @@ export type Database = {
       orders: {
         Row: {
           advance_amount: number
+          advance_deposit_account: string | null
           assigned_to: string | null
           brand_id: string
           created_at: string
@@ -720,6 +724,7 @@ export type Database = {
         }
         Insert: {
           advance_amount?: number
+          advance_deposit_account?: string | null
           assigned_to?: string | null
           brand_id: string
           created_at?: string
@@ -756,6 +761,7 @@ export type Database = {
         }
         Update: {
           advance_amount?: number
+          advance_deposit_account?: string | null
           assigned_to?: string | null
           brand_id?: string
           created_at?: string

@@ -22,6 +22,7 @@ import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 import { InvoicePanel } from "@/features/invoices/invoice-panel";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
 import { PaymentsPanel } from "@/features/finance/payments-panel";
+import { formatDepositAccount } from "@/features/finance/deposit-accounts";
 import { DeleteOrderDialog } from "@/features/orders/delete-order-dialog";
 import { ProductionSection } from "@/features/production/send-to-production-button";
 
@@ -42,7 +43,7 @@ function OrderDetail() {
         .from("orders")
         .select(`
           id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date,
-          payment_method, advance_amount, payment_proof_url,
+          payment_method, advance_amount, advance_deposit_account, payment_proof_url,
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
@@ -543,6 +544,9 @@ function OrderDetail() {
               <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground space-y-0.5">
                 {o.payment_method && <p>Pago: <span className="text-foreground">{o.payment_method}</span></p>}
                 {o.advance_amount > 0 && <p>Abono: <span className="text-foreground tabular-nums">{formatMoney(o.advance_amount)}</span></p>}
+                {o.advance_deposit_account && (
+                  <p>Cuenta destino: <span className="text-foreground">{formatDepositAccount(o.advance_deposit_account)}</span></p>
+                )}
               </div>
             )}
             {o.payment_proof_url && (
