@@ -16,7 +16,9 @@ import { Route as AuthenticatedErpRouteImport } from './routes/_authenticated.er
 import { Route as AuthenticatedErpIndexRouteImport } from './routes/_authenticated.erp.index'
 import { Route as AuthenticatedErpOrdersRouteImport } from './routes/_authenticated.erp.orders'
 import { Route as AuthenticatedErpOrdersIndexRouteImport } from './routes/_authenticated.erp.orders.index'
+import { Route as AuthenticatedErpSettingsTermsRouteImport } from './routes/_authenticated.erp.settings.terms'
 import { Route as AuthenticatedErpSettingsStatusesRouteImport } from './routes/_authenticated.erp.settings.statuses'
+import { Route as AuthenticatedErpSettingsBrandBillingRouteImport } from './routes/_authenticated.erp.settings.brand-billing'
 import { Route as AuthenticatedErpOrdersIdRouteImport } from './routes/_authenticated.erp.orders.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -54,10 +56,22 @@ const AuthenticatedErpOrdersIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedErpOrdersRoute,
   } as any)
+const AuthenticatedErpSettingsTermsRoute =
+  AuthenticatedErpSettingsTermsRouteImport.update({
+    id: '/settings/terms',
+    path: '/settings/terms',
+    getParentRoute: () => AuthenticatedErpRoute,
+  } as any)
 const AuthenticatedErpSettingsStatusesRoute =
   AuthenticatedErpSettingsStatusesRouteImport.update({
     id: '/settings/statuses',
     path: '/settings/statuses',
+    getParentRoute: () => AuthenticatedErpRoute,
+  } as any)
+const AuthenticatedErpSettingsBrandBillingRoute =
+  AuthenticatedErpSettingsBrandBillingRouteImport.update({
+    id: '/settings/brand-billing',
+    path: '/settings/brand-billing',
     getParentRoute: () => AuthenticatedErpRoute,
   } as any)
 const AuthenticatedErpOrdersIdRoute =
@@ -74,7 +88,9 @@ export interface FileRoutesByFullPath {
   '/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/erp/': typeof AuthenticatedErpIndexRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
+  '/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
+  '/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
   '/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
 }
 export interface FileRoutesByTo {
@@ -82,7 +98,9 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/erp': typeof AuthenticatedErpIndexRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
+  '/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
+  '/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
   '/erp/orders': typeof AuthenticatedErpOrdersIndexRoute
 }
 export interface FileRoutesById {
@@ -94,7 +112,9 @@ export interface FileRoutesById {
   '/_authenticated/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/_authenticated/erp/': typeof AuthenticatedErpIndexRoute
   '/_authenticated/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
+  '/_authenticated/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
   '/_authenticated/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
+  '/_authenticated/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
   '/_authenticated/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
 }
 export interface FileRouteTypes {
@@ -106,7 +126,9 @@ export interface FileRouteTypes {
     | '/erp/orders'
     | '/erp/'
     | '/erp/orders/$id'
+    | '/erp/settings/brand-billing'
     | '/erp/settings/statuses'
+    | '/erp/settings/terms'
     | '/erp/orders/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -114,7 +136,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/erp'
     | '/erp/orders/$id'
+    | '/erp/settings/brand-billing'
     | '/erp/settings/statuses'
+    | '/erp/settings/terms'
     | '/erp/orders'
   id:
     | '__root__'
@@ -125,7 +149,9 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/orders'
     | '/_authenticated/erp/'
     | '/_authenticated/erp/orders/$id'
+    | '/_authenticated/erp/settings/brand-billing'
     | '/_authenticated/erp/settings/statuses'
+    | '/_authenticated/erp/settings/terms'
     | '/_authenticated/erp/orders/'
   fileRoutesById: FileRoutesById
 }
@@ -186,11 +212,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpOrdersIndexRouteImport
       parentRoute: typeof AuthenticatedErpOrdersRoute
     }
+    '/_authenticated/erp/settings/terms': {
+      id: '/_authenticated/erp/settings/terms'
+      path: '/settings/terms'
+      fullPath: '/erp/settings/terms'
+      preLoaderRoute: typeof AuthenticatedErpSettingsTermsRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
     '/_authenticated/erp/settings/statuses': {
       id: '/_authenticated/erp/settings/statuses'
       path: '/settings/statuses'
       fullPath: '/erp/settings/statuses'
       preLoaderRoute: typeof AuthenticatedErpSettingsStatusesRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
+    '/_authenticated/erp/settings/brand-billing': {
+      id: '/_authenticated/erp/settings/brand-billing'
+      path: '/settings/brand-billing'
+      fullPath: '/erp/settings/brand-billing'
+      preLoaderRoute: typeof AuthenticatedErpSettingsBrandBillingRouteImport
       parentRoute: typeof AuthenticatedErpRoute
     }
     '/_authenticated/erp/orders/$id': {
@@ -222,13 +262,18 @@ const AuthenticatedErpOrdersRouteWithChildren =
 interface AuthenticatedErpRouteChildren {
   AuthenticatedErpOrdersRoute: typeof AuthenticatedErpOrdersRouteWithChildren
   AuthenticatedErpIndexRoute: typeof AuthenticatedErpIndexRoute
+  AuthenticatedErpSettingsBrandBillingRoute: typeof AuthenticatedErpSettingsBrandBillingRoute
   AuthenticatedErpSettingsStatusesRoute: typeof AuthenticatedErpSettingsStatusesRoute
+  AuthenticatedErpSettingsTermsRoute: typeof AuthenticatedErpSettingsTermsRoute
 }
 
 const AuthenticatedErpRouteChildren: AuthenticatedErpRouteChildren = {
   AuthenticatedErpOrdersRoute: AuthenticatedErpOrdersRouteWithChildren,
   AuthenticatedErpIndexRoute: AuthenticatedErpIndexRoute,
+  AuthenticatedErpSettingsBrandBillingRoute:
+    AuthenticatedErpSettingsBrandBillingRoute,
   AuthenticatedErpSettingsStatusesRoute: AuthenticatedErpSettingsStatusesRoute,
+  AuthenticatedErpSettingsTermsRoute: AuthenticatedErpSettingsTermsRoute,
 }
 
 const AuthenticatedErpRouteWithChildren =
@@ -254,3 +299,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
