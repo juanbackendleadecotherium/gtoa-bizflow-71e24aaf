@@ -225,50 +225,50 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
               </View>
             </View>
 
-            {/* MAIN ITEM CARD — hero image left, specs right */}
-            <View style={styles.itemCard}>
-              {deliveryLong ? (
-                <View style={styles.deliveryStrip}>
-                  <Text style={styles.deliveryLabel}>Fecha de entrega:</Text>
-                  <Text style={[styles.deliveryValue, { color: accent }]}>{deliveryLong}</Text>
-                </View>
-              ) : null}
-
-              <View style={styles.itemTopRow}>
-                <View style={styles.heroCol}>
-                  {hero ? (
-                    <View style={styles.heroImageBox}>
-                      <Image src={hero} style={styles.heroImage} />
-                    </View>
-                  ) : (
-                    <View style={styles.heroNoImage}>
-                      <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
-                    </View>
-                  )}
-                  <Text style={styles.heroProductName}>{title}</Text>
-                  <Text style={styles.heroProductCaption}>Imágen de referencia</Text>
-                </View>
-
-                <View style={styles.specsCol}>
-                  <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
-                  {body ? (
-                    <Text style={styles.specsBody}>{body}</Text>
-                  ) : (
-                    <Text style={[styles.specsBody, { color: MUTED, fontStyle: "italic" }]}>
-                      Sin especificaciones adicionales.
-                    </Text>
-                  )}
-                </View>
+            {/* HERO IMAGE CARD — full width, contain (no crop) */}
+            <View style={styles.itemCard} wrap={false}>
+              <View style={styles.deliveryStrip}>
+                <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
+                {deliveryLong ? (
+                  <View style={styles.deliveryWrap}>
+                    <Text style={styles.deliveryLabel}>Entrega:</Text>
+                    <Text style={[styles.deliveryValue, { color: accent }]}>{deliveryLong}</Text>
+                  </View>
+                ) : null}
               </View>
+
+              {hero ? (
+                <View style={styles.heroImageBox}>
+                  <Image src={hero} style={styles.heroImage} />
+                </View>
+              ) : (
+                <View style={styles.heroNoImage}>
+                  <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
+                </View>
+              )}
+              <Text style={styles.heroProductName}>{title}</Text>
+              <Text style={styles.heroProductCaption}>Imagen de referencia principal</Text>
             </View>
 
-            {/* ADDITIONAL REFERENCES — larger thumbnails */}
+            {/* SPECS / DESCRIPTION — separate card, wraps across pages if needed */}
+            <View style={styles.specsCard}>
+              <Text style={styles.specsLabel}>Especificaciones</Text>
+              {body ? (
+                <Text style={styles.specsBody}>{body}</Text>
+              ) : (
+                <Text style={[styles.specsBody, { color: MUTED, fontStyle: "italic" }]}>
+                  Sin especificaciones adicionales.
+                </Text>
+              )}
+            </View>
+
+            {/* ADDITIONAL REFERENCES — larger thumbnails, contain */}
             {rest.length > 0 ? (
-              <View style={styles.refCard} wrap={false}>
+              <View style={styles.refCard}>
                 <Text style={styles.refTitle}>Referencias adicionales</Text>
                 <View style={styles.refGrid}>
                   {rest.map((url, i) => (
-                    <View key={i} style={styles.refCell}>
+                    <View key={i} style={styles.refCell} wrap={false}>
                       <View style={styles.refImageBox}>
                         <Image src={url} style={styles.refImage} />
                       </View>
