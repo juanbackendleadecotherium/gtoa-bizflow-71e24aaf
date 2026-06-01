@@ -829,8 +829,27 @@ export function NewCustomerDialog({
                   value={draft.order.advance_amount}
                   onValueChange={(n) => setO("advance_amount", n)}
                 />
-              </FieldBlock>
+            </FieldBlock>
             </div>
+            {(draft.order.advance_amount || 0) > 0 && (
+              <div className="mt-3">
+                <FieldBlock label="Cuenta destino del abono">
+                  <Select
+                    value={draft.order.advance_deposit_account || undefined}
+                    onValueChange={(v) => setO("advance_deposit_account", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="¿A qué cuenta llegó el abono?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEPOSIT_ACCOUNTS.map((a) => (
+                        <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldBlock>
+              </div>
+            )}
             {subtotal > 0 && (
               <div className="mt-3 space-y-2">
                 <div className="grid grid-cols-3 gap-2 text-xs rounded-lg border border-border bg-surface p-3">
