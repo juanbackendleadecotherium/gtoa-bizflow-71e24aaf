@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, Download, Mail, Loader2, AlertTriangle } from "lucide-react";
-import { pdf } from "@react-pdf/renderer";
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { InvoiceDocument, type InvoiceDocumentData } from "./invoice-document";
+import type { InvoiceDocumentData } from "./invoice-document";
 import { formatMoney } from "@/features/orders/order-items-editor";
 
 type Order = {
@@ -125,7 +125,11 @@ export function InvoicePanel({ order }: { order: Order }) {
         terms_version: terms?.version ?? null,
       };
 
-      // Generate PDF
+      // Generate PDF (lazy-load — @react-pdf/renderer is not SSR-safe)
+      const [{ pdf }, { InvoiceDocument }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("./invoice-document"),
+      ]);
       const blob = await pdf(<InvoiceDocument data={data} />).toBlob();
 
       // Upload to storage
