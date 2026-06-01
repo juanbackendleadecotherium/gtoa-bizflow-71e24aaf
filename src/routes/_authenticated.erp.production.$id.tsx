@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, Save, Trash2, History, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, History, ExternalLink, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { PRODUCTION_STATUSES, PRIORITIES } from "@/features/production/production-meta";
 import { ProductionStatusBadge } from "@/features/production/status-badge";
 import { PlanimetryUploader, type Planimetry } from "@/features/production/planimetry-uploader";
+import { ReasonDialog } from "@/features/production/reason-dialog";
 
 export const Route = createFileRoute("/_authenticated/erp/production/$id")({
   component: ProductionDetail,
@@ -103,14 +104,33 @@ function ProductionDetail() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const [delOpen, setDelOpen] = useState(false);
+  const [rejOpen, setRejOpen] = useState(false);
+
   const remove = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("production_orders").delete().eq("id", id);
+    mutationFn: async (reason: string) => {
+      const { error } = await supabase.rpc("delete_production_with_reason", { p_id: id, p_reason: reason });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Orden eliminada");
+      toast.success("Orden de producción eliminada");
+      setDelOpen(false);
       navigate({ to: "/erp/production" });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
+  const reject = useMutation({
+    mutationFn: async (reason: string) => {
+      const { error } = await supabase.rpc("reject_production_with_reason", { p_id: id, p_reason: reason });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Orden marcada como rechazada");
+      setRejOpen(false);
+      qc.invalidateQueries({ queryKey: ["production-order", id] });
+      qc.invalidateQueries({ queryKey: ["production-audit", id] });
+      qc.invalidateQueries({ queryKey: ["production-orders"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
@@ -147,11 +167,14 @@ function ProductionDetail() {
             </Link>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {p.status !== "rechazada" && (
+            <Button variant="outline" size="sm" onClick={() => setRejOpen(true)} className="gap-1 text-amber-700 dark:text-amber-300">
+              <ShieldAlert className="h-4 w-4" /> Rechazar
+            </Button>
+          )}
           {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => {
-              if (confirm("¿Eliminar esta orden de producción y sus planimetrías?")) remove.mutate();
-            }} className="text-destructive gap-1">
+            <Button variant="outline" size="sm" onClick={() => setDelOpen(true)} className="text-destructive gap-1">
               <Trash2 className="h-4 w-4" /> Eliminar
             </Button>
           )}
@@ -161,6 +184,24 @@ function ProductionDetail() {
           </Button>
         </div>
       </div>
+
+      <ReasonDialog
+        open={delOpen} onOpenChange={setDelOpen}
+        title="Eliminar orden de producción"
+        description="Esta acción es definitiva. Quedará registrada en el historial de eliminaciones con tu usuario y el motivo."
+        confirmLabel="Eliminar definitivamente"
+        confirmVariant="destructive"
+        pending={remove.isPending}
+        onConfirm={(r) => remove.mutate(r)}
+      />
+      <ReasonDialog
+        open={rejOpen} onOpenChange={setRejOpen}
+        title="Rechazar y devolver al vendedor"
+        description="La orden se marcará como rechazada y el motivo quedará en la bitácora. El vendedor puede corregir y reenviar sin perder el historial."
+        confirmLabel="Rechazar"
+        pending={reject.isPending}
+        onConfirm={(r) => reject.mutate(r)}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
@@ -240,13 +281,15 @@ function ProductionDetail() {
               <ol className="space-y-3">
                 {(audit.data ?? []).map((a: any) => (
                   <li key={a.id} className="text-xs border-l-2 border-border pl-3">
-                    <p className="font-medium text-foreground capitalize">
+                    <p className="font-medium text-foreground">
                       {a.action === "create" ? "Orden creada"
-                        : a.action === "status" ? `Estado: ${a.new_value} `
+                        : a.action === "rejected" ? "🚫 Rechazada y devuelta al vendedor"
+                        : a.action === "status" ? `Estado: ${a.new_value}`
                         : a.action === "planimetry_upload" ? `Planimetría subida (${a.new_value?.file_name ?? ""})`
                         : a.action === "planimetry_delete" ? `Planimetría eliminada (${a.old_value?.file_name ?? ""})`
                         : a.field ? `${a.field}: ${JSON.stringify(a.new_value)}` : a.action}
                     </p>
+                    {a.note && <p className="text-foreground/80 mt-1 italic">"{a.note}"</p>}
                     <p className="text-muted-foreground mt-0.5">
                       {new Date(a.created_at).toLocaleString("es-CO")}
                       {a.changed_by_email && ` · ${a.changed_by_email}`}
