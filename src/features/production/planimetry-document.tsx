@@ -171,9 +171,11 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
   return (
     <Document title={`Planimetría ${data.production_code}`}>
       {data.items.map((it, idx) => {
-        const lines = it.description.split(/\n+/).filter(Boolean);
+        const lines = it.description.split(/\n+/).map(l => l.trim()).filter(Boolean);
         const title = lines[0] || `Producto ${idx + 1}`;
-        const body = lines.slice(1).join("\n");
+        // Show the FULL description (including the title line) as specs,
+        // so single-line descriptions don't render as "sin especificaciones".
+        const body = it.description.trim();
         const hero = it.images[0];
         const rest = it.images.slice(1);
 
