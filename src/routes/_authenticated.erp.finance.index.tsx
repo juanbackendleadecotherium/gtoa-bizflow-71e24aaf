@@ -73,6 +73,43 @@ function FinanceDashboard() {
     },
   });
 
+  // Recaudado por cuenta bancaria (mes seleccionado)
+  const accountsQuery = useQuery({
+    queryKey: ["finance-accounts", selectedBrandId, monthOffset],
+    enabled: !!selectedBrandId,
+    queryFn: async () => {
+      const [payRes, advRes] = await Promise.all([
+        supabase
+          .from("order_payments")
+          .select("amount, deposit_account, paid_at")
+          .eq("brand_id", selectedBrandId!)
+          .gte("paid_at", monthStart.toISOString().slice(0, 10))
+          .lt("paid_at", monthEnd.toISOString().slice(0, 10)),
+        supabase
+          .from("orders")
+          .select("advance_amount, advance_deposit_account, created_at")
+          .eq("brand_id", selectedBrandId!)
+          .gt("advance_amount", 0)
+          .gte("created_at", monthStart.toISOString())
+          .lt("created_at", monthEnd.toISOString()),
+      ]);
+      if (payRes.error) throw payRes.error;
+      if (advRes.error) throw advRes.error;
+      const acc = new Map<string, number>();
+      for (const p of payRes.data ?? []) {
+        const k = (p as any).deposit_account || "__sin_asignar__";
+        acc.set(k, (acc.get(k) ?? 0) + Number((p as any).amount));
+      }
+      for (const o of advRes.data ?? []) {
+        const k = (o as any).advance_deposit_account || "__sin_asignar__";
+        acc.set(k, (acc.get(k) ?? 0) + Number((o as any).advance_amount));
+      }
+      return Array.from(acc.entries())
+        .map(([account, total]) => ({ account, total }))
+        .sort((a, b) => b.total - a.total);
+    },
+  });
+
   const monthRows = q.data ?? [];
   const totalVendido = monthRows.reduce((s, r) => s + Number(r.total), 0);
   const totalRecaudado = monthRows.reduce((s, r) => s + Number(r.paid_total), 0);
