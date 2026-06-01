@@ -113,9 +113,11 @@ export function ImageUploader({
             item.kind === "existing" ? (
               <div
                 key={item.url}
-                className="relative group rounded-lg overflow-hidden border border-border bg-muted aspect-square"
+                className="relative group rounded-lg overflow-hidden border border-border bg-muted/40 aspect-square"
               >
-                <img src={item.url} alt="" className="w-full h-full object-cover" />
+                <a href={item.url} target="_blank" rel="noreferrer" className="block w-full h-full">
+                  <img src={item.url} alt="" className="w-full h-full object-contain" />
+                </a>
                 {onRemoveExisting && (
                   <button
                     type="button"
@@ -130,9 +132,11 @@ export function ImageUploader({
             ) : (
               <div
                 key={item.p.id}
-                className="relative group rounded-lg overflow-hidden border border-accent/40 bg-muted aspect-square"
+                className="relative group rounded-lg overflow-hidden border border-accent/40 bg-muted/40 aspect-square"
               >
-                <img src={item.p.previewUrl} alt="" className="w-full h-full object-cover" />
+                <a href={item.p.previewUrl} target="_blank" rel="noreferrer" className="block w-full h-full">
+                  <img src={item.p.previewUrl} alt="" className="w-full h-full object-contain" />
+                </a>
                 <div className="absolute bottom-0 inset-x-0 px-1.5 py-1 text-[9px] bg-background/85 text-muted-foreground flex items-center justify-between gap-1">
                   <span className="flex items-center gap-1 truncate">
                     <FileImage className="h-3 w-3 shrink-0" />
