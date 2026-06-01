@@ -118,6 +118,25 @@ export function PaymentDialog({
           </div>
 
           <div>
+            <Label className="text-xs mb-1.5 block">
+              Cuenta destino {accountRequired && <span className="text-destructive">*</span>}
+            </Label>
+            <Select value={depositAccount} onValueChange={setDepositAccount}>
+              <SelectTrigger>
+                <SelectValue placeholder={accountRequired ? "¿A qué cuenta llegó el dinero?" : "Opcional"} />
+              </SelectTrigger>
+              <SelectContent>
+                {DEPOSIT_ACCOUNTS.map((a) => (
+                  <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Sirve para que finanzas pueda trazar dónde quedó el dinero recibido.
+            </p>
+          </div>
+
+          <div>
             <Label className="text-xs mb-1.5 block">Nota (opcional)</Label>
             <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
           </div>
