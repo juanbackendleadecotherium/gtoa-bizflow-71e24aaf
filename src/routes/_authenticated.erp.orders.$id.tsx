@@ -245,7 +245,7 @@ function OrderDetail() {
                 <Pencil className="h-4 w-4" /> Editar
               </Button>
               <Button variant="outline" size="icon" className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                onClick={() => { if (confirm("¿Eliminar esta venta?")) deleteMutation.mutate(); }}
+                onClick={() => setDeleteOpen(true)}
                 aria-label="Eliminar venta">
                 <Trash2 className="h-4 w-4" />
               </Button>
