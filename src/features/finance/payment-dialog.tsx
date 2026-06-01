@@ -33,19 +33,25 @@ export function PaymentDialog({
   const qc = useQueryClient();
   const [amount, setAmount] = useState(0);
   const [method, setMethod] = useState("Transferencia");
+  const [depositAccount, setDepositAccount] = useState<string>("");
   const [reference, setReference] = useState("");
   const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
   const [pending, setPending] = useState<PendingImage[]>([]);
 
+  const accountRequired = ACCOUNT_REQUIRED_METHODS.has(method);
+
   const reset = () => {
-    setAmount(0); setMethod("Transferencia"); setReference("");
+    setAmount(0); setMethod("Transferencia"); setDepositAccount(""); setReference("");
     setPaidAt(new Date().toISOString().slice(0, 10)); setNote(""); setPending([]);
   };
 
   const mut = useMutation({
     mutationFn: async () => {
       if (amount <= 0) throw new Error("El monto debe ser mayor a cero.");
+      if (accountRequired && !depositAccount) {
+        throw new Error("Selecciona la cuenta a la que llegó el dinero.");
+      }
       let proof_url: string | null = null;
       if (pending[0]) {
         proof_url = await uploadOrderImage(pending[0].file, `payments/${orderId}`);
@@ -53,6 +59,7 @@ export function PaymentDialog({
       const { error } = await supabase.from("order_payments").insert({
         order_id: orderId, brand_id: brandId, amount, method,
         reference: reference || null, paid_at: paidAt, note: note || null, proof_url,
+        deposit_account: depositAccount || null,
       });
       if (error) throw error;
     },
@@ -63,6 +70,7 @@ export function PaymentDialog({
       qc.invalidateQueries({ queryKey: ["order-audit", orderId] });
       qc.invalidateQueries({ queryKey: ["finance-dashboard"] });
       qc.invalidateQueries({ queryKey: ["finance-receivables"] });
+      qc.invalidateQueries({ queryKey: ["finance-accounts"] });
       reset();
       onOpenChange(false);
     },
