@@ -53,6 +53,7 @@ export type InvoiceDocumentData = {
   total: number;
   advance: number;
   balance: number;
+  version_number?: number;
 };
 
 const fmtCOP = (n: number) =>
@@ -67,241 +68,280 @@ const fmtDate = (s?: string | null) => {
   if (!s) return "—";
   try {
     return new Date(s).toLocaleDateString("es-CO", {
-      day: "2-digit", month: "2-digit", year: "numeric",
+      day: "2-digit", month: "long", year: "numeric",
     });
-  } catch {
-    return s;
-  }
+  } catch { return s; }
 };
 
-const INK = "#1f2937";
-const MUTED = "#6b7280";
-const LINE = "#e5e7eb";
-const SOFT_BG = "#f8fafc";
+const INK = "#0f172a";
+const SUB = "#475569";
+const MUTED = "#94a3b8";
+const LINE = "#e2e8f0";
+const SOFT = "#f8fafc";
+const ROW_ALT = "#fbfcfe";
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 32, paddingBottom: 56, paddingHorizontal: 36,
-    fontSize: 9, color: INK, fontFamily: "Helvetica",
+    paddingTop: 0, paddingBottom: 70, paddingHorizontal: 0,
+    fontSize: 9.5, color: INK, fontFamily: "Helvetica",
   },
+
+  /* Accent bar */
+  accent: { height: 6, width: "100%" },
 
   /* Header */
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  brandBlock: { flexDirection: "column", maxWidth: "60%" },
+  headerWrap: { paddingHorizontal: 40, paddingTop: 28, paddingBottom: 18 },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  brandCol: { maxWidth: "55%" },
   logoBox: {
-    backgroundColor: SOFT_BG, borderRadius: 4, padding: 10,
-    width: 200, height: 90, alignItems: "center", justifyContent: "center",
-    marginBottom: 8,
+    width: 150, height: 64, alignItems: "flex-start", justifyContent: "center",
+    marginBottom: 12,
   },
-  logo: { maxWidth: 180, maxHeight: 70, objectFit: "contain" },
-  brandName: { fontSize: 13, fontWeight: 700, marginTop: 2 },
-  brandLine: { color: MUTED, fontSize: 8.5, marginTop: 1 },
+  logo: { maxWidth: 150, maxHeight: 60, objectFit: "contain" },
+  brandName: { fontSize: 11, fontWeight: 700, color: INK, letterSpacing: 0.4 },
+  brandLine: { color: SUB, fontSize: 9, marginTop: 2, lineHeight: 1.45 },
 
-  invoiceMeta: { alignItems: "flex-end", maxWidth: "40%" },
-  invoiceLabel: { fontSize: 11, color: MUTED },
-  invoiceNumber: { fontSize: 28, fontWeight: 700, color: INK, lineHeight: 1 },
-  metaDate: { fontSize: 9, marginTop: 8 },
-  metaDateLabel: { fontWeight: 700 },
+  metaCol: { alignItems: "flex-end", maxWidth: "45%" },
+  metaTag: {
+    fontSize: 8, color: MUTED, letterSpacing: 1.6, fontWeight: 700,
+    marginBottom: 2, textTransform: "uppercase",
+  },
+  invoiceNumber: { fontSize: 26, fontWeight: 700, color: INK, lineHeight: 1, marginBottom: 10 },
+  metaPair: { flexDirection: "row", gap: 8, marginTop: 2 },
+  metaLabel: { fontSize: 8.5, color: MUTED, textTransform: "uppercase", letterSpacing: 0.8 },
+  metaValue: { fontSize: 9.5, color: INK, fontWeight: 700 },
+  versionPill: {
+    marginTop: 8, paddingHorizontal: 8, paddingVertical: 3,
+    borderWidth: 0.5, borderColor: LINE, borderRadius: 10,
+    fontSize: 7.5, color: SUB, letterSpacing: 0.6, textTransform: "uppercase",
+  },
 
-  divider: { borderBottomWidth: 1, borderBottomColor: LINE, marginTop: 12, marginBottom: 10 },
-
-  /* Client / seller row */
-  partyRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
-  partyLeft: { maxWidth: "60%" },
-  partyRight: { alignItems: "flex-end" },
-  partyLine: { marginBottom: 2 },
-  bold: { fontWeight: 700 },
+  /* Party cards */
+  partiesWrap: { paddingHorizontal: 40, marginTop: 4, marginBottom: 14, flexDirection: "row", gap: 12 },
+  partyCard: {
+    flex: 1, padding: 12, borderRadius: 6, backgroundColor: SOFT, borderWidth: 0.5, borderColor: LINE,
+  },
+  partyTag: {
+    fontSize: 7.5, color: MUTED, letterSpacing: 1.4, fontWeight: 700,
+    marginBottom: 6, textTransform: "uppercase",
+  },
+  partyName: { fontSize: 11, fontWeight: 700, color: INK, marginBottom: 4 },
+  partyLine: { color: SUB, fontSize: 9, lineHeight: 1.45 },
 
   /* Items table */
-  th: {
-    flexDirection: "row", backgroundColor: SOFT_BG,
-    paddingVertical: 6, paddingHorizontal: 6, marginTop: 4,
-  },
-  thText: { fontSize: 8.5, color: MUTED, fontWeight: 700 },
+  tableWrap: { paddingHorizontal: 40 },
+  th: { flexDirection: "row", paddingVertical: 8, paddingHorizontal: 6, borderBottomWidth: 1 },
+  thText: { fontSize: 7.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" },
   row: {
-    flexDirection: "row", paddingVertical: 8, paddingHorizontal: 6,
+    flexDirection: "row", paddingVertical: 9, paddingHorizontal: 6,
     borderBottomWidth: 0.5, borderBottomColor: LINE,
   },
-  cId: { width: 22 },
-  cItem: { flex: 4, paddingRight: 6 },
-  cUnit: { width: 50 },
+  rowAlt: { backgroundColor: ROW_ALT },
+  cIdx: { width: 22, color: MUTED },
+  cItem: { flex: 4, paddingRight: 8 },
   cQty: { width: 38, textAlign: "right" },
-  cPrice: { width: 60, textAlign: "right" },
-  cDisc: { width: 55, textAlign: "right" },
-  cTax: { width: 50, textAlign: "right" },
-  cSub: { width: 70, textAlign: "right" },
+  cPrice: { width: 75, textAlign: "right" },
+  cSub: { width: 85, textAlign: "right", fontWeight: 700 },
 
-  itemTitle: { fontWeight: 700, marginBottom: 2 },
-  itemDesc: { color: MUTED, fontSize: 8.5 },
+  itemTitle: { fontWeight: 700, color: INK, marginBottom: 2 },
+  itemDesc: { color: SUB, fontSize: 8.8, lineHeight: 1.4 },
 
+  /* Words bar */
   wordsRow: {
-    flexDirection: "row", backgroundColor: SOFT_BG,
-    padding: 8, marginTop: 2, marginBottom: 10,
+    marginHorizontal: 40, marginTop: 14, paddingVertical: 10, paddingHorizontal: 12,
+    backgroundColor: SOFT, borderLeftWidth: 3, borderRadius: 2,
   },
-
-  countLine: { marginBottom: 14 },
+  wordsLabel: { fontSize: 7.5, color: MUTED, letterSpacing: 1.2, fontWeight: 700, marginBottom: 2 },
+  wordsText: { color: INK, fontSize: 10, fontStyle: "italic" },
 
   /* Totals */
-  totalsWrap: { flexDirection: "row", justifyContent: "flex-end", marginTop: 8 },
-  totalsBox: { width: "55%" },
-  tRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, paddingHorizontal: 6 },
-  tLabel: { color: MUTED },
-  tValue: { },
-  tTotalRow: {
+  bottomRow: { flexDirection: "row", paddingHorizontal: 40, marginTop: 16, gap: 16 },
+  notesCol: { flex: 1.1 },
+  totalsCol: { flex: 1 },
+  notesTitle: { fontSize: 7.5, color: MUTED, fontWeight: 700, letterSpacing: 1.4, marginBottom: 6, textTransform: "uppercase" },
+  notesBody: { color: SUB, fontSize: 9, lineHeight: 1.5 },
+
+  tRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4 },
+  tLabel: { color: SUB, fontSize: 9.5 },
+  tValue: { color: INK, fontSize: 9.5 },
+  divider: { borderBottomWidth: 0.5, borderBottomColor: LINE, marginVertical: 4 },
+  totalBox: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingVertical: 10, paddingHorizontal: 12, borderRadius: 4, marginTop: 6,
+  },
+  totalLabel: { color: "#ffffff", fontSize: 10, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" },
+  totalValue: { color: "#ffffff", fontSize: 16, fontWeight: 700 },
+
+  payRow: {
     flexDirection: "row", justifyContent: "space-between",
-    paddingTop: 8, paddingBottom: 6, paddingHorizontal: 6,
-    borderTopWidth: 1, borderTopColor: INK, marginTop: 4,
+    marginTop: 8, paddingVertical: 6, paddingHorizontal: 12,
+    borderRadius: 4, borderWidth: 0.5, borderColor: LINE, backgroundColor: SOFT,
   },
-  tTotalLabel: { fontSize: 14, fontWeight: 700 },
-  tTotalValue: { fontSize: 14, fontWeight: 700 },
+  payLabel: { fontSize: 9, color: SUB },
+  payValue: { fontSize: 10, color: INK, fontWeight: 700 },
 
-  /* Notes */
-  notesBox: { marginTop: 14, padding: 10, borderRadius: 4, borderWidth: 0.5, borderColor: LINE },
-  notesTitle: { fontSize: 8, color: MUTED, fontWeight: 700, marginBottom: 4, letterSpacing: 0.8 },
-
-  /* Footer meta */
-  metaBlock: {
-    position: "absolute", bottom: 56, left: 36, right: 36,
-    flexDirection: "row", gap: 16,
+  /* Footer */
+  footerBlock: {
+    position: "absolute", bottom: 30, left: 40, right: 40,
+    paddingTop: 8, borderTopWidth: 0.5, borderTopColor: LINE,
   },
-  metaItem: { fontSize: 8.5 },
-  metaItemLabel: { fontWeight: 700 },
-
-  footer: {
-    position: "absolute", bottom: 24, left: 36, right: 36,
-    flexDirection: "row", justifyContent: "space-between",
-    borderTopWidth: 0.5, borderTopColor: LINE, paddingTop: 6,
-    fontSize: 7.5, color: "#9ca3af",
-  },
+  footerTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  footerMeta: { fontSize: 8, color: SUB },
+  footerNote: { fontSize: 7.5, color: MUTED, textAlign: "center", marginTop: 4 },
 });
 
 export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
   const logo = getBrandLogo(data.brand.slug, data.brand.logo_url);
+  const accent = (data.brand.primary_color && /^#[0-9a-f]{3,8}$/i.test(data.brand.primary_color))
+    ? data.brand.primary_color : "#0f172a";
   const totalWords = numberToSpanishWords(Math.round(Number(data.total) || 0));
 
   return (
     <Document title={`Factura ${data.invoice_number}`}>
       <Page size="LETTER" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.brandBlock}>
-            <View style={styles.logoBox}>
-              {logo ? <Image src={logo} style={styles.logo} /> : <Text style={{ color: MUTED }}>{data.brand.name}</Text>}
-            </View>
-            <Text style={styles.brandName}>{(data.brand.legal_name || data.brand.name).toUpperCase()}</Text>
-            {data.brand.legal_name && data.brand.tax_id ? (
-              <Text style={styles.brandLine}>{data.brand.legal_name} - NIT {data.brand.tax_id}</Text>
-            ) : data.brand.tax_id ? (
-              <Text style={styles.brandLine}>NIT {data.brand.tax_id}</Text>
-            ) : null}
-            {data.brand.address ? (
-              <Text style={styles.brandLine}>
-                {data.brand.address}{data.brand.city ? `, ${data.brand.city}` : ""}
-              </Text>
-            ) : null}
-            {data.brand.email ? <Text style={styles.brandLine}>{data.brand.email}</Text> : null}
-            {data.brand.phone ? <Text style={styles.brandLine}>Tel: {data.brand.phone}</Text> : null}
-          </View>
+        {/* Accent stripe */}
+        <View style={[styles.accent, { backgroundColor: accent }]} fixed />
 
-          <View style={styles.invoiceMeta}>
-            <Text style={styles.invoiceLabel}>Factura de venta</Text>
-            <Text style={styles.invoiceNumber}>{data.invoice_number}</Text>
-            <Text style={styles.metaDate}>
-              <Text style={styles.metaDateLabel}>Fecha de creación: </Text>{fmtDate(data.issued_at)}
-            </Text>
-            {data.sale_date ? (
-              <Text style={styles.metaDate}>
-                <Text style={styles.metaDateLabel}>Fecha de venta: </Text>{fmtDate(data.sale_date)}
-              </Text>
-            ) : null}
+        {/* Header */}
+        <View style={styles.headerWrap}>
+          <View style={styles.headerRow}>
+            <View style={styles.brandCol}>
+              <View style={styles.logoBox}>
+                {logo ? <Image src={logo} style={styles.logo} /> : (
+                  <Text style={{ fontSize: 18, fontWeight: 700, color: accent }}>{data.brand.name}</Text>
+                )}
+              </View>
+              <Text style={styles.brandName}>{(data.brand.legal_name || data.brand.name).toUpperCase()}</Text>
+              {data.brand.tax_id ? <Text style={styles.brandLine}>NIT {data.brand.tax_id}</Text> : null}
+              {data.brand.address ? (
+                <Text style={styles.brandLine}>
+                  {data.brand.address}{data.brand.city ? ` · ${data.brand.city}` : ""}
+                </Text>
+              ) : null}
+              {(data.brand.phone || data.brand.email) ? (
+                <Text style={styles.brandLine}>
+                  {[data.brand.phone, data.brand.email].filter(Boolean).join("  ·  ")}
+                </Text>
+              ) : null}
+              {data.brand.website ? <Text style={styles.brandLine}>{data.brand.website}</Text> : null}
+            </View>
+
+            <View style={styles.metaCol}>
+              <Text style={styles.metaTag}>Factura de venta</Text>
+              <Text style={[styles.invoiceNumber, { color: accent }]}>{data.invoice_number}</Text>
+
+              <View style={styles.metaPair}>
+                <Text style={styles.metaLabel}>Emisión</Text>
+                <Text style={styles.metaValue}>{fmtDate(data.issued_at)}</Text>
+              </View>
+              {data.sale_date ? (
+                <View style={styles.metaPair}>
+                  <Text style={styles.metaLabel}>Venta</Text>
+                  <Text style={styles.metaValue}>{fmtDate(data.sale_date)}</Text>
+                </View>
+              ) : null}
+              <View style={styles.metaPair}>
+                <Text style={styles.metaLabel}>Orden</Text>
+                <Text style={styles.metaValue}>{data.order_number}</Text>
+              </View>
+              <View style={styles.metaPair}>
+                <Text style={styles.metaLabel}>Moneda</Text>
+                <Text style={styles.metaValue}>COP</Text>
+              </View>
+
+              {data.version_number && data.version_number > 1 ? (
+                <Text style={styles.versionPill}>Versión {data.version_number}</Text>
+              ) : null}
+            </View>
           </View>
         </View>
 
-        <View style={styles.divider} />
-
-        {/* Client / seller */}
-        <View style={styles.partyRow}>
-          <View style={styles.partyLeft}>
-            <Text style={styles.partyLine}>
-              <Text style={styles.bold}>Cliente: </Text>{data.customer.name || "—"}
-            </Text>
-            {data.customer.company ? (
-              <Text style={styles.partyLine}>
-                <Text style={styles.bold}>Empresa: </Text>{data.customer.company}
-              </Text>
-            ) : null}
+        {/* Parties */}
+        <View style={styles.partiesWrap}>
+          <View style={styles.partyCard}>
+            <Text style={styles.partyTag}>Facturar a</Text>
+            <Text style={styles.partyName}>{data.customer.name || "—"}</Text>
+            {data.customer.company ? <Text style={styles.partyLine}>{data.customer.company}</Text> : null}
             {data.customer.doc_number ? (
               <Text style={styles.partyLine}>
-                <Text style={styles.bold}>{data.customer.doc_type || "ID"}: </Text>{data.customer.doc_number}
+                {data.customer.doc_type || "ID"}: {data.customer.doc_number}
               </Text>
             ) : null}
-            {data.customer.email ? (
+            {data.customer.address ? (
               <Text style={styles.partyLine}>
-                <Text style={styles.bold}>Email: </Text>{data.customer.email}
+                {data.customer.address}
+                {data.customer.city ? `, ${data.customer.city}` : ""}
+                {data.customer.department ? `, ${data.customer.department}` : ""}
               </Text>
             ) : null}
-            {data.customer.phone ? (
-              <Text style={styles.partyLine}>
-                <Text style={styles.bold}>Tel: </Text>{data.customer.phone}
-              </Text>
-            ) : null}
+            {data.customer.phone ? <Text style={styles.partyLine}>Tel. {data.customer.phone}</Text> : null}
+            {data.customer.email ? <Text style={styles.partyLine}>{data.customer.email}</Text> : null}
           </View>
-          <View style={styles.partyRight}>
+
+          <View style={styles.partyCard}>
+            <Text style={styles.partyTag}>Detalle de pago</Text>
+            <Text style={styles.partyName}>{data.payment_method || "Por definir"}</Text>
             {data.seller_name ? (
-              <Text style={styles.partyLine}>
-                <Text style={styles.bold}>Vendedor: </Text>{data.seller_name}
-              </Text>
+              <Text style={styles.partyLine}>Asesor: {data.seller_name}</Text>
             ) : null}
-            <Text style={styles.partyLine}><Text style={styles.bold}>Moneda: </Text>COP</Text>
-            <Text style={styles.partyLine}><Text style={styles.bold}>Orden: </Text>{data.order_number}</Text>
+            <Text style={styles.partyLine}>Tipo: Factura de venta</Text>
+            <Text style={styles.partyLine}>{data.items.length} producto{data.items.length === 1 ? "" : "s"}</Text>
           </View>
         </View>
 
         {/* Items table */}
-        <View style={styles.th}>
-          <Text style={[styles.thText, styles.cId]}>ID</Text>
-          <Text style={[styles.thText, styles.cItem]}>Ítem</Text>
-          <Text style={[styles.thText, styles.cUnit]}>Unidad</Text>
-          <Text style={[styles.thText, styles.cQty]}>Cant.</Text>
-          <Text style={[styles.thText, styles.cPrice]}>Precio</Text>
-          <Text style={[styles.thText, styles.cDisc]}>Descuento</Text>
-          <Text style={[styles.thText, styles.cTax]}>Impuesto</Text>
-          <Text style={[styles.thText, styles.cSub]}>Subtotal</Text>
-        </View>
+        <View style={styles.tableWrap}>
+          <View style={[styles.th, { borderBottomColor: accent, backgroundColor: SOFT }]}>
+            <Text style={[styles.thText, styles.cIdx, { color: SUB }]}>#</Text>
+            <Text style={[styles.thText, styles.cItem, { color: SUB }]}>Descripción</Text>
+            <Text style={[styles.thText, styles.cQty, { color: SUB }]}>Cant.</Text>
+            <Text style={[styles.thText, styles.cPrice, { color: SUB }]}>Precio</Text>
+            <Text style={[styles.thText, styles.cSub, { color: SUB }]}>Subtotal</Text>
+          </View>
 
-        {data.items.map((it, i) => {
-          const lines = it.description.split(/\n+/);
-          const title = lines[0] || "";
-          const detail = lines.slice(1).join(" ");
-          return (
-            <View key={i} style={styles.row} wrap={false}>
-              <Text style={styles.cId}>{i + 1}</Text>
-              <View style={styles.cItem}>
-                <Text style={styles.itemTitle}>{title}</Text>
-                {detail ? <Text style={styles.itemDesc}>{detail}</Text> : null}
+          {data.items.map((it, i) => {
+            const lines = it.description.split(/\n+/);
+            const title = lines[0] || "";
+            const detail = lines.slice(1).join(" ");
+            return (
+              <View key={i} style={[styles.row, i % 2 === 1 ? styles.rowAlt : null]} wrap={false}>
+                <Text style={styles.cIdx}>{String(i + 1).padStart(2, "0")}</Text>
+                <View style={styles.cItem}>
+                  <Text style={styles.itemTitle}>{title}</Text>
+                  {detail ? <Text style={styles.itemDesc}>{detail}</Text> : null}
+                </View>
+                <Text style={styles.cQty}>{Number(it.quantity)}</Text>
+                <Text style={styles.cPrice}>{fmtCOP(it.unit_price)}</Text>
+                <Text style={styles.cSub}>{fmtCOP(it.line_total)}</Text>
               </View>
-              <Text style={styles.cUnit}>Unidad</Text>
-              <Text style={styles.cQty}>{Number(it.quantity)}</Text>
-              <Text style={styles.cPrice}>{fmtCOP(it.unit_price)}</Text>
-              <Text style={styles.cDisc}></Text>
-              <Text style={styles.cTax}></Text>
-              <Text style={styles.cSub}>{fmtCOP(it.line_total)}</Text>
-            </View>
-          );
-        })}
-
-        {/* Words row */}
-        <View style={styles.wordsRow}>
-          <Text style={{ color: INK }}>{totalWords}</Text>
+            );
+          })}
         </View>
 
-        <Text style={styles.countLine}>
-          <Text style={styles.bold}>Total de líneas: </Text>{data.items.length}
-        </Text>
+        {/* Words bar */}
+        <View style={[styles.wordsRow, { borderLeftColor: accent }]}>
+          <Text style={styles.wordsLabel}>Valor en letras</Text>
+          <Text style={styles.wordsText}>{totalWords}</Text>
+        </View>
 
-        {/* Totals */}
-        <View style={styles.totalsWrap} wrap={false}>
-          <View style={styles.totalsBox}>
+        {/* Notes + Totals */}
+        <View style={styles.bottomRow}>
+          <View style={styles.notesCol}>
+            {data.notes ? (
+              <>
+                <Text style={styles.notesTitle}>Notas</Text>
+                <Text style={styles.notesBody}>{data.notes}</Text>
+              </>
+            ) : null}
+            {data.brand.invoice_footer_note ? (
+              <View style={{ marginTop: 10 }}>
+                <Text style={styles.notesTitle}>Información adicional</Text>
+                <Text style={styles.notesBody}>{data.brand.invoice_footer_note}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.totalsCol}>
             <View style={styles.tRow}>
               <Text style={styles.tLabel}>Subtotal</Text>
               <Text style={styles.tValue}>{fmtCOP(data.subtotal)}</Text>
@@ -309,7 +349,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             {Number(data.discount) > 0 ? (
               <View style={styles.tRow}>
                 <Text style={styles.tLabel}>Descuento</Text>
-                <Text style={styles.tValue}>- {fmtCOP(data.discount)}</Text>
+                <Text style={styles.tValue}>− {fmtCOP(data.discount)}</Text>
               </View>
             ) : null}
             {Number(data.tax) > 0 ? (
@@ -318,49 +358,38 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
                 <Text style={styles.tValue}>+ {fmtCOP(data.tax)}</Text>
               </View>
             ) : null}
-            <View style={styles.tTotalRow}>
-              <Text style={styles.tTotalLabel}>Total</Text>
-              <Text style={styles.tTotalValue}>{fmtCOP(data.total)}</Text>
+            <View style={styles.divider} />
+            <View style={[styles.totalBox, { backgroundColor: accent }]}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>{fmtCOP(data.total)}</Text>
             </View>
             {Number(data.advance) > 0 ? (
               <>
-                <View style={[styles.tRow, { marginTop: 6 }]}>
-                  <Text style={styles.tLabel}>Abono recibido</Text>
-                  <Text style={styles.tValue}>{fmtCOP(data.advance)}</Text>
+                <View style={styles.payRow}>
+                  <Text style={styles.payLabel}>Abono recibido</Text>
+                  <Text style={styles.payValue}>{fmtCOP(data.advance)}</Text>
                 </View>
-                <View style={styles.tRow}>
-                  <Text style={[styles.tLabel, styles.bold]}>Saldo pendiente</Text>
-                  <Text style={styles.bold}>{fmtCOP(data.balance)}</Text>
+                <View style={[styles.payRow, { backgroundColor: "#fff" }]}>
+                  <Text style={[styles.payLabel, { fontWeight: 700, color: INK }]}>Saldo pendiente</Text>
+                  <Text style={[styles.payValue, { color: accent }]}>{fmtCOP(data.balance)}</Text>
                 </View>
               </>
             ) : null}
           </View>
         </View>
 
-        {/* Notes */}
-        {data.notes ? (
-          <View style={styles.notesBox} wrap={false}>
-            <Text style={styles.notesTitle}>NOTAS</Text>
-            <Text style={{ color: "#374151" }}>{data.notes}</Text>
+        {/* Footer */}
+        <View style={styles.footerBlock} fixed>
+          <View style={styles.footerTop}>
+            <Text style={styles.footerMeta}>
+              {data.brand.legal_name || data.brand.name} · Factura {data.invoice_number}
+              {data.version_number && data.version_number > 1 ? ` · v${data.version_number}` : ""}
+            </Text>
+            <Text style={styles.footerMeta} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
           </View>
-        ) : null}
-
-        {/* Payment meta */}
-        <View style={styles.metaBlock} fixed>
-          <Text style={styles.metaItem}>
-            <Text style={styles.metaItemLabel}>Forma de pago: </Text>{data.payment_method || "—"}
+          <Text style={styles.footerNote}>
+            Gracias por su compra. Documento generado electrónicamente el {new Date(data.issued_at).toLocaleString("es-CO")}.
           </Text>
-          <Text style={styles.metaItem}>
-            <Text style={styles.metaItemLabel}>Tipo de factura: </Text>Factura de venta
-          </Text>
-          <Text style={styles.metaItem}>
-            <Text style={styles.metaItemLabel}>Generado: </Text>{new Date(data.issued_at).toLocaleString("es-CO")}
-          </Text>
-        </View>
-
-        <View style={styles.footer} fixed>
-          <Text>{data.brand.legal_name || data.brand.name} · Factura {data.invoice_number}</Text>
-          <Text render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
         </View>
       </Page>
     </Document>
