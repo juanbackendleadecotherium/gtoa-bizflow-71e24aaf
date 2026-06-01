@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -317,99 +318,31 @@ function OrderDetail() {
                 onPendingImagesChange={setEditPendingImages}
               />
             ) : (
-              <>
-                {/* Desktop: tabla */}
-                <table className="hidden md:table w-full text-sm table-fixed">
-                  <colgroup>
-                    <col />
-                    <col className="w-16" />
-                    <col className="w-32" />
-                    <col className="w-32" />
-                  </colgroup>
-                  <thead className="text-xs uppercase tracking-wider text-muted-foreground">
-                    <tr>
-                      <th className="text-left py-2">Descripción</th>
-                      <th className="text-right py-2">Cant.</th>
-                      <th className="text-right py-2">Precio</th>
-                      <th className="text-right py-2">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((it) => {
-                      const imgs: string[] = Array.isArray(it.images) ? it.images : [];
-                      return (
-                        <tr key={it.id} className="border-t border-border align-top">
-                          <td className="py-2 pr-3 break-words whitespace-pre-wrap">
-                            <p>{it.description}</p>
-                            {imgs.length > 0 && (
-                              <div className="mt-2 flex gap-1.5 flex-wrap">
-                                {imgs.map((u) => (
-                                  <a key={u} href={u} target="_blank" rel="noreferrer" className="block h-14 w-14 rounded border border-border overflow-hidden bg-muted hover:border-accent/60">
-                                    <img src={u} alt="" className="h-full w-full object-cover" />
-                                  </a>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-2 text-right tabular-nums">{Number(it.quantity)}</td>
-                          <td className="py-2 text-right tabular-nums">{formatMoney(it.unit_price)}</td>
-                          <td className="py-2 text-right tabular-nums">{formatMoney(it.line_total)}</td>
-                        </tr>
-                      );
-                    })}
+              <div className="space-y-3">
+                {items.map((it, idx) => {
+                  const imgs: string[] = Array.isArray(it.images) ? it.images : [];
+                  return (
+                    <OrderItemReadCard
+                      key={it.id}
+                      index={idx}
+                      description={it.description ?? ""}
+                      quantity={Number(it.quantity)}
+                      unitPrice={Number(it.unit_price)}
+                      lineTotal={Number(it.line_total)}
+                      images={imgs}
+                    />
+                  );
+                })}
 
-                  </tbody>
-                  <tfoot>
-                    <Row label="Subtotal" value={formatMoney(o.subtotal)} />
-                    <Row label="Descuento" value={`- ${formatMoney(o.discount)}`} />
-                    <Row label="Impuesto" value={`+ ${formatMoney(o.tax)}`} />
-                    <Row label="Total" value={formatMoney(o.total)} bold />
-                  </tfoot>
-                </table>
-
-                {/* Mobile: tarjetas */}
-                <div className="md:hidden space-y-3">
-                  {items.map((it) => {
-                    const imgs: string[] = Array.isArray(it.images) ? it.images : [];
-                    return (
-                      <div key={it.id} className="rounded-lg border border-border p-3">
-                        <p className="text-sm font-medium break-words whitespace-pre-wrap mb-2">{it.description}</p>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div>
-                            <p className="text-muted-foreground uppercase tracking-wider">Cant.</p>
-                            <p className="tabular-nums font-medium mt-0.5">{Number(it.quantity)}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-muted-foreground uppercase tracking-wider">Precio</p>
-                            <p className="tabular-nums font-medium mt-0.5">{formatMoney(it.unit_price)}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-muted-foreground uppercase tracking-wider">Total</p>
-                            <p className="tabular-nums font-semibold mt-0.5">{formatMoney(it.line_total)}</p>
-                          </div>
-                        </div>
-                        {imgs.length > 0 && (
-                          <div className="mt-2 flex gap-1.5 flex-wrap">
-                            {imgs.map((u) => (
-                              <a key={u} href={u} target="_blank" rel="noreferrer" className="block h-14 w-14 rounded border border-border overflow-hidden bg-muted">
-                                <img src={u} alt="" className="h-full w-full object-cover" />
-                              </a>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  <div className="rounded-lg border border-border p-3 space-y-1.5 text-sm">
-                    <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span className="tabular-nums">{formatMoney(o.subtotal)}</span></div>
-                    <div className="flex justify-between text-muted-foreground"><span>Descuento</span><span className="tabular-nums">- {formatMoney(o.discount)}</span></div>
-                    <div className="flex justify-between text-muted-foreground"><span>Impuesto</span><span className="tabular-nums">+ {formatMoney(o.tax)}</span></div>
-                    <div className="flex justify-between pt-1.5 border-t border-border font-semibold"><span>Total</span><span className="tabular-nums">{formatMoney(o.total)}</span></div>
-                  </div>
+                <div className="rounded-lg border border-border p-3 space-y-1.5 text-sm bg-background/40">
+                  <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span className="tabular-nums">{formatMoney(o.subtotal)}</span></div>
+                  <div className="flex justify-between text-muted-foreground"><span>Descuento</span><span className="tabular-nums">- {formatMoney(o.discount)}</span></div>
+                  <div className="flex justify-between text-muted-foreground"><span>Impuesto</span><span className="tabular-nums">+ {formatMoney(o.tax)}</span></div>
+                  <div className="flex justify-between pt-1.5 border-t border-border font-semibold"><span>Total</span><span className="tabular-nums">{formatMoney(o.total)}</span></div>
                 </div>
-              </>
+              </div>
             )}
+
 
             {editing && (() => {
               const liveSubtotal = editItems.reduce(
@@ -630,11 +563,109 @@ function OrderDetail() {
 }
 
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function OrderItemReadCard({
+  index,
+  description,
+  quantity,
+  unitPrice,
+  lineTotal,
+  images,
+}: {
+  index: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  images: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const isEmpty = !description.trim();
+  const lineCount = description.split("\n").filter((l) => l.trim()).length;
+  const firstLine = description.split("\n").find((l) => l.trim()) ?? "";
+
   return (
-    <tr className={bold ? "border-t border-border" : ""}>
-      <td colSpan={3} className={`py-1.5 text-right text-xs uppercase tracking-wider text-muted-foreground ${bold ? "pt-3" : ""}`}>{label}</td>
-      <td className={`py-1.5 text-right tabular-nums ${bold ? "font-display text-lg font-semibold pt-3" : ""}`}>{value}</td>
-    </tr>
+    <div className="rounded-lg border border-border bg-background/40 p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          Producto #{index + 1}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group w-full text-left rounded-md border border-border bg-background/60 hover:border-accent/50 hover:bg-accent/[0.03] transition-colors p-3 space-y-1"
+      >
+        {isEmpty ? (
+          <p className="text-sm text-muted-foreground italic">Sin descripción</p>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-foreground line-clamp-1">
+                {firstLine || "Producto"}
+              </p>
+              <Pencil className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5 group-hover:text-accent transition-colors" />
+            </div>
+            <p className="text-xs text-muted-foreground whitespace-pre-line line-clamp-3 leading-snug">
+              {description}
+            </p>
+            <div className="flex items-center gap-2 pt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+              <span>
+                {lineCount} línea{lineCount === 1 ? "" : "s"}
+              </span>
+              <span>·</span>
+              <span className="text-accent group-hover:underline">Ver descripción completa</span>
+            </div>
+          </>
+        )}
+      </button>
+
+      <div className="grid grid-cols-3 gap-3 text-xs">
+        <div>
+          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Cant.</p>
+          <p className="tabular-nums font-medium text-sm mt-0.5">{quantity}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Precio</p>
+          <p className="tabular-nums font-medium text-sm mt-0.5">{formatMoney(unitPrice)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Total</p>
+          <p className="tabular-nums font-semibold text-sm mt-0.5">{formatMoney(lineTotal)}</p>
+        </div>
+      </div>
+
+      {images.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+            Imágenes de referencia
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {images.map((u) => (
+              <a
+                key={u}
+                href={u}
+                target="_blank"
+                rel="noreferrer"
+                className="aspect-square rounded-md border border-border overflow-hidden bg-muted/40 hover:border-accent/60 transition-colors"
+              >
+                <img src={u} alt="" className="w-full h-full object-contain" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Descripción del producto #{index + 1}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto rounded-md border border-border bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed">
+            {description || "Sin descripción"}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
