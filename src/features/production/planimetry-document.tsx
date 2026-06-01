@@ -28,222 +28,277 @@ export type PlanimetryDocumentData = {
   items: PlanimetryItem[];
 };
 
-const INK = "#0f172a";
-const SUB = "#475569";
-const MUTED = "#94a3b8";
-const LINE = "#e2e8f0";
-const SOFT = "#f8fafc";
+// Palette — neutral warm grays with a single accent
+const INK = "#1a1a1a";
+const SUB = "#3d3d3d";
+const MUTED = "#6b6b6b";
+const CARD = "#c9c7c2";       // warm gray card (like reference)
+const CARD_SOFT = "#d8d6d1";  // softer inner area
+const PAPER = "#ebe9e4";      // page background
+const LINE = "#9a9893";
+const ACCENT_DEFAULT = "#e8542a"; // warm orange highlight
 
 const styles = StyleSheet.create({
-  page: { paddingTop: 0, paddingBottom: 60, paddingHorizontal: 0, fontSize: 10, color: INK, fontFamily: "Helvetica" },
-  accent: { height: 6, width: "100%" },
-
-  headerWrap: { paddingHorizontal: 36, paddingTop: 24, paddingBottom: 14 },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  brandCol: { maxWidth: "60%" },
-  logoBox: { width: 130, height: 50, marginBottom: 8, justifyContent: "center" },
-  logo: { maxWidth: 130, maxHeight: 48, objectFit: "contain" },
-  brandName: { fontSize: 10, fontWeight: 700, letterSpacing: 0.4, color: INK },
-
-  metaCol: { alignItems: "flex-end" },
-  metaTag: { fontSize: 8, color: MUTED, letterSpacing: 1.5, fontWeight: 700, textTransform: "uppercase" },
-  factTag: { fontSize: 8, color: MUTED, letterSpacing: 1.2, fontWeight: 700, marginTop: 8, textTransform: "uppercase" },
-  factNumber: { fontSize: 22, fontWeight: 700, color: INK, lineHeight: 1 },
-  prodCode: { fontSize: 10, color: SUB, marginTop: 2, fontFamily: "Helvetica" },
-
-  title: {
-    marginHorizontal: 36, marginTop: 4, marginBottom: 12,
-    fontSize: 16, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase",
+  page: {
+    paddingTop: 18, paddingBottom: 36, paddingHorizontal: 18,
+    fontSize: 10, color: INK, fontFamily: "Helvetica",
+    backgroundColor: PAPER,
   },
 
-  infoCard: {
-    marginHorizontal: 36, padding: 12, borderRadius: 6, borderWidth: 0.5,
-    borderColor: LINE, backgroundColor: SOFT, marginBottom: 14,
+  // === HEADER CARD ===========================================================
+  headerCard: {
+    backgroundColor: CARD, borderRadius: 16, padding: 18,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
+    marginBottom: 12,
   },
-  infoGrid: { flexDirection: "row", flexWrap: "wrap" },
-  infoCell: { width: "33.333%", paddingVertical: 4, paddingRight: 8 },
-  infoLabel: { fontSize: 7.5, color: MUTED, letterSpacing: 1, fontWeight: 700, textTransform: "uppercase", marginBottom: 2 },
-  infoValue: { fontSize: 10, color: INK, fontWeight: 700 },
+  headerLeft: { flex: 1, paddingRight: 12 },
+  headerTitle: {
+    fontSize: 13, fontWeight: 700, fontStyle: "italic",
+    letterSpacing: 0.6, color: INK, marginBottom: 10,
+  },
+  headerMetaRow: { flexDirection: "row", marginBottom: 4 },
+  headerMetaLabel: { fontSize: 11, fontStyle: "italic", color: INK, width: 78 },
+  headerMetaValue: { fontSize: 11, fontWeight: 700, color: INK },
 
-  itemBlock: { marginHorizontal: 36, marginBottom: 14, borderWidth: 0.5, borderColor: LINE, borderRadius: 6 },
-  itemHeader: {
+  headerRight: { alignItems: "flex-end", minWidth: 140 },
+  factLabel: { fontSize: 11, fontStyle: "italic", color: INK },
+  factNumber: { fontSize: 36, fontWeight: 700, color: INK, lineHeight: 1, marginTop: 2 },
+  prodCode: { fontSize: 8, color: MUTED, marginTop: 4, letterSpacing: 0.8 },
+
+  // === HERO / ITEM CARD ======================================================
+  itemCard: {
+    backgroundColor: CARD, borderRadius: 16, padding: 14,
+    marginBottom: 12,
+  },
+  itemTopRow: { flexDirection: "row", gap: 14 },
+
+  // Left: BIG hero image + product label
+  heroCol: { width: "44%" },
+  heroImageBox: {
+    width: "100%", height: 280, borderRadius: 10, overflow: "hidden",
+    backgroundColor: CARD_SOFT, borderWidth: 0.5, borderColor: LINE,
+  },
+  heroImage: { width: "100%", height: "100%", objectFit: "cover" },
+  heroNoImage: {
+    width: "100%", height: 280, borderRadius: 10, borderWidth: 1, borderStyle: "dashed",
+    borderColor: LINE, justifyContent: "center", alignItems: "center",
+  },
+  heroNoImageText: { fontSize: 9, color: MUTED, fontStyle: "italic" },
+  heroProductName: {
+    fontSize: 18, fontWeight: 700, fontStyle: "italic",
+    color: INK, marginTop: 10,
+  },
+  heroProductCaption: { fontSize: 10, fontStyle: "italic", color: SUB, marginTop: 2 },
+
+  // Right: specs (description)
+  specsCol: { flex: 1, paddingTop: 2 },
+  deliveryStrip: {
+    flexDirection: "row", justifyContent: "flex-end", alignItems: "baseline",
+    marginBottom: 10, gap: 8,
+  },
+  deliveryLabel: { fontSize: 11, fontWeight: 700, fontStyle: "italic", color: INK },
+  deliveryValue: {
+    fontSize: 13, fontWeight: 700, fontStyle: "italic",
+    paddingHorizontal: 6, paddingVertical: 1,
+  },
+  qtyBadge: {
+    alignSelf: "flex-start", marginBottom: 8,
+    backgroundColor: "#1a1a1a", color: "#ffffff",
+    fontSize: 9, fontWeight: 700, letterSpacing: 1,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+  },
+  specsBody: { fontSize: 10.5, color: INK, lineHeight: 1.55 },
+
+  // === SECONDARY IMAGES CARD =================================================
+  refCard: {
+    backgroundColor: CARD, borderRadius: 16, padding: 14, marginBottom: 12,
+  },
+  refTitle: {
+    fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
+    color: SUB, marginBottom: 8,
+  },
+  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
+  refCell: { width: "33.333%", paddingHorizontal: 4, paddingBottom: 8 },
+  refImageBox: {
+    width: "100%", height: 150, borderRadius: 8, overflow: "hidden",
+    backgroundColor: CARD_SOFT, borderWidth: 0.5, borderColor: LINE,
+  },
+  refImage: { width: "100%", height: "100%", objectFit: "cover" },
+  refCaption: { fontSize: 8, color: MUTED, marginTop: 3, textAlign: "center", fontStyle: "italic" },
+
+  // === NOTES =================================================================
+  notesCard: {
+    backgroundColor: CARD, borderRadius: 16, padding: 14, marginBottom: 12,
+  },
+  notesLabel: {
+    fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
+    color: SUB, marginBottom: 6,
+  },
+  notesBody: { fontSize: 10.5, color: INK, lineHeight: 1.5 },
+
+  // === FOOTER ================================================================
+  footer: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: LINE,
-    backgroundColor: SOFT, borderTopLeftRadius: 6, borderTopRightRadius: 6,
+    paddingHorizontal: 18, paddingTop: 8,
+    position: "absolute", bottom: 14, left: 0, right: 0,
   },
-  itemIdx: { fontSize: 8, color: MUTED, letterSpacing: 1, fontWeight: 700 },
-  itemQty: {
-    fontSize: 9, fontWeight: 700, color: INK,
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 0.5, borderColor: LINE,
-    backgroundColor: "#ffffff",
-  },
-  itemBody: { padding: 12 },
-  itemTitle: { fontSize: 12, fontWeight: 700, color: INK, marginBottom: 4 },
-  itemDesc: { fontSize: 9.5, color: SUB, lineHeight: 1.5 },
-
-  imageGrid: { flexDirection: "row", flexWrap: "wrap", marginTop: 10, marginHorizontal: -3 },
-  imageCell: { width: "33.333%", padding: 3 },
-  imageBox: {
-    width: "100%", height: 130, borderRadius: 4, borderWidth: 0.5, borderColor: LINE,
-    backgroundColor: "#ffffff", overflow: "hidden",
-  },
-  imageEl: { width: "100%", height: "100%", objectFit: "cover" },
-  imageCaption: { fontSize: 7.5, color: MUTED, marginTop: 3, textAlign: "center" },
-  noImages: {
-    marginTop: 8, paddingVertical: 14, borderRadius: 4, borderWidth: 0.5, borderStyle: "dashed",
-    borderColor: LINE, textAlign: "center", fontSize: 8.5, color: MUTED,
-  },
-
-  notesBlock: {
-    marginHorizontal: 36, marginTop: 4, padding: 12, borderRadius: 6,
-    borderLeftWidth: 3, backgroundColor: SOFT,
-  },
-  notesLabel: { fontSize: 7.5, color: MUTED, letterSpacing: 1.2, fontWeight: 700, textTransform: "uppercase", marginBottom: 4 },
-  notesBody: { fontSize: 10, color: INK, lineHeight: 1.5 },
-
-  footerBlock: {
-    position: "absolute", bottom: 24, left: 36, right: 36,
-    paddingTop: 6, borderTopWidth: 0.5, borderTopColor: LINE,
-    flexDirection: "row", justifyContent: "space-between",
-  },
-  footerText: { fontSize: 8, color: SUB },
+  logoBox: { width: 90, height: 32, justifyContent: "center" },
+  logo: { maxWidth: 90, maxHeight: 32, objectFit: "contain" },
+  footerBrand: { fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: INK },
+  footerText: { fontSize: 8, color: MUTED },
 });
 
 const fmtDate = (s?: string | null) => {
   if (!s) return "—";
   try {
-    return new Date(s).toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" });
+    return new Date(s).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
+  } catch { return s; }
+};
+const fmtDateLong = (s?: string | null) => {
+  if (!s) return null;
+  try {
+    return new Date(s).toLocaleDateString("es-CO", { day: "2-digit", month: "long" });
   } catch { return s; }
 };
 
 export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
   const logo = getBrandLogo(data.brand.slug, data.brand.logo_url);
   const accent = (data.brand.primary_color && /^#[0-9a-f]{3,8}$/i.test(data.brand.primary_color))
-    ? data.brand.primary_color : "#0f172a";
+    ? data.brand.primary_color : ACCENT_DEFAULT;
+  const deliveryLong = fmtDateLong(data.estimated_delivery_date);
+  const factNumber = data.invoice_number || data.order_number;
 
   return (
     <Document title={`Planimetría ${data.production_code}`}>
-      <Page size="LETTER" style={styles.page}>
-        <View style={[styles.accent, { backgroundColor: accent }]} fixed />
+      {data.items.map((it, idx) => {
+        const lines = it.description.split(/\n+/).filter(Boolean);
+        const title = lines[0] || `Producto ${idx + 1}`;
+        const body = lines.slice(1).join("\n");
+        const hero = it.images[0];
+        const rest = it.images.slice(1);
 
-        {/* Header */}
-        <View style={styles.headerWrap}>
-          <View style={styles.headerRow}>
-            <View style={styles.brandCol}>
-              <View style={styles.logoBox}>
-                {logo ? (
-                  <Image src={logo} style={styles.logo} />
-                ) : (
-                  <Text style={{ fontSize: 16, fontWeight: 700, color: accent }}>{data.brand.name}</Text>
-                )}
-              </View>
-              <Text style={styles.brandName}>{(data.brand.legal_name || data.brand.name).toUpperCase()}</Text>
-            </View>
-            <View style={styles.metaCol}>
-              <Text style={styles.metaTag}>Orden de producción</Text>
-              <Text style={styles.prodCode}>{data.production_code}</Text>
-              {data.invoice_number ? (
-                <>
-                  <Text style={styles.factTag}>Nro Factura</Text>
-                  <Text style={[styles.factNumber, { color: accent }]}>{data.invoice_number}</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.factTag}>Pedido</Text>
-                  <Text style={[styles.factNumber, { color: accent }]}>{data.order_number}</Text>
-                </>
-              )}
-            </View>
-          </View>
-        </View>
-
-        <Text style={[styles.title, { color: accent }]}>Ficha técnica de producción</Text>
-
-        {/* Info card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoGrid}>
-            <View style={styles.infoCell}>
-              <Text style={styles.infoLabel}>Cliente</Text>
-              <Text style={styles.infoValue}>{data.customer_name}</Text>
-            </View>
-            <View style={styles.infoCell}>
-              <Text style={styles.infoLabel}>Fecha</Text>
-              <Text style={styles.infoValue}>{fmtDate(data.sale_date ?? new Date().toISOString())}</Text>
-            </View>
-            <View style={styles.infoCell}>
-              <Text style={styles.infoLabel}>Comercial</Text>
-              <Text style={styles.infoValue}>{data.seller_name || "—"}</Text>
-            </View>
-            {data.customer_phone ? (
-              <View style={styles.infoCell}>
-                <Text style={styles.infoLabel}>Teléfono</Text>
-                <Text style={styles.infoValue}>{data.customer_phone}</Text>
-              </View>
-            ) : null}
-            {data.customer_city ? (
-              <View style={styles.infoCell}>
-                <Text style={styles.infoLabel}>Ciudad</Text>
-                <Text style={styles.infoValue}>{data.customer_city}</Text>
-              </View>
-            ) : null}
-            {data.estimated_delivery_date ? (
-              <View style={styles.infoCell}>
-                <Text style={styles.infoLabel}>Fecha de entrega</Text>
-                <Text style={[styles.infoValue, { color: accent }]}>{fmtDate(data.estimated_delivery_date)}</Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        {/* Items */}
-        {data.items.map((it, i) => {
-          const lines = it.description.split(/\n+/);
-          const title = lines[0] || `Producto ${i + 1}`;
-          const detail = lines.slice(1).join("\n");
-          return (
-            <View key={i} style={styles.itemBlock} wrap={true}>
-              <View style={styles.itemHeader}>
-                <Text style={styles.itemIdx}>PRODUCTO {String(i + 1).padStart(2, "0")}</Text>
-                <Text style={styles.itemQty}>Cantidad · {Number(it.quantity)}</Text>
-              </View>
-              <View style={styles.itemBody}>
-                <Text style={styles.itemTitle}>{title}</Text>
-                {detail ? <Text style={styles.itemDesc}>{detail}</Text> : null}
-
-                {it.images.length > 0 ? (
-                  <View style={styles.imageGrid}>
-                    {it.images.map((url, idx) => (
-                      <View key={idx} style={styles.imageCell} wrap={false}>
-                        <View style={styles.imageBox}>
-                          <Image src={url} style={styles.imageEl} />
-                        </View>
-                        <Text style={styles.imageCaption}>Referencia {idx + 1}</Text>
-                      </View>
-                    ))}
+        return (
+          <Page key={idx} size="LETTER" style={styles.page}>
+            {/* HEADER CARD — kept from previous design (logo & invoice) */}
+            <View style={styles.headerCard}>
+              <View style={styles.headerLeft}>
+                <Text style={styles.headerTitle}>FICHA TÉCNICA DE PRODUCCIÓN</Text>
+                <View style={styles.headerMetaRow}>
+                  <Text style={styles.headerMetaLabel}>Cliente:</Text>
+                  <Text style={styles.headerMetaValue}>{data.customer_name}</Text>
+                </View>
+                <View style={styles.headerMetaRow}>
+                  <Text style={styles.headerMetaLabel}>Fecha:</Text>
+                  <Text style={styles.headerMetaValue}>{fmtDate(data.sale_date ?? new Date().toISOString())}</Text>
+                </View>
+                {data.seller_name ? (
+                  <View style={styles.headerMetaRow}>
+                    <Text style={styles.headerMetaLabel}>Comercial:</Text>
+                    <Text style={styles.headerMetaValue}>{data.seller_name}</Text>
                   </View>
-                ) : (
-                  <Text style={styles.noImages}>Sin imágenes de referencia adjuntas</Text>
+                ) : null}
+                {data.customer_city ? (
+                  <View style={styles.headerMetaRow}>
+                    <Text style={styles.headerMetaLabel}>Ciudad:</Text>
+                    <Text style={styles.headerMetaValue}>{data.customer_city}</Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.headerRight}>
+                <Text style={styles.factLabel}>
+                  {data.invoice_number ? "Nro Fact:" : "Pedido:"}
+                </Text>
+                <Text style={styles.factNumber}>{factNumber}</Text>
+                <Text style={styles.prodCode}>{data.production_code}</Text>
+                {data.items.length > 1 && (
+                  <Text style={[styles.prodCode, { marginTop: 2 }]}>
+                    {idx + 1} / {data.items.length}
+                  </Text>
                 )}
               </View>
             </View>
-          );
-        })}
 
-        {/* Notes */}
-        {data.notes ? (
-          <View style={[styles.notesBlock, { borderLeftColor: accent }]}>
-            <Text style={styles.notesLabel}>Notas de la venta</Text>
-            <Text style={styles.notesBody}>{data.notes}</Text>
-          </View>
-        ) : null}
+            {/* MAIN ITEM CARD — hero image left, specs right */}
+            <View style={styles.itemCard}>
+              {deliveryLong ? (
+                <View style={styles.deliveryStrip}>
+                  <Text style={styles.deliveryLabel}>Fecha de entrega:</Text>
+                  <Text style={[styles.deliveryValue, { color: accent }]}>{deliveryLong}</Text>
+                </View>
+              ) : null}
 
-        <View style={styles.footerBlock} fixed>
-          <Text style={styles.footerText}>
-            {data.brand.legal_name || data.brand.name} · Planimetría {data.production_code}
-          </Text>
-          <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
-        </View>
-      </Page>
+              <View style={styles.itemTopRow}>
+                <View style={styles.heroCol}>
+                  {hero ? (
+                    <View style={styles.heroImageBox}>
+                      <Image src={hero} style={styles.heroImage} />
+                    </View>
+                  ) : (
+                    <View style={styles.heroNoImage}>
+                      <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
+                    </View>
+                  )}
+                  <Text style={styles.heroProductName}>{title}</Text>
+                  <Text style={styles.heroProductCaption}>Imágen de referencia</Text>
+                </View>
+
+                <View style={styles.specsCol}>
+                  <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
+                  {body ? (
+                    <Text style={styles.specsBody}>{body}</Text>
+                  ) : (
+                    <Text style={[styles.specsBody, { color: MUTED, fontStyle: "italic" }]}>
+                      Sin especificaciones adicionales.
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {/* ADDITIONAL REFERENCES — larger thumbnails */}
+            {rest.length > 0 ? (
+              <View style={styles.refCard} wrap={false}>
+                <Text style={styles.refTitle}>Referencias adicionales</Text>
+                <View style={styles.refGrid}>
+                  {rest.map((url, i) => (
+                    <View key={i} style={styles.refCell}>
+                      <View style={styles.refImageBox}>
+                        <Image src={url} style={styles.refImage} />
+                      </View>
+                      <Text style={styles.refCaption}>Referencia {i + 2}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {/* NOTES — only on last page */}
+            {data.notes && idx === data.items.length - 1 ? (
+              <View style={styles.notesCard} wrap={false}>
+                <Text style={styles.notesLabel}>Notas de la venta</Text>
+                <Text style={styles.notesBody}>{data.notes}</Text>
+              </View>
+            ) : null}
+
+            {/* FOOTER — logo left, page number right */}
+            <View style={styles.footer} fixed>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {logo ? (
+                  <View style={styles.logoBox}>
+                    <Image src={logo} style={styles.logo} />
+                  </View>
+                ) : null}
+                <Text style={styles.footerBrand}>
+                  {(data.brand.legal_name || data.brand.name).toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.footerText}
+                render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
+            </View>
+          </Page>
+        );
+      })}
     </Document>
   );
 }
