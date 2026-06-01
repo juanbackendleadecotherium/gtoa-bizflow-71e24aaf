@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { useBrand } from "@/features/brands/brand-context";
 import { PaymentDialog } from "./payment-dialog";
+import { formatDepositAccount } from "./deposit-accounts";
 
 type Payment = {
   id: string;
@@ -18,6 +19,7 @@ type Payment = {
   note: string | null;
   proof_url: string | null;
   created_by_email: string | null;
+  deposit_account: string | null;
 };
 
 export function PaymentsPanel({
