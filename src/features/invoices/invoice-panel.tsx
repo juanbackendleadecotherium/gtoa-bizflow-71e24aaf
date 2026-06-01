@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { InvoiceDocument, type InvoiceDocumentData } from "./invoice-document";
+import type { InvoiceDocumentData } from "./invoice-document";
 import { formatMoney } from "@/features/orders/order-items-editor";
 
 type Order = {
