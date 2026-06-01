@@ -5,6 +5,7 @@ import { TrendingUp, Wallet, Receipt, AlertCircle, Loader2 } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { formatMoney } from "@/features/orders/order-items-editor";
+import { formatDepositAccount } from "@/features/finance/deposit-accounts";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
