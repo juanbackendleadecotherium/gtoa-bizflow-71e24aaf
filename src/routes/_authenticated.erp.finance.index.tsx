@@ -150,6 +150,35 @@ function FinanceDashboard() {
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-5">
+        <p className="text-sm font-medium mb-1">Recaudado por cuenta</p>
+        <p className="text-xs text-muted-foreground mb-3">Suma de abonos iniciales y pagos del mes seleccionado.</p>
+        {(accountsQuery.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin movimientos registrados este mes.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {(accountsQuery.data ?? []).map((r) => {
+              const totalAccounts = (accountsQuery.data ?? []).reduce((s, x) => s + x.total, 0);
+              const pct = totalAccounts > 0 ? Math.round((r.total / totalAccounts) * 100) : 0;
+              const isUnassigned = r.account === "__sin_asignar__";
+              return (
+                <li key={r.account} className="flex items-center justify-between py-2 text-sm">
+                  <span className={isUnassigned ? "text-amber-700 dark:text-amber-400" : ""}>
+                    {isUnassigned ? "⚠ Sin cuenta asignada" : formatDepositAccount(r.account)}
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-[11px] text-muted-foreground tabular-nums">{pct}%</span>
+                    <span className="tabular-nums font-medium">{formatMoney(r.total)}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+
+
+      <div className="rounded-xl border border-border bg-surface p-5">
         <p className="text-sm font-medium mb-3">Ventas del mes</p>
         {monthRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin ventas registradas este mes.</p>
