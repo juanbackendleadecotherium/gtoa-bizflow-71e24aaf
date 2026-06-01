@@ -928,7 +928,7 @@ export function NewCustomerDialog({
                   <Loader2 className="h-4 w-4 animate-spin" /> Creando…
                 </>
               ) : (
-                <>Crear cliente + pedido</>
+                <>Crear cliente + venta</>
               )}
             </Button>
           </div>

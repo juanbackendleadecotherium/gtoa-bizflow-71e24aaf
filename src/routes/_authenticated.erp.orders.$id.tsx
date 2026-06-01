@@ -230,7 +230,7 @@ function OrderDetail() {
   return (
     <>
       <Link to="/erp/orders" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-4">
-        <ArrowLeft className="h-3 w-3" /> Pedidos
+        <ArrowLeft className="h-3 w-3" /> Ventas
       </Link>
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 gap-4">
@@ -251,8 +251,8 @@ function OrderDetail() {
                 <Pencil className="h-4 w-4" /> Editar
               </Button>
               <Button variant="outline" size="icon" className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                onClick={() => { if (confirm("¿Eliminar este pedido?")) deleteMutation.mutate(); }}
-                aria-label="Eliminar pedido">
+                onClick={() => { if (confirm("¿Eliminar esta venta?")) deleteMutation.mutate(); }}
+                aria-label="Eliminar venta">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </>
