@@ -16,40 +16,58 @@ export type Database = {
     Tables: {
       brands: {
         Row: {
+          address: string | null
+          city: string | null
           created_at: string
+          email: string | null
           id: string
+          invoice_footer_note: string | null
           is_active: boolean
           legal_name: string | null
           logo_url: string | null
           name: string
+          phone: string | null
           primary_color: string
           slug: string
           tax_id: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          address?: string | null
+          city?: string | null
           created_at?: string
+          email?: string | null
           id?: string
+          invoice_footer_note?: string | null
           is_active?: boolean
           legal_name?: string | null
           logo_url?: string | null
           name: string
+          phone?: string | null
           primary_color?: string
           slug: string
           tax_id?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          address?: string | null
+          city?: string | null
           created_at?: string
+          email?: string | null
           id?: string
+          invoice_footer_note?: string | null
           is_active?: boolean
           legal_name?: string | null
           logo_url?: string | null
           name?: string
+          phone?: string | null
           primary_color?: string
           slug?: string
           tax_id?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -123,6 +141,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      invoices: {
+        Row: {
+          advance_snapshot: number
+          balance_snapshot: number
+          brand_id: string
+          brand_snapshot: Json
+          created_at: string
+          customer_snapshot: Json
+          discount_snapshot: number
+          id: string
+          invoice_number: string
+          issued_at: string
+          issued_by: string | null
+          issued_by_email: string | null
+          items_snapshot: Json
+          order_id: string
+          pdf_path: string | null
+          send_count: number
+          sent_at: string | null
+          sent_to: string | null
+          subtotal_snapshot: number
+          tax_snapshot: number
+          terms_snapshot_html: string | null
+          terms_version_id: string | null
+          total_snapshot: number
+        }
+        Insert: {
+          advance_snapshot?: number
+          balance_snapshot?: number
+          brand_id: string
+          brand_snapshot?: Json
+          created_at?: string
+          customer_snapshot?: Json
+          discount_snapshot?: number
+          id?: string
+          invoice_number: string
+          issued_at?: string
+          issued_by?: string | null
+          issued_by_email?: string | null
+          items_snapshot?: Json
+          order_id: string
+          pdf_path?: string | null
+          send_count?: number
+          sent_at?: string | null
+          sent_to?: string | null
+          subtotal_snapshot?: number
+          tax_snapshot?: number
+          terms_snapshot_html?: string | null
+          terms_version_id?: string | null
+          total_snapshot?: number
+        }
+        Update: {
+          advance_snapshot?: number
+          balance_snapshot?: number
+          brand_id?: string
+          brand_snapshot?: Json
+          created_at?: string
+          customer_snapshot?: Json
+          discount_snapshot?: number
+          id?: string
+          invoice_number?: string
+          issued_at?: string
+          issued_by?: string | null
+          issued_by_email?: string | null
+          items_snapshot?: Json
+          order_id?: string
+          pdf_path?: string | null
+          send_count?: number
+          sent_at?: string | null
+          sent_to?: string | null
+          subtotal_snapshot?: number
+          tax_snapshot?: number
+          terms_snapshot_html?: string | null
+          terms_version_id?: string | null
+          total_snapshot?: number
+        }
+        Relationships: []
       }
       order_audit_log: {
         Row: {
@@ -483,6 +579,36 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      terms_versions: {
+        Row: {
+          content_html: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          title: string
+          version: number
+        }
+        Insert: {
+          content_html: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          version: number
+        }
+        Update: {
+          content_html?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          version?: number
         }
         Relationships: []
       }

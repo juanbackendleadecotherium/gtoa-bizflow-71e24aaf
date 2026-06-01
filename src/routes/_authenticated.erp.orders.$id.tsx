@@ -17,6 +17,8 @@ import { OrderItemsEditor, formatMoney } from "@/features/orders/order-items-edi
 import { AmountOrPercentInput } from "@/features/orders/amount-percent-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
 import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
+import { InvoicePanel } from "@/features/invoices/invoice-panel";
+import { PaymentBadge } from "@/features/invoices/invoice-badges";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -526,6 +528,10 @@ function OrderDetail() {
               </div>
             )}
           </div>
+
+          <InvoicePanel order={o as any} />
+
+
 
 
           <div className="rounded-xl border border-border bg-surface p-5">
