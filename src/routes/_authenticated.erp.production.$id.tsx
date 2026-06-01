@@ -104,14 +104,33 @@ function ProductionDetail() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const [delOpen, setDelOpen] = useState(false);
+  const [rejOpen, setRejOpen] = useState(false);
+
   const remove = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("production_orders").delete().eq("id", id);
+    mutationFn: async (reason: string) => {
+      const { error } = await supabase.rpc("delete_production_with_reason", { p_id: id, p_reason: reason });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Orden eliminada");
+      toast.success("Orden de producción eliminada");
+      setDelOpen(false);
       navigate({ to: "/erp/production" });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
+  const reject = useMutation({
+    mutationFn: async (reason: string) => {
+      const { error } = await supabase.rpc("reject_production_with_reason", { p_id: id, p_reason: reason });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Orden marcada como rechazada");
+      setRejOpen(false);
+      qc.invalidateQueries({ queryKey: ["production-order", id] });
+      qc.invalidateQueries({ queryKey: ["production-audit", id] });
+      qc.invalidateQueries({ queryKey: ["production-orders"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
