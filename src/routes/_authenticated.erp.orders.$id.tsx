@@ -562,11 +562,109 @@ function OrderDetail() {
 }
 
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function OrderItemReadCard({
+  index,
+  description,
+  quantity,
+  unitPrice,
+  lineTotal,
+  images,
+}: {
+  index: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  images: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const isEmpty = !description.trim();
+  const lineCount = description.split("\n").filter((l) => l.trim()).length;
+  const firstLine = description.split("\n").find((l) => l.trim()) ?? "";
+
   return (
-    <tr className={bold ? "border-t border-border" : ""}>
-      <td colSpan={3} className={`py-1.5 text-right text-xs uppercase tracking-wider text-muted-foreground ${bold ? "pt-3" : ""}`}>{label}</td>
-      <td className={`py-1.5 text-right tabular-nums ${bold ? "font-display text-lg font-semibold pt-3" : ""}`}>{value}</td>
-    </tr>
+    <div className="rounded-lg border border-border bg-background/40 p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          Producto #{index + 1}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group w-full text-left rounded-md border border-border bg-background/60 hover:border-accent/50 hover:bg-accent/[0.03] transition-colors p-3 space-y-1"
+      >
+        {isEmpty ? (
+          <p className="text-sm text-muted-foreground italic">Sin descripción</p>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium text-foreground line-clamp-1">
+                {firstLine || "Producto"}
+              </p>
+              <Pencil className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5 group-hover:text-accent transition-colors" />
+            </div>
+            <p className="text-xs text-muted-foreground whitespace-pre-line line-clamp-3 leading-snug">
+              {description}
+            </p>
+            <div className="flex items-center gap-2 pt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+              <span>
+                {lineCount} línea{lineCount === 1 ? "" : "s"}
+              </span>
+              <span>·</span>
+              <span className="text-accent group-hover:underline">Ver descripción completa</span>
+            </div>
+          </>
+        )}
+      </button>
+
+      <div className="grid grid-cols-3 gap-3 text-xs">
+        <div>
+          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Cant.</p>
+          <p className="tabular-nums font-medium text-sm mt-0.5">{quantity}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Precio</p>
+          <p className="tabular-nums font-medium text-sm mt-0.5">{formatMoney(unitPrice)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Total</p>
+          <p className="tabular-nums font-semibold text-sm mt-0.5">{formatMoney(lineTotal)}</p>
+        </div>
+      </div>
+
+      {images.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+            Imágenes de referencia
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {images.map((u) => (
+              <a
+                key={u}
+                href={u}
+                target="_blank"
+                rel="noreferrer"
+                className="aspect-square rounded-md border border-border overflow-hidden bg-muted/40 hover:border-accent/60 transition-colors"
+              >
+                <img src={u} alt="" className="w-full h-full object-contain" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Descripción del producto #{index + 1}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto rounded-md border border-border bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed">
+            {description || "Sin descripción"}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
