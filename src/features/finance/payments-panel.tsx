@@ -124,6 +124,11 @@ export function PaymentsPanel({
                   )}
                 </div>
               </div>
+              {p.deposit_account && (
+                <p className="mt-1 text-[10px] inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-foreground/80">
+                  → {formatDepositAccount(p.deposit_account)}
+                </p>
+              )}
               {p.note && <p className="mt-1 text-foreground/80">{p.note}</p>}
               {p.created_by_email && <p className="mt-0.5 text-[10px] text-muted-foreground">Registrado por {p.created_by_email}</p>}
             </li>
