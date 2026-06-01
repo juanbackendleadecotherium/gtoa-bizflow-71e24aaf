@@ -387,22 +387,7 @@ export type Database = {
           old_value?: Json | null
           order_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "order_audit_log_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "order_financials"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "order_audit_log_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       order_collection_followups: {
         Row: {
@@ -437,6 +422,54 @@ export type Database = {
           order_id?: string
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      order_deletions: {
+        Row: {
+          brand_id: string
+          customer_name: string | null
+          deleted_at: string
+          deleted_by: string | null
+          deleted_by_email: string | null
+          id: string
+          invoice_number: string | null
+          items_snapshot: Json
+          order_id: string
+          order_number: string | null
+          order_snapshot: Json
+          reason: string
+          total: number
+        }
+        Insert: {
+          brand_id: string
+          customer_name?: string | null
+          deleted_at?: string
+          deleted_by?: string | null
+          deleted_by_email?: string | null
+          id?: string
+          invoice_number?: string | null
+          items_snapshot?: Json
+          order_id: string
+          order_number?: string | null
+          order_snapshot: Json
+          reason: string
+          total?: number
+        }
+        Update: {
+          brand_id?: string
+          customer_name?: string | null
+          deleted_at?: string
+          deleted_by?: string | null
+          deleted_by_email?: string | null
+          id?: string
+          invoice_number?: string | null
+          items_snapshot?: Json
+          order_id?: string
+          order_number?: string | null
+          order_snapshot?: Json
+          reason?: string
+          total?: number
         }
         Relationships: []
       }
@@ -930,6 +963,10 @@ export type Database = {
       can_write_brand: {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
+      }
+      delete_order_with_reason: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: undefined
       }
       has_brand_access: {
         Args: { _brand_id: string; _user_id: string }

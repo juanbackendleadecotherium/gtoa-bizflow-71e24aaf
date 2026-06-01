@@ -20,6 +20,7 @@ import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 import { InvoicePanel } from "@/features/invoices/invoice-panel";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
 import { PaymentsPanel } from "@/features/finance/payments-panel";
+import { DeleteOrderDialog } from "@/features/orders/delete-order-dialog";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -211,17 +212,7 @@ function OrderDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("orders").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Pedido eliminado");
-      navigate({ to: "/erp/orders" });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (orderQuery.isLoading) return <div className="grid place-items-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   const o = orderQuery.data as any;
@@ -254,7 +245,7 @@ function OrderDetail() {
                 <Pencil className="h-4 w-4" /> Editar
               </Button>
               <Button variant="outline" size="icon" className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                onClick={() => { if (confirm("¿Eliminar esta venta?")) deleteMutation.mutate(); }}
+                onClick={() => setDeleteOpen(true)}
                 aria-label="Eliminar venta">
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -578,6 +569,15 @@ function OrderDetail() {
           </div>
         </aside>
       </div>
+
+      <DeleteOrderDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        orderId={id}
+        orderNumber={o.order_number}
+        customerName={o.customer_name}
+        onDeleted={() => navigate({ to: "/erp/orders" })}
+      />
     </>
   );
 }
