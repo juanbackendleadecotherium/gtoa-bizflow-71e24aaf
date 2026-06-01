@@ -38,7 +38,7 @@ export const CanvasRevealEffect = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = canvasRef.current as HTMLCanvasElement | null;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -54,12 +54,13 @@ export const CanvasRevealEffect = ({
 
     const rand = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 
+    const cv = canvas;
     function build() {
-      const rect = canvas.getBoundingClientRect();
+      const rect = cv.getBoundingClientRect();
       width = Math.max(1, Math.floor(rect.width));
       height = Math.max(1, Math.floor(rect.height));
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
+      cv.width = width * dpr;
+      cv.height = height * dpr;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
       cols = Math.ceil(width / totalSize);
       rows = Math.ceil(height / totalSize);
