@@ -169,6 +169,30 @@ export function OrderItemsEditor({
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
+
+              {imagesEnabled && (
+                <div className="sm:col-span-12">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                    Imágenes de referencia · planimetría
+                  </Label>
+                  <ImageUploader
+                    multiple
+                    pending={pendingImages?.[idx] ?? []}
+                    onChangePending={(next) => {
+                      const arr = (pendingImages ?? []).slice();
+                      arr[idx] = next;
+                      onPendingImagesChange!(arr);
+                    }}
+                    existingUrls={existingImages?.[idx] ?? []}
+                    onRemoveExisting={(url) => {
+                      const arr = (existingImages ?? []).slice();
+                      arr[idx] = (arr[idx] ?? []).filter((u) => u !== url);
+                      onExistingImagesChange!(arr);
+                    }}
+                    hint="Se usarán al enviar a producción para construir la planimetría."
+                  />
+                </div>
+              )}
             </div>
           );
         })}
