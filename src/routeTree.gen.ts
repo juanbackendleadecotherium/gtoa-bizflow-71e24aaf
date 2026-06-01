@@ -15,11 +15,15 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedErpRouteImport } from './routes/_authenticated.erp'
 import { Route as AuthenticatedErpIndexRouteImport } from './routes/_authenticated.erp.index'
 import { Route as AuthenticatedErpOrdersRouteImport } from './routes/_authenticated.erp.orders'
+import { Route as AuthenticatedErpFinanceRouteImport } from './routes/_authenticated.erp.finance'
 import { Route as AuthenticatedErpOrdersIndexRouteImport } from './routes/_authenticated.erp.orders.index'
+import { Route as AuthenticatedErpFinanceIndexRouteImport } from './routes/_authenticated.erp.finance.index'
 import { Route as AuthenticatedErpSettingsTermsRouteImport } from './routes/_authenticated.erp.settings.terms'
 import { Route as AuthenticatedErpSettingsStatusesRouteImport } from './routes/_authenticated.erp.settings.statuses'
 import { Route as AuthenticatedErpSettingsBrandBillingRouteImport } from './routes/_authenticated.erp.settings.brand-billing'
 import { Route as AuthenticatedErpOrdersIdRouteImport } from './routes/_authenticated.erp.orders.$id'
+import { Route as AuthenticatedErpFinanceSellersRouteImport } from './routes/_authenticated.erp.finance.sellers'
+import { Route as AuthenticatedErpFinanceReceivablesRouteImport } from './routes/_authenticated.erp.finance.receivables'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -50,11 +54,22 @@ const AuthenticatedErpOrdersRoute = AuthenticatedErpOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => AuthenticatedErpRoute,
 } as any)
+const AuthenticatedErpFinanceRoute = AuthenticatedErpFinanceRouteImport.update({
+  id: '/finance',
+  path: '/finance',
+  getParentRoute: () => AuthenticatedErpRoute,
+} as any)
 const AuthenticatedErpOrdersIndexRoute =
   AuthenticatedErpOrdersIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedErpOrdersRoute,
+  } as any)
+const AuthenticatedErpFinanceIndexRoute =
+  AuthenticatedErpFinanceIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedErpFinanceRoute,
   } as any)
 const AuthenticatedErpSettingsTermsRoute =
   AuthenticatedErpSettingsTermsRouteImport.update({
@@ -80,27 +95,46 @@ const AuthenticatedErpOrdersIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedErpOrdersRoute,
   } as any)
+const AuthenticatedErpFinanceSellersRoute =
+  AuthenticatedErpFinanceSellersRouteImport.update({
+    id: '/sellers',
+    path: '/sellers',
+    getParentRoute: () => AuthenticatedErpFinanceRoute,
+  } as any)
+const AuthenticatedErpFinanceReceivablesRoute =
+  AuthenticatedErpFinanceReceivablesRouteImport.update({
+    id: '/receivables',
+    path: '/receivables',
+    getParentRoute: () => AuthenticatedErpFinanceRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/erp': typeof AuthenticatedErpRouteWithChildren
+  '/erp/finance': typeof AuthenticatedErpFinanceRouteWithChildren
   '/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/erp/': typeof AuthenticatedErpIndexRoute
+  '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
+  '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
+  '/erp/finance/': typeof AuthenticatedErpFinanceIndexRoute
   '/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/erp': typeof AuthenticatedErpIndexRoute
+  '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
+  '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
+  '/erp/finance': typeof AuthenticatedErpFinanceIndexRoute
   '/erp/orders': typeof AuthenticatedErpOrdersIndexRoute
 }
 export interface FileRoutesById {
@@ -109,12 +143,16 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/erp': typeof AuthenticatedErpRouteWithChildren
+  '/_authenticated/erp/finance': typeof AuthenticatedErpFinanceRouteWithChildren
   '/_authenticated/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/_authenticated/erp/': typeof AuthenticatedErpIndexRoute
+  '/_authenticated/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
+  '/_authenticated/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/_authenticated/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/_authenticated/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
   '/_authenticated/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/_authenticated/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
+  '/_authenticated/erp/finance/': typeof AuthenticatedErpFinanceIndexRoute
   '/_authenticated/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
 }
 export interface FileRouteTypes {
@@ -123,22 +161,29 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/erp'
+    | '/erp/finance'
     | '/erp/orders'
     | '/erp/'
+    | '/erp/finance/receivables'
+    | '/erp/finance/sellers'
     | '/erp/orders/$id'
     | '/erp/settings/brand-billing'
     | '/erp/settings/statuses'
     | '/erp/settings/terms'
+    | '/erp/finance/'
     | '/erp/orders/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/erp'
+    | '/erp/finance/receivables'
+    | '/erp/finance/sellers'
     | '/erp/orders/$id'
     | '/erp/settings/brand-billing'
     | '/erp/settings/statuses'
     | '/erp/settings/terms'
+    | '/erp/finance'
     | '/erp/orders'
   id:
     | '__root__'
@@ -146,12 +191,16 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/erp'
+    | '/_authenticated/erp/finance'
     | '/_authenticated/erp/orders'
     | '/_authenticated/erp/'
+    | '/_authenticated/erp/finance/receivables'
+    | '/_authenticated/erp/finance/sellers'
     | '/_authenticated/erp/orders/$id'
     | '/_authenticated/erp/settings/brand-billing'
     | '/_authenticated/erp/settings/statuses'
     | '/_authenticated/erp/settings/terms'
+    | '/_authenticated/erp/finance/'
     | '/_authenticated/erp/orders/'
   fileRoutesById: FileRoutesById
 }
@@ -205,12 +254,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpOrdersRouteImport
       parentRoute: typeof AuthenticatedErpRoute
     }
+    '/_authenticated/erp/finance': {
+      id: '/_authenticated/erp/finance'
+      path: '/finance'
+      fullPath: '/erp/finance'
+      preLoaderRoute: typeof AuthenticatedErpFinanceRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
     '/_authenticated/erp/orders/': {
       id: '/_authenticated/erp/orders/'
       path: '/'
       fullPath: '/erp/orders/'
       preLoaderRoute: typeof AuthenticatedErpOrdersIndexRouteImport
       parentRoute: typeof AuthenticatedErpOrdersRoute
+    }
+    '/_authenticated/erp/finance/': {
+      id: '/_authenticated/erp/finance/'
+      path: '/'
+      fullPath: '/erp/finance/'
+      preLoaderRoute: typeof AuthenticatedErpFinanceIndexRouteImport
+      parentRoute: typeof AuthenticatedErpFinanceRoute
     }
     '/_authenticated/erp/settings/terms': {
       id: '/_authenticated/erp/settings/terms'
@@ -240,8 +303,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpOrdersIdRouteImport
       parentRoute: typeof AuthenticatedErpOrdersRoute
     }
+    '/_authenticated/erp/finance/sellers': {
+      id: '/_authenticated/erp/finance/sellers'
+      path: '/sellers'
+      fullPath: '/erp/finance/sellers'
+      preLoaderRoute: typeof AuthenticatedErpFinanceSellersRouteImport
+      parentRoute: typeof AuthenticatedErpFinanceRoute
+    }
+    '/_authenticated/erp/finance/receivables': {
+      id: '/_authenticated/erp/finance/receivables'
+      path: '/receivables'
+      fullPath: '/erp/finance/receivables'
+      preLoaderRoute: typeof AuthenticatedErpFinanceReceivablesRouteImport
+      parentRoute: typeof AuthenticatedErpFinanceRoute
+    }
   }
 }
+
+interface AuthenticatedErpFinanceRouteChildren {
+  AuthenticatedErpFinanceReceivablesRoute: typeof AuthenticatedErpFinanceReceivablesRoute
+  AuthenticatedErpFinanceSellersRoute: typeof AuthenticatedErpFinanceSellersRoute
+  AuthenticatedErpFinanceIndexRoute: typeof AuthenticatedErpFinanceIndexRoute
+}
+
+const AuthenticatedErpFinanceRouteChildren: AuthenticatedErpFinanceRouteChildren =
+  {
+    AuthenticatedErpFinanceReceivablesRoute:
+      AuthenticatedErpFinanceReceivablesRoute,
+    AuthenticatedErpFinanceSellersRoute: AuthenticatedErpFinanceSellersRoute,
+    AuthenticatedErpFinanceIndexRoute: AuthenticatedErpFinanceIndexRoute,
+  }
+
+const AuthenticatedErpFinanceRouteWithChildren =
+  AuthenticatedErpFinanceRoute._addFileChildren(
+    AuthenticatedErpFinanceRouteChildren,
+  )
 
 interface AuthenticatedErpOrdersRouteChildren {
   AuthenticatedErpOrdersIdRoute: typeof AuthenticatedErpOrdersIdRoute
@@ -260,6 +356,7 @@ const AuthenticatedErpOrdersRouteWithChildren =
   )
 
 interface AuthenticatedErpRouteChildren {
+  AuthenticatedErpFinanceRoute: typeof AuthenticatedErpFinanceRouteWithChildren
   AuthenticatedErpOrdersRoute: typeof AuthenticatedErpOrdersRouteWithChildren
   AuthenticatedErpIndexRoute: typeof AuthenticatedErpIndexRoute
   AuthenticatedErpSettingsBrandBillingRoute: typeof AuthenticatedErpSettingsBrandBillingRoute
@@ -268,6 +365,7 @@ interface AuthenticatedErpRouteChildren {
 }
 
 const AuthenticatedErpRouteChildren: AuthenticatedErpRouteChildren = {
+  AuthenticatedErpFinanceRoute: AuthenticatedErpFinanceRouteWithChildren,
   AuthenticatedErpOrdersRoute: AuthenticatedErpOrdersRouteWithChildren,
   AuthenticatedErpIndexRoute: AuthenticatedErpIndexRoute,
   AuthenticatedErpSettingsBrandBillingRoute:

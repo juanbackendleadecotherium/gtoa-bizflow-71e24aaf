@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import {
   LayoutDashboard, ClipboardList, Settings,
   LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft, Menu, X,
-  FileText, Receipt,
+  FileText, Receipt, Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
