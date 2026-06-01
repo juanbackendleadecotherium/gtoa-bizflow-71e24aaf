@@ -281,13 +281,15 @@ function ProductionDetail() {
               <ol className="space-y-3">
                 {(audit.data ?? []).map((a: any) => (
                   <li key={a.id} className="text-xs border-l-2 border-border pl-3">
-                    <p className="font-medium text-foreground capitalize">
+                    <p className="font-medium text-foreground">
                       {a.action === "create" ? "Orden creada"
-                        : a.action === "status" ? `Estado: ${a.new_value} `
+                        : a.action === "rejected" ? "🚫 Rechazada y devuelta al vendedor"
+                        : a.action === "status" ? `Estado: ${a.new_value}`
                         : a.action === "planimetry_upload" ? `Planimetría subida (${a.new_value?.file_name ?? ""})`
                         : a.action === "planimetry_delete" ? `Planimetría eliminada (${a.old_value?.file_name ?? ""})`
                         : a.field ? `${a.field}: ${JSON.stringify(a.new_value)}` : a.action}
                     </p>
+                    {a.note && <p className="text-foreground/80 mt-1 italic">"{a.note}"</p>}
                     <p className="text-muted-foreground mt-0.5">
                       {new Date(a.created_at).toLocaleString("es-CO")}
                       {a.changed_by_email && ` · ${a.changed_by_email}`}
