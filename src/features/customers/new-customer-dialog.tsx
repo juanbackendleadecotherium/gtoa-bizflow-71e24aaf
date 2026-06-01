@@ -94,6 +94,7 @@ type OrderDraft = {
   estimated_delivery_date: string;
   payment_method: string;
   advance_amount: number;
+  advance_deposit_account: string;
 };
 
 type Draft = {
