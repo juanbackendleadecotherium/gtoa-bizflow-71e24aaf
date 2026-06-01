@@ -102,6 +102,8 @@ function OrderDetail() {
   const [editTax, setEditTax] = useState(0);
   const [editETA, setEditETA] = useState<string>("");
   const [editItems, setEditItems] = useState<(OrderItemInput & { id?: string })[]>([]);
+  const [editExistingImages, setEditExistingImages] = useState<string[][]>([]);
+  const [editPendingImages, setEditPendingImages] = useState<PendingImage[][]>([]);
 
   // Hydration: only sync from server when NOT editing or when the order id changes.
   // This prevents losing in-progress edits when other queries (status, history, audit)
@@ -120,6 +122,8 @@ function OrderDetail() {
       id: it.id, description: it.description, quantity: Number(it.quantity),
       unit_price: Number(it.unit_price), sort_order: it.sort_order,
     })));
+    setEditExistingImages(its.map((it) => (Array.isArray(it.images) ? [...it.images] : [])));
+    setEditPendingImages(its.map(() => []));
     hydratedFor.current = id;
   }, [orderQuery.data, editing, id]);
 
