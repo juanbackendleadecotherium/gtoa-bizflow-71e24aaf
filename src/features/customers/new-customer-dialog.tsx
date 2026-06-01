@@ -454,9 +454,9 @@ export function NewCustomerDialog({
                 <User className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <DialogTitle className="font-display text-xl">Nuevo pedido</DialogTitle>
+                <DialogTitle className="font-display text-xl">Nueva venta</DialogTitle>
                 <DialogDescription className="text-xs">
-                  Registra el pedido con los datos del cliente. Todo queda guardado en el pedido.
+                  Registra la venta con los datos del cliente. Todo queda guardado en la venta.
                 </DialogDescription>
               </div>
               {selectedBrand && (
