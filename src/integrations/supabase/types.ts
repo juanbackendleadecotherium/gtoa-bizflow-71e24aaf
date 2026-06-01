@@ -814,6 +814,164 @@ export type Database = {
           },
         ]
       }
+      production_audit_log: {
+        Row: {
+          action: string
+          brand_id: string
+          changed_by: string | null
+          changed_by_email: string | null
+          created_at: string
+          field: string | null
+          id: string
+          new_value: Json | null
+          note: string | null
+          old_value: Json | null
+          production_order_id: string
+        }
+        Insert: {
+          action: string
+          brand_id: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          field?: string | null
+          id?: string
+          new_value?: Json | null
+          note?: string | null
+          old_value?: Json | null
+          production_order_id: string
+        }
+        Update: {
+          action?: string
+          brand_id?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          field?: string | null
+          id?: string
+          new_value?: Json | null
+          note?: string | null
+          old_value?: Json | null
+          production_order_id?: string
+        }
+        Relationships: []
+      }
+      production_orders: {
+        Row: {
+          assigned_to: string | null
+          assigned_to_label: string | null
+          brand_id: string
+          code: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          order_id: string
+          priority: string
+          start_date: string | null
+          status: string
+          updated_at: string
+          workshop: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          assigned_to_label?: string | null
+          brand_id: string
+          code: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          order_id: string
+          priority?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          workshop?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          assigned_to_label?: string | null
+          brand_id?: string
+          code?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string
+          priority?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          workshop?: string | null
+        }
+        Relationships: []
+      }
+      production_planimetries: {
+        Row: {
+          brand_id: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          notes: string | null
+          production_order_id: string
+          uploaded_at: string
+          uploaded_by: string | null
+          uploaded_by_email: string | null
+          version: number
+        }
+        Insert: {
+          brand_id: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          production_order_id: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          uploaded_by_email?: string | null
+          version?: number
+        }
+        Update: {
+          brand_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          production_order_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          uploaded_by_email?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_planimetries_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

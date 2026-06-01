@@ -21,6 +21,7 @@ import { InvoicePanel } from "@/features/invoices/invoice-panel";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
 import { PaymentsPanel } from "@/features/finance/payments-panel";
 import { DeleteOrderDialog } from "@/features/orders/delete-order-dialog";
+import { ProductionSection } from "@/features/production/send-to-production-button";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -529,6 +530,8 @@ function OrderDetail() {
             total={Number(o.total) || 0}
             advance={Number(o.advance_amount) || 0}
           />
+
+          <ProductionSection orderId={o.id} brandId={o.brand_id} />
 
 
 
