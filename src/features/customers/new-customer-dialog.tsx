@@ -129,6 +129,7 @@ const EMPTY: Draft = {
     estimated_delivery_date: "",
     payment_method: "",
     advance_amount: 0,
+    advance_deposit_account: "",
   },
   items: [],
   notes: "",
