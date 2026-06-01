@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Download, Mail, Loader2, AlertTriangle } from "lucide-react";
+import { FileText, Download, Mail, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,7 +48,10 @@ export function InvoicePanel({ order }: { order: Order }) {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      return data as null | {
+        id: string; invoice_number: string; issued_at: string; pdf_path: string | null;
+        total_snapshot: number; balance_snapshot: number; sent_at: string | null; send_count: number;
+      };
     },
   });
 
@@ -129,7 +132,17 @@ export function InvoicePanel({ order }: { order: Order }) {
       ]);
       const blob = await pdf(<InvoiceDocument data={data} />).toBlob();
 
-      // Upload to storage
+      // Check for existing invoice (to regenerate vs first issue)
+      const { data: existing, error: exErr } = await supabase
+        .from("invoices")
+        .select("id, pdf_path")
+        .eq("order_id", order.id)
+        .order("issued_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (exErr) throw exErr;
+
+      // Upload new PDF (always a fresh file so old versions remain in storage as audit trail)
       const ts = Date.now();
       const path = `${order.brand_id}/${order.id}-${order.invoice_number}-${ts}.pdf`;
       const { error: upErr } = await supabase.storage
@@ -137,10 +150,9 @@ export function InvoicePanel({ order }: { order: Order }) {
         .upload(path, blob, { contentType: "application/pdf", upsert: false });
       if (upErr) throw upErr;
 
-      // Insert invoice row (snapshots)
       const userEmail = userRes.data.user?.email ?? null;
       const userId = userRes.data.user?.id ?? null;
-      const { error: insErr } = await supabase.from("invoices").insert({
+      const payload = {
         order_id: order.id,
         brand_id: order.brand_id,
         invoice_number: order.invoice_number,
@@ -158,17 +170,28 @@ export function InvoicePanel({ order }: { order: Order }) {
         brand_snapshot: data.brand,
         customer_snapshot: data.customer,
         items_snapshot: data.items,
-      });
-      if (insErr) throw insErr;
+        issued_at: new Date().toISOString(),
+      };
+
+      if (existing) {
+        const { error: updErr } = await supabase
+          .from("invoices")
+          .update(payload)
+          .eq("id", existing.id);
+        if (updErr) throw updErr;
+      } else {
+        const { error: insErr } = await supabase.from("invoices").insert(payload);
+        if (insErr) throw insErr;
+      }
 
       // Open the just-uploaded PDF in a new tab
       const { data: signed } = await supabase.storage.from("invoices").createSignedUrl(path, 60 * 10);
       if (signed?.signedUrl) window.open(signed.signedUrl, "_blank", "noopener");
 
-      return path;
+      return { path, regenerated: !!existing };
     },
-    onSuccess: () => {
-      toast.success("Factura emitida");
+    onSuccess: ({ regenerated }) => {
+      toast.success(regenerated ? "Factura regenerada" : "Factura emitida");
       qc.invalidateQueries({ queryKey: ["invoice", order.id] });
       qc.invalidateQueries({ queryKey: ["order-audit", order.id] });
     },
@@ -221,6 +244,22 @@ export function InvoicePanel({ order }: { order: Order }) {
             <Download className="h-4 w-4" /> Descargar PDF
           </Button>
 
+          <Button
+            size="sm" className="w-full gap-2"
+            onClick={() => issueMutation.mutate()}
+            disabled={issueMutation.isPending || !order.invoice_number}
+          >
+            {issueMutation.isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Regenerando…</>
+            ) : (
+              <><RefreshCw className="h-4 w-4" /> Regenerar con cambios actuales</>
+            )}
+          </Button>
+
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Al regenerar se reemplaza el PDF con el detalle actual de la venta. El historial de cambios queda en la auditoría.
+          </p>
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -255,7 +294,7 @@ export function InvoicePanel({ order }: { order: Order }) {
             </div>
           )}
           <p className="text-xs text-muted-foreground">
-            Genera el PDF de factura con el detalle actual de la venta. Los Términos y Condiciones se envían por separado. Una vez emitida queda inmutable.
+            Genera el PDF de factura con el detalle actual de la venta. Si la venta cambia después, podrás regenerar el PDF — el historial queda en la auditoría.
           </p>
           <Button
             size="sm" className="w-full gap-2"
