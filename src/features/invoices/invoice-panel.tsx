@@ -144,8 +144,8 @@ export function InvoicePanel({ order }: { order: Order }) {
         order_id: order.id,
         brand_id: order.brand_id,
         invoice_number: order.invoice_number,
-        terms_version_id: terms?.id ?? null,
-        terms_snapshot_html: terms?.content_html ?? null,
+        terms_version_id: null,
+        terms_snapshot_html: null,
         pdf_path: path,
         issued_by: userId,
         issued_by_email: userEmail,
@@ -255,7 +255,7 @@ export function InvoicePanel({ order }: { order: Order }) {
             </div>
           )}
           <p className="text-xs text-muted-foreground">
-            Genera el PDF de factura con el detalle actual de la venta y los Términos y Condiciones vigentes. Una vez emitida queda inmutable.
+            Genera el PDF de factura con el detalle actual de la venta. Los Términos y Condiciones se envían por separado. Una vez emitida queda inmutable.
           </p>
           <Button
             size="sm" className="w-full gap-2"
