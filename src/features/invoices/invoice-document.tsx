@@ -1,7 +1,10 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { getBrandLogo } from "./brand-logos";
+import { numberToSpanishWords } from "./number-to-words";
 
 export type InvoiceBrandSnapshot = {
   name: string;
+  slug?: string | null;
   legal_name?: string | null;
   tax_id?: string | null;
   address?: string | null;
@@ -39,6 +42,7 @@ export type InvoiceDocumentData = {
   issued_at: string;
   sale_date?: string | null;
   payment_method?: string | null;
+  seller_name?: string | null;
   notes?: string | null;
   brand: InvoiceBrandSnapshot;
   customer: InvoiceCustomerSnapshot;
@@ -49,8 +53,6 @@ export type InvoiceDocumentData = {
   total: number;
   advance: number;
   balance: number;
-  terms_html?: string | null;
-  terms_version?: number | null;
 };
 
 const fmtCOP = (n: number) =>
@@ -65,198 +67,302 @@ const fmtDate = (s?: string | null) => {
   if (!s) return "—";
   try {
     return new Date(s).toLocaleDateString("es-CO", {
-      day: "2-digit", month: "long", year: "numeric",
+      day: "2-digit", month: "2-digit", year: "numeric",
     });
   } catch {
     return s;
   }
 };
 
-const baseColor = "#0f172a";
+const INK = "#1f2937";
+const MUTED = "#6b7280";
+const LINE = "#e5e7eb";
+const SOFT_BG = "#f8fafc";
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 36, paddingBottom: 56, paddingHorizontal: 36,
-    fontSize: 9.5, color: "#0f172a", fontFamily: "Helvetica",
+    paddingTop: 32, paddingBottom: 56, paddingHorizontal: 36,
+    fontSize: 9, color: INK, fontFamily: "Helvetica",
   },
-  header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
-    borderBottomWidth: 2, paddingBottom: 12, marginBottom: 16,
+
+  /* Header */
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  brandBlock: { flexDirection: "column", maxWidth: "60%" },
+  logoBox: {
+    backgroundColor: SOFT_BG, borderRadius: 4, padding: 10,
+    width: 200, height: 90, alignItems: "center", justifyContent: "center",
+    marginBottom: 8,
   },
-  brandBlock: { flexDirection: "row", gap: 12, alignItems: "center", maxWidth: "60%" },
-  logo: { width: 52, height: 52, objectFit: "contain" },
-  brandName: { fontSize: 14, fontWeight: 700 },
-  muted: { color: "#64748b" },
-  invoiceMeta: { textAlign: "right" },
-  invoiceTitle: { fontSize: 11, letterSpacing: 1.5, color: "#64748b", marginBottom: 4 },
-  invoiceNumber: { fontSize: 16, fontWeight: 700 },
-  twoCol: { flexDirection: "row", gap: 12, marginBottom: 14 },
-  panel: {
-    flex: 1, borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 4,
-    padding: 10,
-  },
-  panelTitle: {
-    fontSize: 8, letterSpacing: 1.2, color: "#64748b", textTransform: "uppercase",
-    marginBottom: 6,
-  },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
-  tableHeader: {
-    flexDirection: "row", backgroundColor: "#f1f5f9",
+  logo: { maxWidth: 180, maxHeight: 70, objectFit: "contain" },
+  brandName: { fontSize: 13, fontWeight: 700, marginTop: 2 },
+  brandLine: { color: MUTED, fontSize: 8.5, marginTop: 1 },
+
+  invoiceMeta: { alignItems: "flex-end", maxWidth: "40%" },
+  invoiceLabel: { fontSize: 11, color: MUTED },
+  invoiceNumber: { fontSize: 28, fontWeight: 700, color: INK, lineHeight: 1 },
+  metaDate: { fontSize: 9, marginTop: 8 },
+  metaDateLabel: { fontWeight: 700 },
+
+  divider: { borderBottomWidth: 1, borderBottomColor: LINE, marginTop: 12, marginBottom: 10 },
+
+  /* Client / seller row */
+  partyRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
+  partyLeft: { maxWidth: "60%" },
+  partyRight: { alignItems: "flex-end" },
+  partyLine: { marginBottom: 2 },
+  bold: { fontWeight: 700 },
+
+  /* Items table */
+  th: {
+    flexDirection: "row", backgroundColor: SOFT_BG,
     paddingVertical: 6, paddingHorizontal: 6, marginTop: 4,
-    borderTopLeftRadius: 3, borderTopRightRadius: 3,
   },
-  tableHeaderText: { fontSize: 8, color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 },
-  tableRow: {
-    flexDirection: "row", paddingVertical: 6, paddingHorizontal: 6,
-    borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0",
+  thText: { fontSize: 8.5, color: MUTED, fontWeight: 700 },
+  row: {
+    flexDirection: "row", paddingVertical: 8, paddingHorizontal: 6,
+    borderBottomWidth: 0.5, borderBottomColor: LINE,
   },
-  colDesc: { flex: 5, paddingRight: 6 },
-  colQty: { flex: 1, textAlign: "right" },
-  colPrice: { flex: 2, textAlign: "right" },
-  colTotal: { flex: 2, textAlign: "right" },
-  totalsBox: {
-    marginTop: 10, marginLeft: "auto", width: "50%",
-    borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 4, padding: 10,
+  cId: { width: 22 },
+  cItem: { flex: 4, paddingRight: 6 },
+  cUnit: { width: 50 },
+  cQty: { width: 38, textAlign: "right" },
+  cPrice: { width: 60, textAlign: "right" },
+  cDisc: { width: 55, textAlign: "right" },
+  cTax: { width: 50, textAlign: "right" },
+  cSub: { width: 70, textAlign: "right" },
+
+  itemTitle: { fontWeight: 700, marginBottom: 2 },
+  itemDesc: { color: MUTED, fontSize: 8.5 },
+
+  wordsRow: {
+    flexDirection: "row", backgroundColor: SOFT_BG,
+    padding: 8, marginTop: 2, marginBottom: 10,
   },
-  totalsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
-  totalLine: {
+
+  countLine: { marginBottom: 14 },
+
+  /* Totals */
+  totalsWrap: { flexDirection: "row", justifyContent: "flex-end", marginTop: 8 },
+  totalsBox: { width: "55%" },
+  tRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, paddingHorizontal: 6 },
+  tLabel: { color: MUTED },
+  tValue: { },
+  tTotalRow: {
     flexDirection: "row", justifyContent: "space-between",
-    borderTopWidth: 1, borderTopColor: "#cbd5e1",
-    marginTop: 4, paddingTop: 5,
+    paddingTop: 8, paddingBottom: 6, paddingHorizontal: 6,
+    borderTopWidth: 1, borderTopColor: INK, marginTop: 4,
   },
-  badge: {
-    marginTop: 4, padding: 6, borderRadius: 3,
-    fontSize: 8.5,
+  tTotalLabel: { fontSize: 14, fontWeight: 700 },
+  tTotalValue: { fontSize: 14, fontWeight: 700 },
+
+  /* Notes */
+  notesBox: { marginTop: 14, padding: 10, borderRadius: 4, borderWidth: 0.5, borderColor: LINE },
+  notesTitle: { fontSize: 8, color: MUTED, fontWeight: 700, marginBottom: 4, letterSpacing: 0.8 },
+
+  /* Footer meta */
+  metaBlock: {
+    position: "absolute", bottom: 56, left: 36, right: 36,
+    flexDirection: "row", gap: 16,
   },
-  termsHeader: { fontSize: 12, fontWeight: 700, marginBottom: 8, marginTop: 4 },
-  termsPara: { marginBottom: 6, lineHeight: 1.4, textAlign: "justify" },
+  metaItem: { fontSize: 8.5 },
+  metaItemLabel: { fontWeight: 700 },
+
   footer: {
     position: "absolute", bottom: 24, left: 36, right: 36,
     flexDirection: "row", justifyContent: "space-between",
-    borderTopWidth: 0.5, borderTopColor: "#cbd5e1", paddingTop: 6,
-    fontSize: 7.5, color: "#94a3b8",
+    borderTopWidth: 0.5, borderTopColor: LINE, paddingTop: 6,
+    fontSize: 7.5, color: "#9ca3af",
   },
 });
 
 export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
-  const accent = data.brand.primary_color || baseColor;
-  const customerLines = [data.customer.address, data.customer.city, data.customer.department]
-    .filter(Boolean).join(", ");
-  const paidPct = data.total > 0 ? Math.round((data.advance / data.total) * 100) : 0;
+  const logo = getBrandLogo(data.brand.slug, data.brand.logo_url);
+  const totalWords = numberToSpanishWords(Math.round(Number(data.total) || 0));
 
   return (
     <Document title={`Factura ${data.invoice_number}`}>
       <Page size="LETTER" style={styles.page}>
         {/* Header */}
-        <View style={[styles.header, { borderBottomColor: accent }]}>
+        <View style={styles.header}>
           <View style={styles.brandBlock}>
-            {data.brand.logo_url ? <Image src={data.brand.logo_url} style={styles.logo} /> : null}
-            <View>
-              <Text style={[styles.brandName, { color: accent }]}>{data.brand.name}</Text>
-              {data.brand.legal_name ? <Text style={styles.muted}>{data.brand.legal_name}</Text> : null}
-              {data.brand.tax_id ? <Text style={styles.muted}>NIT: {data.brand.tax_id}</Text> : null}
-              {data.brand.address ? <Text style={styles.muted}>{data.brand.address}{data.brand.city ? `, ${data.brand.city}` : ""}</Text> : null}
-              {data.brand.phone ? <Text style={styles.muted}>Tel: {data.brand.phone}</Text> : null}
-              {data.brand.email ? <Text style={styles.muted}>{data.brand.email}</Text> : null}
+            <View style={styles.logoBox}>
+              {logo ? <Image src={logo} style={styles.logo} /> : <Text style={{ color: MUTED }}>{data.brand.name}</Text>}
             </View>
+            <Text style={styles.brandName}>{(data.brand.legal_name || data.brand.name).toUpperCase()}</Text>
+            {data.brand.legal_name && data.brand.tax_id ? (
+              <Text style={styles.brandLine}>{data.brand.legal_name} - NIT {data.brand.tax_id}</Text>
+            ) : data.brand.tax_id ? (
+              <Text style={styles.brandLine}>NIT {data.brand.tax_id}</Text>
+            ) : null}
+            {data.brand.address ? (
+              <Text style={styles.brandLine}>
+                {data.brand.address}{data.brand.city ? `, ${data.brand.city}` : ""}
+              </Text>
+            ) : null}
+            {data.brand.email ? <Text style={styles.brandLine}>{data.brand.email}</Text> : null}
+            {data.brand.phone ? <Text style={styles.brandLine}>Tel: {data.brand.phone}</Text> : null}
           </View>
+
           <View style={styles.invoiceMeta}>
-            <Text style={styles.invoiceTitle}>FACTURA DE VENTA</Text>
-            <Text style={[styles.invoiceNumber, { color: accent }]}>{data.invoice_number}</Text>
-            <Text style={styles.muted}>Orden: {data.order_number}</Text>
-            <Text style={styles.muted}>Emitida: {fmtDate(data.issued_at)}</Text>
-            {data.sale_date ? <Text style={styles.muted}>Fecha venta: {fmtDate(data.sale_date)}</Text> : null}
+            <Text style={styles.invoiceLabel}>Factura de venta</Text>
+            <Text style={styles.invoiceNumber}>{data.invoice_number}</Text>
+            <Text style={styles.metaDate}>
+              <Text style={styles.metaDateLabel}>Fecha de creación: </Text>{fmtDate(data.issued_at)}
+            </Text>
+            {data.sale_date ? (
+              <Text style={styles.metaDate}>
+                <Text style={styles.metaDateLabel}>Fecha de venta: </Text>{fmtDate(data.sale_date)}
+              </Text>
+            ) : null}
           </View>
         </View>
 
-        {/* Client + payment */}
-        <View style={styles.twoCol}>
-          <View style={styles.panel}>
-            <Text style={styles.panelTitle}>Cliente</Text>
-            <Text style={{ fontWeight: 700 }}>{data.customer.name || "—"}</Text>
-            {data.customer.company ? <Text style={styles.muted}>{data.customer.company}</Text> : null}
-            {data.customer.doc_number ? (
-              <Text style={styles.muted}>{data.customer.doc_type ? `${data.customer.doc_type} ` : ""}{data.customer.doc_number}</Text>
+        <View style={styles.divider} />
+
+        {/* Client / seller */}
+        <View style={styles.partyRow}>
+          <View style={styles.partyLeft}>
+            <Text style={styles.partyLine}>
+              <Text style={styles.bold}>Cliente: </Text>{data.customer.name || "—"}
+            </Text>
+            {data.customer.company ? (
+              <Text style={styles.partyLine}>
+                <Text style={styles.bold}>Empresa: </Text>{data.customer.company}
+              </Text>
             ) : null}
-            {data.customer.phone ? <Text style={styles.muted}>Tel: {data.customer.phone}</Text> : null}
-            {data.customer.email ? <Text style={styles.muted}>{data.customer.email}</Text> : null}
-            {customerLines ? <Text style={styles.muted}>{customerLines}</Text> : null}
+            {data.customer.doc_number ? (
+              <Text style={styles.partyLine}>
+                <Text style={styles.bold}>{data.customer.doc_type || "ID"}: </Text>{data.customer.doc_number}
+              </Text>
+            ) : null}
+            {data.customer.email ? (
+              <Text style={styles.partyLine}>
+                <Text style={styles.bold}>Email: </Text>{data.customer.email}
+              </Text>
+            ) : null}
+            {data.customer.phone ? (
+              <Text style={styles.partyLine}>
+                <Text style={styles.bold}>Tel: </Text>{data.customer.phone}
+              </Text>
+            ) : null}
           </View>
-          <View style={styles.panel}>
-            <Text style={styles.panelTitle}>Información de pago</Text>
-            <View style={styles.row}><Text style={styles.muted}>Método</Text><Text>{data.payment_method || "—"}</Text></View>
-            <View style={styles.row}><Text style={styles.muted}>Abono recibido</Text><Text>{fmtCOP(data.advance)}</Text></View>
-            <View style={styles.row}><Text style={styles.muted}>Saldo pendiente</Text><Text style={{ fontWeight: 700 }}>{fmtCOP(data.balance)}</Text></View>
-            <View style={[styles.row, { marginTop: 4 }]}>
-              <Text style={styles.muted}>Pagado</Text>
-              <Text style={{ color: accent, fontWeight: 700 }}>{paidPct}%</Text>
-            </View>
+          <View style={styles.partyRight}>
+            {data.seller_name ? (
+              <Text style={styles.partyLine}>
+                <Text style={styles.bold}>Vendedor: </Text>{data.seller_name}
+              </Text>
+            ) : null}
+            <Text style={styles.partyLine}><Text style={styles.bold}>Moneda: </Text>COP</Text>
+            <Text style={styles.partyLine}><Text style={styles.bold}>Orden: </Text>{data.order_number}</Text>
           </View>
         </View>
 
         {/* Items table */}
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderText, styles.colDesc]}>Descripción</Text>
-          <Text style={[styles.tableHeaderText, styles.colQty]}>Cant.</Text>
-          <Text style={[styles.tableHeaderText, styles.colPrice]}>Precio Unit.</Text>
-          <Text style={[styles.tableHeaderText, styles.colTotal]}>Total</Text>
+        <View style={styles.th}>
+          <Text style={[styles.thText, styles.cId]}>ID</Text>
+          <Text style={[styles.thText, styles.cItem]}>Ítem</Text>
+          <Text style={[styles.thText, styles.cUnit]}>Unidad</Text>
+          <Text style={[styles.thText, styles.cQty]}>Cant.</Text>
+          <Text style={[styles.thText, styles.cPrice]}>Precio</Text>
+          <Text style={[styles.thText, styles.cDisc]}>Descuento</Text>
+          <Text style={[styles.thText, styles.cTax]}>Impuesto</Text>
+          <Text style={[styles.thText, styles.cSub]}>Subtotal</Text>
         </View>
-        {data.items.map((it, i) => (
-          <View key={i} style={styles.tableRow} wrap={false}>
-            <Text style={styles.colDesc}>{it.description}</Text>
-            <Text style={styles.colQty}>{Number(it.quantity)}</Text>
-            <Text style={styles.colPrice}>{fmtCOP(it.unit_price)}</Text>
-            <Text style={styles.colTotal}>{fmtCOP(it.line_total)}</Text>
-          </View>
-        ))}
+
+        {data.items.map((it, i) => {
+          const lines = it.description.split(/\n+/);
+          const title = lines[0] || "";
+          const detail = lines.slice(1).join(" ");
+          return (
+            <View key={i} style={styles.row} wrap={false}>
+              <Text style={styles.cId}>{i + 1}</Text>
+              <View style={styles.cItem}>
+                <Text style={styles.itemTitle}>{title}</Text>
+                {detail ? <Text style={styles.itemDesc}>{detail}</Text> : null}
+              </View>
+              <Text style={styles.cUnit}>Unidad</Text>
+              <Text style={styles.cQty}>{Number(it.quantity)}</Text>
+              <Text style={styles.cPrice}>{fmtCOP(it.unit_price)}</Text>
+              <Text style={styles.cDisc}></Text>
+              <Text style={styles.cTax}></Text>
+              <Text style={styles.cSub}>{fmtCOP(it.line_total)}</Text>
+            </View>
+          );
+        })}
+
+        {/* Words row */}
+        <View style={styles.wordsRow}>
+          <Text style={{ color: INK }}>{totalWords}</Text>
+        </View>
+
+        <Text style={styles.countLine}>
+          <Text style={styles.bold}>Total de líneas: </Text>{data.items.length}
+        </Text>
 
         {/* Totals */}
-        <View style={styles.totalsBox} wrap={false}>
-          <View style={styles.totalsRow}><Text style={styles.muted}>Subtotal</Text><Text>{fmtCOP(data.subtotal)}</Text></View>
-          <View style={styles.totalsRow}><Text style={styles.muted}>Descuento</Text><Text>- {fmtCOP(data.discount)}</Text></View>
-          <View style={styles.totalsRow}><Text style={styles.muted}>Impuesto</Text><Text>+ {fmtCOP(data.tax)}</Text></View>
-          <View style={styles.totalLine}>
-            <Text style={{ fontWeight: 700, fontSize: 11 }}>TOTAL</Text>
-            <Text style={{ fontWeight: 700, fontSize: 11, color: accent }}>{fmtCOP(data.total)}</Text>
+        <View style={styles.totalsWrap} wrap={false}>
+          <View style={styles.totalsBox}>
+            <View style={styles.tRow}>
+              <Text style={styles.tLabel}>Subtotal</Text>
+              <Text style={styles.tValue}>{fmtCOP(data.subtotal)}</Text>
+            </View>
+            {Number(data.discount) > 0 ? (
+              <View style={styles.tRow}>
+                <Text style={styles.tLabel}>Descuento</Text>
+                <Text style={styles.tValue}>- {fmtCOP(data.discount)}</Text>
+              </View>
+            ) : null}
+            {Number(data.tax) > 0 ? (
+              <View style={styles.tRow}>
+                <Text style={styles.tLabel}>Impuesto</Text>
+                <Text style={styles.tValue}>+ {fmtCOP(data.tax)}</Text>
+              </View>
+            ) : null}
+            <View style={styles.tTotalRow}>
+              <Text style={styles.tTotalLabel}>Total</Text>
+              <Text style={styles.tTotalValue}>{fmtCOP(data.total)}</Text>
+            </View>
+            {Number(data.advance) > 0 ? (
+              <>
+                <View style={[styles.tRow, { marginTop: 6 }]}>
+                  <Text style={styles.tLabel}>Abono recibido</Text>
+                  <Text style={styles.tValue}>{fmtCOP(data.advance)}</Text>
+                </View>
+                <View style={styles.tRow}>
+                  <Text style={[styles.tLabel, styles.bold]}>Saldo pendiente</Text>
+                  <Text style={styles.bold}>{fmtCOP(data.balance)}</Text>
+                </View>
+              </>
+            ) : null}
           </View>
         </View>
 
         {/* Notes */}
         {data.notes ? (
-          <View style={{ marginTop: 14 }} wrap={false}>
-            <Text style={styles.panelTitle}>Notas</Text>
-            <Text style={{ color: "#334155" }}>{data.notes}</Text>
+          <View style={styles.notesBox} wrap={false}>
+            <Text style={styles.notesTitle}>NOTAS</Text>
+            <Text style={{ color: "#374151" }}>{data.notes}</Text>
           </View>
         ) : null}
+
+        {/* Payment meta */}
+        <View style={styles.metaBlock} fixed>
+          <Text style={styles.metaItem}>
+            <Text style={styles.metaItemLabel}>Forma de pago: </Text>{data.payment_method || "—"}
+          </Text>
+          <Text style={styles.metaItem}>
+            <Text style={styles.metaItemLabel}>Tipo de factura: </Text>Factura de venta
+          </Text>
+          <Text style={styles.metaItem}>
+            <Text style={styles.metaItemLabel}>Generado: </Text>{new Date(data.issued_at).toLocaleString("es-CO")}
+          </Text>
+        </View>
 
         <View style={styles.footer} fixed>
           <Text>{data.brand.legal_name || data.brand.name} · Factura {data.invoice_number}</Text>
           <Text render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
         </View>
       </Page>
-
-      {/* Terms & Conditions */}
-      {data.terms_html ? (
-        <Page size="LETTER" style={styles.page}>
-          <Text style={[styles.termsHeader, { color: accent }]}>
-            Términos y Condiciones de Venta
-            {data.terms_version ? ` · v${data.terms_version}` : ""}
-          </Text>
-          {data.terms_html.split(/\n{2,}/).map((para, i) => (
-            <Text key={i} style={styles.termsPara}>{para.trim()}</Text>
-          ))}
-          {data.brand.invoice_footer_note ? (
-            <Text style={[styles.termsPara, { marginTop: 12, fontStyle: "italic", color: "#64748b" }]}>
-              {data.brand.invoice_footer_note}
-            </Text>
-          ) : null}
-
-          <View style={styles.footer} fixed>
-            <Text>{data.brand.legal_name || data.brand.name} · Factura {data.invoice_number}</Text>
-            <Text render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
-          </View>
-        </Page>
-      ) : null}
     </Document>
   );
 }

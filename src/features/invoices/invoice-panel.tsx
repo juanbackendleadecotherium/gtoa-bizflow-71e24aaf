@@ -61,16 +61,13 @@ export function InvoicePanel({ order }: { order: Order }) {
       if (Number(order.total) <= 0) throw new Error("El total de la venta debe ser mayor a cero.");
       if (!order.customer_name) throw new Error("El cliente debe tener al menos un nombre.");
 
-      // Fetch brand & active terms in parallel
-      const [brandRes, termsRes, userRes] = await Promise.all([
+      // Fetch brand & user in parallel (T&C go in a separate PDF)
+      const [brandRes, userRes] = await Promise.all([
         supabase.from("brands").select("*").eq("id", order.brand_id).maybeSingle(),
-        supabase.from("terms_versions").select("id, version, content_html").eq("is_active", true).maybeSingle(),
         supabase.auth.getUser(),
       ]);
       if (brandRes.error) throw brandRes.error;
-      if (termsRes.error) throw termsRes.error;
       const brand = brandRes.data;
-      const terms = termsRes.data;
       if (!brand) throw new Error("No se pudo cargar la marca emisora.");
 
       const sortedItems = order.items.slice().sort((a, b) => a.sort_order - b.sort_order);
@@ -84,9 +81,11 @@ export function InvoicePanel({ order }: { order: Order }) {
         issued_at: new Date().toISOString(),
         sale_date: order.sale_date,
         payment_method: order.payment_method,
+        seller_name: userRes.data.user?.email ?? null,
         notes: order.notes,
         brand: {
           name: brand.name,
+          slug: (brand as any).slug ?? null,
           legal_name: brand.legal_name,
           tax_id: brand.tax_id,
           address: (brand as any).address ?? null,
@@ -121,8 +120,6 @@ export function InvoicePanel({ order }: { order: Order }) {
         total,
         advance,
         balance,
-        terms_html: terms?.content_html ?? null,
-        terms_version: terms?.version ?? null,
       };
 
       // Generate PDF (lazy-load — @react-pdf/renderer is not SSR-safe)
@@ -147,8 +144,8 @@ export function InvoicePanel({ order }: { order: Order }) {
         order_id: order.id,
         brand_id: order.brand_id,
         invoice_number: order.invoice_number,
-        terms_version_id: terms?.id ?? null,
-        terms_snapshot_html: terms?.content_html ?? null,
+        terms_version_id: null,
+        terms_snapshot_html: null,
         pdf_path: path,
         issued_by: userId,
         issued_by_email: userEmail,
@@ -258,7 +255,7 @@ export function InvoicePanel({ order }: { order: Order }) {
             </div>
           )}
           <p className="text-xs text-muted-foreground">
-            Genera el PDF de factura con el detalle actual de la venta y los Términos y Condiciones vigentes. Una vez emitida queda inmutable.
+            Genera el PDF de factura con el detalle actual de la venta. Los Términos y Condiciones se envían por separado. Una vez emitida queda inmutable.
           </p>
           <Button
             size="sm" className="w-full gap-2"
