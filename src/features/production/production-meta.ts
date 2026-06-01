@@ -4,6 +4,7 @@ export const PRODUCTION_STATUSES = [
   { value: "control_calidad", label: "Control de calidad", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30" },
   { value: "listo", label: "Listo para entrega", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
   { value: "entregado", label: "Entregado", color: "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30" },
+  { value: "rechazada", label: "Rechazada", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30" },
   { value: "cancelado", label: "Cancelado", color: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30" },
 ] as const;
 

@@ -864,6 +864,51 @@ export type Database = {
           },
         ]
       }
+      production_deletions: {
+        Row: {
+          brand_id: string
+          code: string | null
+          deleted_at: string
+          deleted_by: string | null
+          deleted_by_email: string | null
+          id: string
+          order_id: string | null
+          order_snapshot: Json
+          planimetries_snapshot: Json
+          production_order_id: string
+          reason: string
+          status: string | null
+        }
+        Insert: {
+          brand_id: string
+          code?: string | null
+          deleted_at?: string
+          deleted_by?: string | null
+          deleted_by_email?: string | null
+          id?: string
+          order_id?: string | null
+          order_snapshot: Json
+          planimetries_snapshot?: Json
+          production_order_id: string
+          reason: string
+          status?: string | null
+        }
+        Update: {
+          brand_id?: string
+          code?: string | null
+          deleted_at?: string
+          deleted_by?: string | null
+          deleted_by_email?: string | null
+          id?: string
+          order_id?: string | null
+          order_snapshot?: Json
+          planimetries_snapshot?: Json
+          production_order_id?: string
+          reason?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       production_orders: {
         Row: {
           assigned_to: string | null
@@ -1156,6 +1201,10 @@ export type Database = {
         Args: { p_order_id: string; p_reason: string }
         Returns: undefined
       }
+      delete_production_with_reason: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
       has_brand_access: {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
@@ -1166,6 +1215,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      reject_production_with_reason: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
       }
       update_order_status: {
         Args: { p_note?: string; p_order_id: string; p_status_id: string }
