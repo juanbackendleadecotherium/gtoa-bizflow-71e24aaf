@@ -72,7 +72,6 @@ export const CanvasRevealEffect = ({
 
     build();
     const ro = new ResizeObserver(build);
-    const ro = new ResizeObserver(build);
     ro.observe(cv);
 
     const start = performance.now();
