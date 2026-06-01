@@ -173,9 +173,19 @@ function OrderDetail() {
 
       for (let i = 0; i < editItems.length; i++) {
         const it = editItems[i];
+        const existing = editExistingImages[i] ?? [];
+        const pending = editPendingImages[i] ?? [];
+        const orig = it.id ? origMap.get(it.id) : null;
+        const origImages: string[] = Array.isArray(orig?.images) ? orig!.images : [];
+        const imagesChanged =
+          !it.id ||
+          pending.length > 0 ||
+          existing.length !== origImages.length ||
+          existing.some((u, k) => u !== origImages[k]);
+
+        let itemId = it.id ?? null;
         if (it.id) {
           keptIds.add(it.id);
-          const orig = origMap.get(it.id);
           const changed = !orig
             || orig.description !== it.description
             || Number(orig.quantity) !== Number(it.quantity)
@@ -191,14 +201,31 @@ function OrderDetail() {
             if (error) throw error;
           }
         } else {
-          const { error } = await supabase.from("order_items").insert({
+          const { data: inserted, error } = await supabase.from("order_items").insert({
             order_id: id,
             description: it.description,
             quantity: it.quantity,
             unit_price: it.unit_price,
             sort_order: i,
-          });
+          }).select("id").single();
           if (error) throw error;
+          itemId = inserted.id;
+        }
+
+        if (itemId && imagesChanged) {
+          let uploadedUrls: string[] = [];
+          if (pending.length > 0) {
+            uploadedUrls = await uploadOrderImages(
+              pending.map((p) => p.file),
+              `items/${itemId}`,
+            );
+          }
+          const finalUrls = [...existing, ...uploadedUrls];
+          const { error: imgErr } = await supabase
+            .from("order_items")
+            .update({ images: finalUrls as never })
+            .eq("id", itemId);
+          if (imgErr) throw imgErr;
         }
       }
       // Delete removed
