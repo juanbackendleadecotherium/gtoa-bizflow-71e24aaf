@@ -50,7 +50,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { label: "Dashboard", to: "/erp", icon: LayoutDashboard, exact: true },
-  { label: "Pedidos", to: "/erp/orders", icon: ClipboardList },
+  { label: "Ventas", to: "/erp/orders", icon: ClipboardList },
   { label: "Estados", to: "/erp/settings/statuses", icon: Settings, adminOnly: true },
 ];
 
