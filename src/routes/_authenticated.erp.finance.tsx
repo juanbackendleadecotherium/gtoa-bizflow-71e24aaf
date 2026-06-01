@@ -1,5 +1,6 @@
-import { createFileRoute, Link, Outlet, useRouterState, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { LayoutDashboard, Wallet, Trophy, Trash2, Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { useBrand } from "@/features/brands/brand-context";
 
 export const Route = createFileRoute("/_authenticated/erp/finance")({
@@ -16,11 +17,21 @@ const TABS = [
 
 function FinanceLayout() {
   const { isAdmin, loading } = useBrand();
+  const navigate = useNavigate();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
 
-  if (loading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
-  if (!isAdmin) return <Navigate to="/erp" />;
+  useEffect(() => {
+    if (!loading && !isAdmin) navigate({ to: "/erp", replace: true });
+  }, [loading, isAdmin, navigate]);
+
+  if (loading || !isAdmin) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
