@@ -1,118 +1,113 @@
-# Fix móvil del header del pedido + nota en historial de estados
 
-## Problema 1 — Scroll horizontal en móvil
+# Hito 2.5 — Factura PDF + bases para envío por correo
 
-En `src/routes/_authenticated.erp.orders.$id.tsx` el contenedor de acciones del header (`<div className="flex items-center gap-2">` línea 252) **no permite wrap**, así que con badge "En producción" + Cancelar + Guardar cambios + Eliminar se sale del viewport de 390px y aparece scroll horizontal cortando el botón rojo.
+Generamos la factura en PDF descargable desde el navegador, con datos de la marca emisora, snapshot del cliente, detalle de productos, totales, abono y saldo. Dejamos toda la base lista (tablas, T&C versionados, datos de marca emisora, botón "Reenviar factura" deshabilitado) para que cuando consigan el dominio + Resend, solo conectemos las piezas finales.
 
-**Fix de presentación (sin tocar lógica):**
-- Cambiar ese contenedor a `flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end`.
-- Hacer que en modo edición los botones "Cancelar" y "Guardar cambios" tomen `flex-1 sm:flex-none` para que en móvil cada uno ocupe la mitad de la línea y no se acumulen.
-- Mover el botón "Eliminar" fuera del bloque de acciones de edición y dejarlo siempre como icono compacto al final, alineado a la derecha incluso cuando hay wrap.
-- Añadir `min-w-0` al título (`<h1>`) y al wrapper de info de la izquierda para que un nombre largo nunca empuje el layout.
+## Alcance — qué SÍ entregamos ahora
 
-No se va a tocar `OrderItemsEditor` — su grid ya es responsivo; el scroll viene únicamente del header.
+1. **Datos fiscales de marca emisora**
+   - Nuevos campos en `brands`: `legal_name` (ya existe), `tax_id` (ya existe), `address`, `city`, `phone`, `email`, `website`, `invoice_footer_note`.
+   - Pantalla en `Configuración → Marcas` (solo admin) para editar esos datos por marca. Si la marca no tiene los datos, igual se factura — los campos vacíos simplemente no se imprimen.
 
-## Problema 2 — La nota del cambio de estado no aparece en el historial
+2. **Términos y condiciones globales**
+   - Tabla `terms_versions` (globales para todas las marcas, según indicaste).
+   - Campos: `version` (auto-incremental), `content_html`, `is_active`, `created_at`, `created_by`.
+   - Una sola versión activa a la vez. Subir nueva versión desactiva la anterior pero conserva el histórico.
+   - Tú me compartes el PDF de T&C → yo lo convierto a HTML estructurado y lo cargo como `version 1` activa en la base de datos.
+   - Pantalla `Configuración → Términos y condiciones` (solo admin) para ver historial y publicar nueva versión.
 
-Causa real (auditada en migración `20260521044015_...sql`):
-1. El trigger `log_order_status_change` inserta la fila en `order_status_history` **sin nota** cuando hay UPDATE de `status_id`.
-2. El cliente luego hace `supabase.from("order_status_history").update({ note })`.
-3. Pero la tabla **solo tiene policy de SELECT** ("no insert/update/delete policies → only triggers write"). El UPDATE desde el cliente es bloqueado silenciosamente por RLS → la nota nunca se guarda. Por eso en la captura aparece "Borrador → Confirmado" sin nota a pesar de haberla escrito.
+3. **Registro de facturas emitidas**
+   - Tabla `invoices` con: `order_id`, `brand_id`, `invoice_number` (mismo que ya genera `orders.invoice_number`), `terms_version_id` (snapshot de qué T&C aplican), `pdf_url` (cuando lo subimos a storage), `issued_at`, `issued_by`, `total_snapshot`, `advance_snapshot`, `balance_snapshot`, `customer_snapshot` (jsonb), `items_snapshot` (jsonb), `sent_at` (null por ahora), `sent_to` (null), `send_count` (0).
+   - Snapshot completo de la venta al momento de facturar → si editan la venta después, la factura emitida no cambia (integridad fiscal).
+   - Bucket de storage `invoices/` (privado, solo accesible por usuarios autenticados con acceso a la marca).
 
-**Fix correcto — pasar la nota al trigger vía variable de sesión** (atómico, no depende de un segundo UPDATE):
+4. **Generación de PDF en el navegador**
+   - Librería: `@react-pdf/renderer` (genera PDF puro en cliente, sin servidor).
+   - Componente `<InvoiceDocument />` con plantilla profesional:
+     - Encabezado: logo de marca (si existe), nombre comercial, razón social, NIT, dirección, teléfono, email
+     - Bloque cliente: nombre, tipo/nro documento, teléfono, email, dirección, ciudad, empresa
+     - Metadatos: número factura, número de venta, fecha emisión, fecha venta, método de pago
+     - Tabla de productos: descripción, cantidad, precio unitario, subtotal
+     - Totales: subtotal, descuento, impuesto, total
+     - Bloque financiero: abono recibido, saldo pendiente, % pagado
+     - Notas de la venta (si existen)
+     - Páginas siguientes: Términos y Condiciones de Venta (versión vigente al momento de emisión)
+     - Pie: número factura + paginación + nota de marca
+   - Colores y tipografía respetando la marca emisora (`primary_color`).
 
-Nueva migración SQL:
+5. **Flujo de emisión desde la venta**
+   - En el detalle de venta (`/erp/orders/$id`), nueva sección **"Facturación"** en el sidebar:
+     - Si NO está facturada: botón **"Emitir factura"**
+       - Valida: venta tiene productos, total > 0, T&C activos cargados, datos básicos del cliente (nombre + documento o teléfono)
+       - Genera PDF en cliente → sube a `invoices/{brand_id}/{order_id}-{invoice_number}.pdf` → crea registro en `invoices`
+       - Muestra confirmación + abre PDF en nueva pestaña
+     - Si YA está facturada: muestra fecha emisión, número, **"Descargar PDF"**, **"Reenviar al cliente"** (deshabilitado con tooltip "Disponible cuando se configure el correo")
+   - Auditoría: queda registrado en `order_audit_log` que se emitió factura.
 
-```sql
--- Permitir que el trigger lea una nota proporcionada por el cliente
-CREATE OR REPLACE FUNCTION public.log_order_status_change()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_note text;
-BEGIN
-  -- lee la nota opcional que el cliente seteó con set_config('app.status_note', ...)
-  v_note := nullif(current_setting('app.status_note', true), '');
+6. **Estados financieros visuales** (sin nuevo flujo, solo badges informativos)
+   - En la lista de ventas y detalle: si tiene factura emitida → chip "📄 Facturada"
+   - Si `advance_amount >= total` → chip verde "✅ Pagada"
+   - Si `0 < advance_amount < total` → chip ámbar "⏳ Abono parcial — Saldo $X"
+   - Si `advance_amount = 0` → chip gris "Sin abono"
 
-  IF TG_OP = 'INSERT' THEN
-    INSERT INTO public.order_status_history (order_id, from_status_id, to_status_id, changed_by, note)
-    VALUES (NEW.id, NULL, NEW.status_id, NEW.created_by, COALESCE(v_note, 'Pedido creado'));
-    RETURN NEW;
-  ELSIF TG_OP = 'UPDATE' AND NEW.status_id IS DISTINCT FROM OLD.status_id THEN
-    INSERT INTO public.order_status_history (order_id, from_status_id, to_status_id, changed_by, note)
-    VALUES (NEW.id, OLD.status_id, NEW.status_id, auth.uid(), v_note);
-    RETURN NEW;
-  END IF;
-  RETURN NEW;
-END;
-$$;
+## Alcance — qué dejamos en STANDBY (estructurado, no funcional)
 
--- Permitir a usuarios autenticados setear esa GUC en su sesión
-GRANT EXECUTE ON FUNCTION public.log_order_status_change() TO authenticated;
+7. **Base para envío por correo (Resend)**
+   - Variable de entorno `RESEND_API_KEY` documentada como pendiente (no la pedimos todavía).
+   - Server function `sendInvoiceEmail` esqueleto creada en `src/lib/invoices.functions.ts` con TODO marcado y retorno `{ status: 'not_configured' }` si no hay API key.
+   - Botón "Reenviar factura" presente en UI pero deshabilitado con leyenda "Configurar dominio + Resend para activar".
+   - Campos `sent_at`, `sent_to`, `send_count` ya existen en `invoices` listos para usarse.
+   - Plantilla de email HTML base (sin enviar) preparada en `src/lib/email-templates/invoice.tsx` para cuando llegue el momento.
+
+## Decisiones técnicas
+
+- **PDF en cliente, no servidor**: `@react-pdf/renderer` evita instalar Chromium/Puppeteer en Cloudflare Workers (que ni lo soporta). Más rápido, sin costos extra, render consistente.
+- **Snapshot fiscal**: una vez emitida, la factura es inmutable aunque editen la venta. Solo se puede "Anular" (futura iteración) o emitir una nota crédito.
+- **Numeración**: reusamos `orders.invoice_number` (`CD-0001`, `EM-0001`, etc.) que ya generas secuencialmente — la factura conserva ese mismo número.
+- **T&C globales**: una sola tabla compartida entre marcas, una versión activa, como pediste.
+
+## Archivos que se crearán/modificarán
+
+```text
+Migración SQL nueva:
+  - ALTER brands: address, city, phone, email, website, invoice_footer_note
+  - CREATE TABLE terms_versions (+ RLS + GRANTs)
+  - CREATE TABLE invoices (+ RLS + GRANTs)
+  - INSERT storage.buckets ('invoices', private)
+  - Policies de storage para invoices
+
+Nuevos archivos:
+  src/features/invoices/invoice-document.tsx     (componente @react-pdf/renderer)
+  src/features/invoices/issue-invoice-button.tsx (botón + lógica de emisión)
+  src/features/invoices/invoice-badge.tsx        (chips financieros)
+  src/features/invoices/schemas.ts
+  src/lib/invoices.functions.ts                  (server fn — esqueleto reenvío)
+  src/lib/email-templates/invoice.tsx            (HTML para futuro envío, no se usa aún)
+  src/routes/_authenticated.erp.settings.brand-billing.tsx  (editar datos fiscales)
+  src/routes/_authenticated.erp.settings.terms.tsx          (gestionar T&C)
+
+Modificados:
+  src/routes/_authenticated.erp.orders.$id.tsx   (sección Facturación + chips)
+  src/routes/_authenticated.erp.orders.index.tsx (chips financieros en lista)
+  src/routes/_authenticated.erp.tsx              (navegación a nuevas pantallas de config)
+
+Dependencia nueva:
+  bun add @react-pdf/renderer
 ```
 
-Y un pequeño RPC para que el cliente pueda setear el GUC sin necesidad de permisos especiales:
+## Lo que necesito de ti
 
-```sql
-CREATE OR REPLACE FUNCTION public.set_status_note(p_note text)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  PERFORM set_config('app.status_note', COALESCE(p_note, ''), true); -- true = LOCAL
-END;
-$$;
+1. **El PDF de Términos y Condiciones** para cargarlos como versión 1 activa.
+2. **Confirmar los datos fiscales** de las 3 marcas (Casa Diseño, Espacio Mobiliario, Montenegro Design) — NIT, dirección, teléfono, email. Si no los tienes a mano ahora, los dejas vacíos y los cargas después por la pantalla de configuración.
 
-GRANT EXECUTE ON FUNCTION public.set_status_note(text) TO authenticated;
-```
+## Verificación cuando termine
 
-**Cambio en el cliente** (`src/routes/_authenticated.erp.orders.$id.tsx`, mutación `changeStatus`):
-- Reemplazar la lógica actual (UPDATE orders + UPDATE post-hoc del historial) por:
-  1. `await supabase.rpc('set_status_note', { p_note: statusNote.trim() })`
-  2. `await supabase.from('orders').update({ status_id: newStatus }).eq('id', id)`
-- Eliminar la búsqueda manual de la fila de historial y su UPDATE.
+1. Ir a una venta existente → sidebar muestra sección "Facturación" con botón "Emitir factura"
+2. Click → genera PDF, abre en nueva pestaña, se ve con datos correctos de marca, cliente, productos, T&C
+3. Recargar la venta → ahora muestra "Facturada el [fecha]" + "Descargar PDF" + "Reenviar al cliente" (gris)
+4. En el listado de ventas → la venta aparece con chip "📄 Facturada"
+5. Editar la venta → la factura ya emitida NO cambia (snapshot intacto)
+6. Configuración → Términos y condiciones → muestra la versión 1 activa
+7. Configuración → Datos fiscales → permite editar los datos de cada marca
 
-Nota técnica: el `set_config(..., true)` es LOCAL a la transacción. PostgREST envuelve cada request en su propia transacción, así que necesitamos que ambas llamadas vayan juntas. Como PostgREST no garantiza misma transacción entre RPC y UPDATE, lo haremos así de robusto: convertir todo a **un solo RPC** `update_order_status(p_order_id, p_status_id, p_note)` que dentro hace `set_config` LOCAL + UPDATE de orders en la misma transacción. Esa es la forma garantizada.
-
-Versión final del RPC (reemplaza a `set_status_note`):
-
-```sql
-CREATE OR REPLACE FUNCTION public.update_order_status(
-  p_order_id uuid,
-  p_status_id uuid,
-  p_note text DEFAULT NULL
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY INVOKER  -- respeta RLS del usuario sobre orders
-SET search_path = public
-AS $$
-BEGIN
-  PERFORM set_config('app.status_note', COALESCE(p_note, ''), true);
-  UPDATE public.orders SET status_id = p_status_id WHERE id = p_order_id;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.update_order_status(uuid, uuid, text) TO authenticated;
-```
-
-El cliente queda en una sola llamada:
-```ts
-await supabase.rpc('update_order_status', {
-  p_order_id: id, p_status_id: newStatus, p_note: statusNote.trim() || null,
-});
-```
-
-## Archivos a modificar
-- `src/routes/_authenticated.erp.orders.$id.tsx` — header responsive + simplificación de `changeStatus`.
-- Nueva migración `supabase/migrations/<timestamp>_status_note_via_trigger.sql` con la función trigger actualizada y el RPC `update_order_status`.
-
-## Verificación
-- Móvil 390px: el header no genera scroll horizontal; el botón rojo de eliminar queda visible.
-- Cambiar estado con nota → la nota aparece bajo la transición correspondiente en "Historial de estados".
-- Cambiar estado sin nota → no rompe (nota queda NULL, no se muestra burbuja).
+Cuando consigas el dominio y compres Resend, en Hito 2.6 solo: agregar API key como secreto, verificar dominio, activar el botón de reenvío, y conectar el envío al emitir factura por primera vez. Todo el resto ya queda hecho aquí.
