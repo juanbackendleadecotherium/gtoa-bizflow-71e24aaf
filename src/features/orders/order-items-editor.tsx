@@ -47,13 +47,35 @@ function parseDecimal(val: string) {
 export function OrderItemsEditor({
   items,
   onChange,
+  existingImages,
+  pendingImages,
+  onExistingImagesChange,
+  onPendingImagesChange,
 }: {
   items: OrderItemInput[];
   onChange: (items: OrderItemInput[]) => void;
+  existingImages?: string[][];
+  pendingImages?: PendingImage[][];
+  onExistingImagesChange?: (next: string[][]) => void;
+  onPendingImagesChange?: (next: PendingImage[][]) => void;
 }) {
-  const add = () =>
+  const imagesEnabled =
+    !!existingImages && !!pendingImages && !!onExistingImagesChange && !!onPendingImagesChange;
+
+  const add = () => {
     onChange([...items, { description: "", quantity: 1, unit_price: 0, sort_order: items.length }]);
-  const remove = (idx: number) => onChange(items.filter((_, i) => i !== idx));
+    if (imagesEnabled) {
+      onExistingImagesChange!([...(existingImages ?? []), []]);
+      onPendingImagesChange!([...(pendingImages ?? []), []]);
+    }
+  };
+  const remove = (idx: number) => {
+    onChange(items.filter((_, i) => i !== idx));
+    if (imagesEnabled) {
+      onExistingImagesChange!((existingImages ?? []).filter((_, i) => i !== idx));
+      onPendingImagesChange!((pendingImages ?? []).filter((_, i) => i !== idx));
+    }
+  };
   const update = (idx: number, patch: Partial<OrderItemInput>) =>
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
 
