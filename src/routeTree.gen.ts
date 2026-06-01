@@ -24,6 +24,7 @@ import { Route as AuthenticatedErpSettingsBrandBillingRouteImport } from './rout
 import { Route as AuthenticatedErpOrdersIdRouteImport } from './routes/_authenticated.erp.orders.$id'
 import { Route as AuthenticatedErpFinanceSellersRouteImport } from './routes/_authenticated.erp.finance.sellers'
 import { Route as AuthenticatedErpFinanceReceivablesRouteImport } from './routes/_authenticated.erp.finance.receivables'
+import { Route as AuthenticatedErpFinanceDeletionsRouteImport } from './routes/_authenticated.erp.finance.deletions'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -107,6 +108,12 @@ const AuthenticatedErpFinanceReceivablesRoute =
     path: '/receivables',
     getParentRoute: () => AuthenticatedErpFinanceRoute,
   } as any)
+const AuthenticatedErpFinanceDeletionsRoute =
+  AuthenticatedErpFinanceDeletionsRouteImport.update({
+    id: '/deletions',
+    path: '/deletions',
+    getParentRoute: () => AuthenticatedErpFinanceRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/erp/finance': typeof AuthenticatedErpFinanceRouteWithChildren
   '/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/erp/': typeof AuthenticatedErpIndexRoute
+  '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
   '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
@@ -128,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/erp': typeof AuthenticatedErpIndexRoute
+  '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
   '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
@@ -146,6 +155,7 @@ export interface FileRoutesById {
   '/_authenticated/erp/finance': typeof AuthenticatedErpFinanceRouteWithChildren
   '/_authenticated/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/_authenticated/erp/': typeof AuthenticatedErpIndexRoute
+  '/_authenticated/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/_authenticated/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
   '/_authenticated/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/_authenticated/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/erp/finance'
     | '/erp/orders'
     | '/erp/'
+    | '/erp/finance/deletions'
     | '/erp/finance/receivables'
     | '/erp/finance/sellers'
     | '/erp/orders/$id'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/erp'
+    | '/erp/finance/deletions'
     | '/erp/finance/receivables'
     | '/erp/finance/sellers'
     | '/erp/orders/$id'
@@ -194,6 +206,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/finance'
     | '/_authenticated/erp/orders'
     | '/_authenticated/erp/'
+    | '/_authenticated/erp/finance/deletions'
     | '/_authenticated/erp/finance/receivables'
     | '/_authenticated/erp/finance/sellers'
     | '/_authenticated/erp/orders/$id'
@@ -317,10 +330,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpFinanceReceivablesRouteImport
       parentRoute: typeof AuthenticatedErpFinanceRoute
     }
+    '/_authenticated/erp/finance/deletions': {
+      id: '/_authenticated/erp/finance/deletions'
+      path: '/deletions'
+      fullPath: '/erp/finance/deletions'
+      preLoaderRoute: typeof AuthenticatedErpFinanceDeletionsRouteImport
+      parentRoute: typeof AuthenticatedErpFinanceRoute
+    }
   }
 }
 
 interface AuthenticatedErpFinanceRouteChildren {
+  AuthenticatedErpFinanceDeletionsRoute: typeof AuthenticatedErpFinanceDeletionsRoute
   AuthenticatedErpFinanceReceivablesRoute: typeof AuthenticatedErpFinanceReceivablesRoute
   AuthenticatedErpFinanceSellersRoute: typeof AuthenticatedErpFinanceSellersRoute
   AuthenticatedErpFinanceIndexRoute: typeof AuthenticatedErpFinanceIndexRoute
@@ -328,6 +349,8 @@ interface AuthenticatedErpFinanceRouteChildren {
 
 const AuthenticatedErpFinanceRouteChildren: AuthenticatedErpFinanceRouteChildren =
   {
+    AuthenticatedErpFinanceDeletionsRoute:
+      AuthenticatedErpFinanceDeletionsRoute,
     AuthenticatedErpFinanceReceivablesRoute:
       AuthenticatedErpFinanceReceivablesRoute,
     AuthenticatedErpFinanceSellersRoute: AuthenticatedErpFinanceSellersRoute,
