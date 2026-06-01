@@ -2,15 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { PasswordInput } from "@/features/auth/components/password-input";
 import { PasswordStrength } from "@/features/auth/components/password-strength";
-import { CanvasRevealEffect } from "@/components/ui/canvas-reveal-effect";
+import { SmokeyBackground } from "@/components/ui/smokey-background";
 import { cn } from "@/lib/utils";
 import {
   MIN_PASSWORD_SCORE,
@@ -42,6 +39,65 @@ function fieldErrors(parseError: unknown): Errors {
     }
   }
   return out;
+}
+
+/** Input flotante con label animado e icono */
+function FloatingField({
+  id,
+  type,
+  value,
+  onChange,
+  label,
+  icon,
+  autoComplete,
+  invalid,
+}: {
+  id: string;
+  type: string;
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  icon: React.ReactNode;
+  autoComplete?: string;
+  invalid?: boolean;
+}) {
+  const filled = value.length > 0;
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete={autoComplete}
+        aria-invalid={invalid}
+        placeholder=" "
+        className={cn(
+          "peer w-full h-12 rounded-xl bg-white/5 border border-white/10",
+          "px-11 pt-4 pb-1 text-white placeholder-transparent",
+          "focus:outline-none focus:border-amber-400/60 focus:bg-white/[0.07]",
+          "transition-colors",
+          invalid && "border-red-400/60",
+        )}
+      />
+      <label
+        htmlFor={id}
+        className={cn(
+          "pointer-events-none absolute left-11 text-white/50 transition-all duration-200",
+          "top-1/2 -translate-y-1/2 text-sm",
+          (filled || true) &&
+            "peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-wider peer-focus:text-amber-300",
+          filled &&
+            "top-2 translate-y-0 text-[10px] uppercase tracking-wider text-amber-300/80",
+        )}
+      >
+        {label}
+      </label>
+      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/40 peer-focus:text-amber-300">
+        {icon}
+      </span>
+    </div>
+  );
 }
 
 function AuthPage() {
@@ -123,36 +179,13 @@ function AuthPage() {
     }
   };
 
-  // Color de los dots: ámbar/cobre de la marca + acento sutil
-  const dotColors = useMemo(
-    () => [
-      [230, 150, 40],   // ámbar Getova
-      [255, 196, 110],  // ámbar claro
-      [120, 80, 30],    // cobre oscuro
-    ],
-    [],
-  );
-
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0a0b10] text-white">
-      {/* Fondo animado de dots */}
-      <div className="absolute inset-0">
-        <CanvasRevealEffect
-          animationSpeed={3}
-          colors={dotColors}
-          opacities={[0.2, 0.2, 0.3, 0.4, 0.5, 0.7, 0.9, 1]}
-          totalSize={5}
-          dotSize={2}
-          containerClassName="bg-[#0a0b10]"
-          showGradient={false}
-        />
-        {/* Capas de gradiente para dar profundidad */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(230,150,40,0.18),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(20,30,60,0.7),transparent_60%)]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
-      </div>
+    <div className="relative min-h-screen overflow-hidden bg-[#08090f] text-white">
+      {/* Fondo smokey WebGL */}
+      <SmokeyBackground color="#E6962A" backdropBlurAmount="sm" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/70 pointer-events-none" />
 
-      {/* Top bar */}
+      {/* Top */}
       <header className="relative z-10 flex items-center justify-between px-6 sm:px-10 py-6">
         <Link
           to="/"
@@ -161,64 +194,33 @@ function AuthPage() {
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Link>
-        <div className="flex items-center gap-2 text-sm text-white/60">
-          <ShieldCheck className="h-4 w-4 text-amber-400" />
-          Acceso interno · Grupo Getova
+        <div className="hidden sm:flex items-center gap-2 text-xs text-white/50 uppercase tracking-widest">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(230,150,40,0.8)]" />
+          Backoffice · Grupo Getova
         </div>
       </header>
 
-      {/* Layout principal */}
-      <main className="relative z-10 mx-auto flex max-w-6xl flex-col lg:flex-row items-stretch justify-center px-6 lg:px-10 pb-16 pt-4 gap-10 lg:gap-16">
-        {/* Panel izquierdo — Branding */}
-        <section className="flex-1 hidden lg:flex flex-col justify-between max-w-xl">
-          <div>
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-black font-display font-bold text-xl shadow-lg shadow-amber-500/30">
-              G
-            </div>
-            <h1 className="font-display text-5xl xl:text-6xl font-semibold leading-[1.05] mt-8 tracking-tight">
-              Bienvenido al
-              <br />
-              <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 bg-clip-text text-transparent">
-                Backoffice
-              </span>
-            </h1>
-            <p className="mt-6 text-white/70 text-lg max-w-md leading-relaxed">
-              Orquesta marcas, pedidos, finanzas y producción desde un solo lugar.
-              Acceso exclusivo para el equipo de Grupo Getova.
-            </p>
-          </div>
-
-          <ul className="mt-10 space-y-3 text-sm text-white/70">
-            {[
-              "ERP, CRM y producción unificados",
-              "Gestión multimarca con permisos finos",
-              "Trazabilidad completa de cada operación",
-            ].map((t) => (
-              <li key={t} className="flex items-center gap-3">
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-400/15 text-amber-300">
-                  <Sparkles className="h-3.5 w-3.5" />
-                </span>
-                {t}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* Panel derecho — Formulario */}
-        <section className="flex-1 max-w-md w-full mx-auto lg:mx-0 self-center">
-          <div className="relative rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-6 sm:p-8 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]">
-            {/* Logo mobile */}
-            <div className="lg:hidden flex items-center gap-3 mb-6">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-black font-display font-bold">
+      {/* Centro */}
+      <main className="relative z-10 flex items-center justify-center px-6 pb-16 pt-2 min-h-[calc(100vh-100px)]">
+        <div className="w-full max-w-md">
+          {/* Glass card */}
+          <div className="relative rounded-3xl border border-white/15 bg-white/[0.06] backdrop-blur-2xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] p-7 sm:p-9">
+            {/* Brand */}
+            <div className="flex flex-col items-center text-center mb-7">
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-600 text-black font-display font-bold text-2xl shadow-lg shadow-amber-500/40">
                 G
               </div>
-              <div>
-                <p className="font-display text-base font-semibold">Grupo Getova</p>
-                <p className="text-xs text-white/60">Backoffice</p>
-              </div>
+              <h1 className="font-display text-2xl font-semibold mt-4">
+                {tab === "signin" ? "Bienvenido de nuevo" : "Crear cuenta"}
+              </h1>
+              <p className="text-sm text-white/60 mt-1">
+                {tab === "signin"
+                  ? "Inicia sesión para continuar"
+                  : "Únete al backoffice de Grupo Getova"}
+              </p>
             </div>
 
-            {/* Tabs custom */}
+            {/* Tabs */}
             <div className="relative grid grid-cols-2 rounded-full bg-white/5 border border-white/10 p-1 mb-6">
               {(["signin", "signup"] as const).map((t) => (
                 <button
@@ -232,9 +234,9 @@ function AuthPage() {
                 >
                   {tab === t && (
                     <motion.span
-                      layoutId="auth-tab-pill"
+                      layoutId="auth-pill"
                       className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 shadow-md shadow-amber-500/30"
-                      transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
                   {t === "signin" ? "Iniciar sesión" : "Crear cuenta"}
@@ -246,120 +248,126 @@ function AuthPage() {
               {tab === "signin" ? (
                 <motion.form
                   key="signin"
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.25 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22 }}
                   onSubmit={handleSignIn}
                   className="space-y-4"
                   noValidate
                 >
-                  <div className="space-y-1.5">
-                    <Label htmlFor="email-in" className="text-white/80">Correo</Label>
-                    <Input
-                      id="email-in"
-                      type="email"
-                      value={siEmail}
-                      onChange={(e) => setSiEmail(e.target.value)}
-                      placeholder="nombre@grupogetova.com"
-                      aria-invalid={!!siErrors.email}
-                      className="h-11 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-amber-400/60"
-                    />
-                    {siErrors.email && (
-                      <p className="text-xs text-red-300">{siErrors.email}</p>
-                    )}
+                  <FloatingField
+                    id="email-in"
+                    type="email"
+                    value={siEmail}
+                    onChange={setSiEmail}
+                    label="Correo electrónico"
+                    icon={<Mail className="h-4 w-4" />}
+                    autoComplete="email"
+                    invalid={!!siErrors.email}
+                  />
+                  {siErrors.email && (
+                    <p className="text-xs text-red-300 -mt-2 pl-2">{siErrors.email}</p>
+                  )}
+
+                  <FloatingField
+                    id="pass-in"
+                    type="password"
+                    value={siPass}
+                    onChange={setSiPass}
+                    label="Contraseña"
+                    icon={<Lock className="h-4 w-4" />}
+                    autoComplete="current-password"
+                    invalid={!!siErrors.password}
+                  />
+                  {siErrors.password && (
+                    <p className="text-xs text-red-300 -mt-2 pl-2">{siErrors.password}</p>
+                  )}
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      className="text-xs text-white/60 hover:text-amber-300 transition-colors"
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </button>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pass-in" className="text-white/80">Contraseña</Label>
-                    <PasswordInput
-                      id="pass-in"
-                      value={siPass}
-                      onChange={(e) => setSiPass(e.target.value)}
-                      aria-invalid={!!siErrors.password}
-                      className="h-11 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-amber-400/60"
-                    />
-                    {siErrors.password && (
-                      <p className="text-xs text-red-300">{siErrors.password}</p>
-                    )}
-                  </div>
+
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="group w-full h-11 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 text-black hover:from-amber-200 hover:to-amber-400 shadow-lg shadow-amber-500/20 font-medium"
+                    className="group w-full h-12 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 text-black hover:from-amber-200 hover:to-amber-400 shadow-lg shadow-amber-500/25 font-medium"
                   >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Entrar
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    Iniciar sesión
+                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Button>
-                  <p className="text-xs text-white/50 text-center pt-1">
-                    ¿No tienes acceso? Solicítalo a un administrador.
-                  </p>
                 </motion.form>
               ) : (
                 <motion.form
                   key="signup"
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.25 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22 }}
                   onSubmit={handleSignUp}
                   className="space-y-4"
                   noValidate
                 >
-                  <div className="space-y-1.5">
-                    <Label htmlFor="name-up" className="text-white/80">Nombre</Label>
-                    <Input
-                      id="name-up"
-                      value={suName}
-                      onChange={(e) => setSuName(e.target.value)}
-                      placeholder="Tu nombre"
-                      aria-invalid={!!suErrors.displayName}
-                      className="h-11 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-amber-400/60"
-                    />
-                    {suErrors.displayName && (
-                      <p className="text-xs text-red-300">{suErrors.displayName}</p>
-                    )}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="email-up" className="text-white/80">Correo</Label>
-                    <Input
-                      id="email-up"
-                      type="email"
-                      value={suEmail}
-                      onChange={(e) => setSuEmail(e.target.value)}
-                      placeholder="nombre@grupogetova.com"
-                      aria-invalid={!!suErrors.email}
-                      className="h-11 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-amber-400/60"
-                    />
-                    {suErrors.email && (
-                      <p className="text-xs text-red-300">{suErrors.email}</p>
-                    )}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pass-up" className="text-white/80">Contraseña</Label>
-                    <PasswordInput
-                      id="pass-up"
-                      value={suPass}
-                      onChange={(e) => setSuPass(e.target.value)}
-                      aria-invalid={!!suErrors.password}
-                      className="h-11 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-amber-400/60"
-                    />
-                    <PasswordStrength value={suPass} />
-                    {suErrors.password && (
-                      <p className="text-xs text-red-300">{suErrors.password}</p>
-                    )}
-                  </div>
+                  <FloatingField
+                    id="name-up"
+                    type="text"
+                    value={suName}
+                    onChange={setSuName}
+                    label="Nombre"
+                    icon={<User className="h-4 w-4" />}
+                    autoComplete="name"
+                    invalid={!!suErrors.displayName}
+                  />
+                  {suErrors.displayName && (
+                    <p className="text-xs text-red-300 -mt-2 pl-2">{suErrors.displayName}</p>
+                  )}
+
+                  <FloatingField
+                    id="email-up"
+                    type="email"
+                    value={suEmail}
+                    onChange={setSuEmail}
+                    label="Correo electrónico"
+                    icon={<Mail className="h-4 w-4" />}
+                    autoComplete="email"
+                    invalid={!!suErrors.email}
+                  />
+                  {suErrors.email && (
+                    <p className="text-xs text-red-300 -mt-2 pl-2">{suErrors.email}</p>
+                  )}
+
+                  <FloatingField
+                    id="pass-up"
+                    type="password"
+                    value={suPass}
+                    onChange={setSuPass}
+                    label="Contraseña"
+                    icon={<Lock className="h-4 w-4" />}
+                    autoComplete="new-password"
+                    invalid={!!suErrors.password}
+                  />
+                  <PasswordStrength value={suPass} />
+                  {suErrors.password && (
+                    <p className="text-xs text-red-300 pl-2">{suErrors.password}</p>
+                  )}
+
                   <Button
                     type="submit"
                     disabled={loading || !canSignUp}
-                    className="group w-full h-11 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 text-black hover:from-amber-200 hover:to-amber-400 shadow-lg shadow-amber-500/20 font-medium disabled:opacity-50"
+                    className="group w-full h-12 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 text-black hover:from-amber-200 hover:to-amber-400 shadow-lg shadow-amber-500/25 font-medium disabled:opacity-50"
                   >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Crear cuenta y entrar
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Button>
-                  <p className="text-xs text-white/50 text-center pt-1">
-                    Una vez creada, un administrador asignará rol y marcas.
+                  <p className="text-xs text-white/50 text-center">
+                    Un administrador asignará rol y marcas tras crear la cuenta.
                   </p>
                 </motion.form>
               )}
@@ -367,9 +375,9 @@ function AuthPage() {
           </div>
 
           <p className="mt-6 text-center text-xs text-white/40">
-            © {new Date().getFullYear()} Grupo Getova. Todos los derechos reservados.
+            © {new Date().getFullYear()} Grupo Getova · Acceso interno
           </p>
-        </section>
+        </div>
       </main>
     </div>
   );
