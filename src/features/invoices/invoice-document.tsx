@@ -304,7 +304,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             const title = lines[0] || "";
             const detail = lines.slice(1).join(" ");
             return (
-              <View key={i} style={[styles.row, i % 2 === 1 ? styles.rowAlt : null]} wrap={false}>
+              <View key={i} style={i % 2 === 1 ? [styles.row, styles.rowAlt] : styles.row} wrap={false}>
                 <Text style={styles.cIdx}>{String(i + 1).padStart(2, "0")}</Text>
                 <View style={styles.cItem}>
                   <Text style={styles.itemTitle}>{title}</Text>
