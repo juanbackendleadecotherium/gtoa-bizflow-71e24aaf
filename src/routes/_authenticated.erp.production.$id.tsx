@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, Save, Trash2, History, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, History, ExternalLink, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { PRODUCTION_STATUSES, PRIORITIES } from "@/features/production/production-meta";
 import { ProductionStatusBadge } from "@/features/production/status-badge";
 import { PlanimetryUploader, type Planimetry } from "@/features/production/planimetry-uploader";
+import { ReasonDialog } from "@/features/production/reason-dialog";
 
 export const Route = createFileRoute("/_authenticated/erp/production/$id")({
   component: ProductionDetail,
