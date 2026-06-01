@@ -532,6 +532,14 @@ function OrderDetail() {
 
           <InvoicePanel order={o as any} />
 
+          <PaymentsPanel
+            orderId={o.id}
+            brandId={o.brand_id}
+            total={Number(o.total) || 0}
+            advance={Number(o.advance_amount) || 0}
+          />
+
+
 
 
 
