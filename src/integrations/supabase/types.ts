@@ -228,6 +228,13 @@ export type Database = {
             foreignKeyName: "invoice_versions_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "invoice_versions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -321,6 +328,13 @@ export type Database = {
             foreignKeyName: "invoices_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -378,10 +392,53 @@ export type Database = {
             foreignKeyName: "order_audit_log_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_audit_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
+      }
+      order_collection_followups: {
+        Row: {
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          next_contact_date: string | null
+          note: string | null
+          order_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          next_contact_date?: string | null
+          note?: string | null
+          order_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          next_contact_date?: string | null
+          note?: string | null
+          order_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -425,10 +482,62 @@ export type Database = {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
+      }
+      order_payments: {
+        Row: {
+          amount: number
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          id: string
+          method: string | null
+          note: string | null
+          order_id: string
+          paid_at: string
+          proof_url: string | null
+          reference: string | null
+        }
+        Insert: {
+          amount: number
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          method?: string | null
+          note?: string | null
+          order_id: string
+          paid_at?: string
+          proof_url?: string | null
+          reference?: string | null
+        }
+        Update: {
+          amount?: number
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          method?: string | null
+          note?: string | null
+          order_id?: string
+          paid_at?: string
+          proof_url?: string | null
+          reference?: string | null
+        }
+        Relationships: []
       }
       order_status_history: {
         Row: {
@@ -465,6 +574,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "order_statuses"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
           },
           {
             foreignKeyName: "order_status_history_order_id_fkey"
@@ -777,7 +893,38 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      order_financials: {
+        Row: {
+          advance_amount: number | null
+          balance: number | null
+          brand_id: string | null
+          created_at: string | null
+          created_by: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          days_since_sale: number | null
+          invoice_number: string | null
+          order_id: string | null
+          order_number: string | null
+          paid_total: number | null
+          payment_status: string | null
+          payments_total: number | null
+          sale_date: string | null
+          seller_id: string | null
+          seller_label: string | null
+          total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_write_brand: {
