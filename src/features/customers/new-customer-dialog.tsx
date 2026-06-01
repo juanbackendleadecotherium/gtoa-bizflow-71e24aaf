@@ -26,6 +26,7 @@ import { formatMoney } from "@/features/orders/order-items-editor";
 import { MoneyInput } from "@/features/orders/money-input";
 import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
 import { uploadOrderImage, uploadOrderImages } from "@/lib/image-upload";
+import { DEPOSIT_ACCOUNTS } from "@/features/finance/deposit-accounts";
 
 import {
   Dialog,
