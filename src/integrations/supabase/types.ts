@@ -854,7 +854,15 @@ export type Database = {
           old_value?: Json | null
           production_order_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "production_audit_log_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       production_orders: {
         Row: {
@@ -914,7 +922,29 @@ export type Database = {
           updated_at?: string
           workshop?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "production_orders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "production_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       production_planimetries: {
         Row: {
