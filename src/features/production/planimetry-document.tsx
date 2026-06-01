@@ -67,64 +67,68 @@ const styles = StyleSheet.create({
 
   // === HERO / ITEM CARD ======================================================
   itemCard: {
-    backgroundColor: CARD, borderRadius: 16, padding: 14,
+    backgroundColor: CARD, borderRadius: 16, padding: 16,
     marginBottom: 12,
   },
-  itemTopRow: { flexDirection: "row", gap: 14 },
-
-  // Left: BIG hero image + product label
-  heroCol: { width: "44%" },
-  heroImageBox: {
-    width: "100%", height: 280, borderRadius: 10, overflow: "hidden",
-    backgroundColor: CARD_SOFT, borderWidth: 0.5, borderColor: LINE,
+  deliveryStrip: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "baseline",
+    marginBottom: 12, gap: 8,
   },
-  heroImage: { width: "100%", height: "100%", objectFit: "cover" },
+  qtyBadge: {
+    backgroundColor: "#1a1a1a", color: "#ffffff",
+    fontSize: 9, fontWeight: 700, letterSpacing: 1,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10,
+  },
+  deliveryWrap: { flexDirection: "row", alignItems: "baseline", gap: 6 },
+  deliveryLabel: { fontSize: 11, fontWeight: 700, fontStyle: "italic", color: INK },
+  deliveryValue: { fontSize: 13, fontWeight: 700, fontStyle: "italic" },
+
+  // BIG hero image — full width, contain (no crop)
+  heroImageBox: {
+    width: "100%", height: 360, borderRadius: 12, overflow: "hidden",
+    backgroundColor: "#ffffff", borderWidth: 0.5, borderColor: LINE,
+    justifyContent: "center", alignItems: "center", padding: 6,
+  },
+  heroImage: { width: "100%", height: "100%", objectFit: "contain" },
   heroNoImage: {
-    width: "100%", height: 280, borderRadius: 10, borderWidth: 1, borderStyle: "dashed",
+    width: "100%", height: 360, borderRadius: 12, borderWidth: 1, borderStyle: "dashed",
     borderColor: LINE, justifyContent: "center", alignItems: "center",
+    backgroundColor: "#ffffff",
   },
   heroNoImageText: { fontSize: 9, color: MUTED, fontStyle: "italic" },
   heroProductName: {
-    fontSize: 18, fontWeight: 700, fontStyle: "italic",
-    color: INK, marginTop: 10,
+    fontSize: 20, fontWeight: 700, fontStyle: "italic",
+    color: INK, marginTop: 12,
   },
   heroProductCaption: { fontSize: 10, fontStyle: "italic", color: SUB, marginTop: 2 },
 
-  // Right: specs (description)
-  specsCol: { flex: 1, paddingTop: 2 },
-  deliveryStrip: {
-    flexDirection: "row", justifyContent: "flex-end", alignItems: "baseline",
-    marginBottom: 10, gap: 8,
+  // === SPECS (description) — separate card so it can flow across pages =======
+  specsCard: {
+    backgroundColor: CARD, borderRadius: 16, padding: 16, marginBottom: 12,
   },
-  deliveryLabel: { fontSize: 11, fontWeight: 700, fontStyle: "italic", color: INK },
-  deliveryValue: {
-    fontSize: 13, fontWeight: 700, fontStyle: "italic",
-    paddingHorizontal: 6, paddingVertical: 1,
-  },
-  qtyBadge: {
-    alignSelf: "flex-start", marginBottom: 8,
-    backgroundColor: "#1a1a1a", color: "#ffffff",
-    fontSize: 9, fontWeight: 700, letterSpacing: 1,
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
-  },
-  specsBody: { fontSize: 10.5, color: INK, lineHeight: 1.55 },
-
-  // === SECONDARY IMAGES CARD =================================================
-  refCard: {
-    backgroundColor: CARD, borderRadius: 16, padding: 14, marginBottom: 12,
-  },
-  refTitle: {
+  specsLabel: {
     fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
     color: SUB, marginBottom: 8,
   },
-  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
-  refCell: { width: "33.333%", paddingHorizontal: 4, paddingBottom: 8 },
-  refImageBox: {
-    width: "100%", height: 150, borderRadius: 8, overflow: "hidden",
-    backgroundColor: CARD_SOFT, borderWidth: 0.5, borderColor: LINE,
+  specsBody: { fontSize: 11, color: INK, lineHeight: 1.6 },
+
+  // === SECONDARY IMAGES CARD — bigger, contain ===============================
+  refCard: {
+    backgroundColor: CARD, borderRadius: 16, padding: 16, marginBottom: 12,
   },
-  refImage: { width: "100%", height: "100%", objectFit: "cover" },
-  refCaption: { fontSize: 8, color: MUTED, marginTop: 3, textAlign: "center", fontStyle: "italic" },
+  refTitle: {
+    fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
+    color: SUB, marginBottom: 10,
+  },
+  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
+  refCell: { width: "50%", paddingHorizontal: 5, paddingBottom: 10 },
+  refImageBox: {
+    width: "100%", height: 260, borderRadius: 10, overflow: "hidden",
+    backgroundColor: "#ffffff", borderWidth: 0.5, borderColor: LINE,
+    justifyContent: "center", alignItems: "center", padding: 6,
+  },
+  refImage: { width: "100%", height: "100%", objectFit: "contain" },
+  refCaption: { fontSize: 8, color: MUTED, marginTop: 4, textAlign: "center", fontStyle: "italic" },
 
   // === NOTES =================================================================
   notesCard: {
