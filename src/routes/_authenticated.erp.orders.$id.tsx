@@ -212,17 +212,7 @@ function OrderDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("orders").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Pedido eliminado");
-      navigate({ to: "/erp/orders" });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (orderQuery.isLoading) return <div className="grid place-items-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   const o = orderQuery.data as any;
