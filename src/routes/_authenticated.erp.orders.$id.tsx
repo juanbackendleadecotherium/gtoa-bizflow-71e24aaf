@@ -569,6 +569,15 @@ function OrderDetail() {
           </div>
         </aside>
       </div>
+
+      <DeleteOrderDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        orderId={id}
+        orderNumber={o.order_number}
+        customerName={o.customer_name}
+        onDeleted={() => navigate({ to: "/erp/orders" })}
+      />
     </>
   );
 }
