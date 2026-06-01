@@ -19,6 +19,7 @@ import type { OrderItemInput } from "@/features/orders/schemas";
 import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 import { InvoicePanel } from "@/features/invoices/invoice-panel";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
+import { PaymentsPanel } from "@/features/finance/payments-panel";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -530,6 +531,14 @@ function OrderDetail() {
           </div>
 
           <InvoicePanel order={o as any} />
+
+          <PaymentsPanel
+            orderId={o.id}
+            brandId={o.brand_id}
+            total={Number(o.total) || 0}
+            advance={Number(o.advance_amount) || 0}
+          />
+
 
 
 

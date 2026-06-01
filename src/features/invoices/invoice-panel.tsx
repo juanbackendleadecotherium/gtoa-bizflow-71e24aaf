@@ -122,7 +122,7 @@ export function InvoicePanel({ order }: { order: Order }) {
       if (Number(order.total) <= 0) throw new Error("El total de la venta debe ser mayor a cero.");
       if (!order.customer_name) throw new Error("El cliente debe tener al menos un nombre.");
 
-      const [brandRes, userRes, existingRes, latestVersionRes] = await Promise.all([
+      const [brandRes, userRes, existingRes, latestVersionRes, paymentsRes] = await Promise.all([
         supabase.from("brands").select("*").eq("id", order.brand_id).maybeSingle(),
         supabase.auth.getUser(),
         supabase.from("invoices").select("id, pdf_path").eq("order_id", order.id).maybeSingle(),
@@ -131,6 +131,7 @@ export function InvoicePanel({ order }: { order: Order }) {
           .eq("order_id", order.id)
           .order("version_number", { ascending: false })
           .limit(1).maybeSingle(),
+        supabase.from("order_payments").select("amount").eq("order_id", order.id),
       ]);
       if (brandRes.error) throw brandRes.error;
       const brand = brandRes.data;
@@ -144,7 +145,8 @@ export function InvoicePanel({ order }: { order: Order }) {
         line_total: Number(it.line_total),
       }));
       const total = Number(order.total);
-      const advance = Number(order.advance_amount || 0);
+      const paymentsSum = (paymentsRes.data ?? []).reduce((s, p: any) => s + Number(p.amount), 0);
+      const advance = Number(order.advance_amount || 0) + paymentsSum;
       const balance = Math.max(0, total - advance);
       const nextVersionNumber = (latestVersionRes.data?.version_number ?? 0) + 1;
 
