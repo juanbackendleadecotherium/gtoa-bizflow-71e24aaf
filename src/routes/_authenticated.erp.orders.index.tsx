@@ -59,7 +59,7 @@ function OrdersPage() {
   });
 
   if (!selectedBrandId) {
-    return <p className="text-sm text-muted-foreground">Selecciona una marca para ver sus pedidos.</p>;
+    return <p className="text-sm text-muted-foreground">Selecciona una marca para ver sus ventas.</p>;
   }
 
   return (
@@ -67,11 +67,11 @@ function OrdersPage() {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1">{selectedBrand?.name}</p>
-          <h1 className="font-display text-2xl font-semibold">Pedidos</h1>
-          <p className="text-sm text-muted-foreground">Toda la operación gira alrededor del pedido: cliente, productos y estados.</p>
+          <h1 className="font-display text-2xl font-semibold">Ventas</h1>
+          <p className="text-sm text-muted-foreground">Toda la operación gira alrededor de la venta: cliente, productos y estados.</p>
         </div>
         <Button onClick={() => setNewOpen(true)} className="gap-2 self-start sm:self-auto">
-          <Plus className="h-4 w-4" /> Nuevo pedido
+          <Plus className="h-4 w-4" /> Nueva venta
         </Button>
       </div>
 
@@ -98,7 +98,7 @@ function OrdersPage() {
           <div className="p-8 grid place-items-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
         ) : (ordersQuery.data ?? []).length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            Aún no hay pedidos. Crea el primero con el botón <strong>Nuevo pedido</strong>.
+            Aún no hay ventas. Crea la primera con el botón <strong>Nueva venta</strong>.
           </div>
         ) : (
           <>

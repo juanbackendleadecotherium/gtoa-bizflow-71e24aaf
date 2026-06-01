@@ -81,7 +81,7 @@ function StatusesPage() {
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1">{selectedBrand?.name}</p>
-          <h1 className="font-display text-2xl font-semibold">Estados de pedido</h1>
+          <h1 className="font-display text-2xl font-semibold">Estados de venta</h1>
           <p className="text-sm text-muted-foreground">Configura el flujo de estados para esta marca.</p>
         </div>
         <Button onClick={() => setCreating(true)} className="gap-2"><Plus className="h-4 w-4" /> Nuevo estado</Button>
