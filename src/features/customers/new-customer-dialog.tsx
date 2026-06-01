@@ -269,6 +269,7 @@ export function NewCustomerDialog({
             ext.order.estimated_delivery_date || d.order.estimated_delivery_date,
           payment_method: ext.order.payment_method || d.order.payment_method,
           advance_amount: ext.order.advance_amount || d.order.advance_amount,
+          advance_deposit_account: d.order.advance_deposit_account,
         },
         items: ext.items.length > 0 ? ext.items : d.items,
         notes: ext.notes || d.notes,
