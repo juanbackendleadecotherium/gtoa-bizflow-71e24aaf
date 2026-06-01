@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, Download, Mail, Loader2, AlertTriangle } from "lucide-react";
-import { pdf } from "@react-pdf/renderer";
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
