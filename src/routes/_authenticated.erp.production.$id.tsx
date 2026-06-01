@@ -167,11 +167,14 @@ function ProductionDetail() {
             </Link>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {p.status !== "rechazada" && (
+            <Button variant="outline" size="sm" onClick={() => setRejOpen(true)} className="gap-1 text-amber-700 dark:text-amber-300">
+              <ShieldAlert className="h-4 w-4" /> Rechazar
+            </Button>
+          )}
           {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => {
-              if (confirm("¿Eliminar esta orden de producción y sus planimetrías?")) remove.mutate();
-            }} className="text-destructive gap-1">
+            <Button variant="outline" size="sm" onClick={() => setDelOpen(true)} className="text-destructive gap-1">
               <Trash2 className="h-4 w-4" /> Eliminar
             </Button>
           )}
@@ -181,6 +184,24 @@ function ProductionDetail() {
           </Button>
         </div>
       </div>
+
+      <ReasonDialog
+        open={delOpen} onOpenChange={setDelOpen}
+        title="Eliminar orden de producción"
+        description="Esta acción es definitiva. Quedará registrada en el historial de eliminaciones con tu usuario y el motivo."
+        confirmLabel="Eliminar definitivamente"
+        confirmVariant="destructive"
+        pending={remove.isPending}
+        onConfirm={(r) => remove.mutate(r)}
+      />
+      <ReasonDialog
+        open={rejOpen} onOpenChange={setRejOpen}
+        title="Rechazar y devolver al vendedor"
+        description="La orden se marcará como rechazada y el motivo quedará en la bitácora. El vendedor puede corregir y reenviar sin perder el historial."
+        confirmLabel="Rechazar"
+        pending={reject.isPending}
+        onConfirm={(r) => reject.mutate(r)}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
