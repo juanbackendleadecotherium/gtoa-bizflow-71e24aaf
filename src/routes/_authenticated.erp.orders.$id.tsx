@@ -16,6 +16,8 @@ import { StatusBadge } from "@/features/orders/status-badge";
 import { OrderItemsEditor, formatMoney } from "@/features/orders/order-items-editor";
 import { AmountOrPercentInput } from "@/features/orders/amount-percent-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
+import type { PendingImage } from "@/features/orders/image-uploader";
+import { uploadOrderImages } from "@/lib/image-upload";
 import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 import { InvoicePanel } from "@/features/invoices/invoice-panel";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
