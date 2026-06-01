@@ -42,17 +42,17 @@ function ErpDashboard() {
         </p>
         <h1 className="font-display text-3xl font-semibold mb-2">Panel operativo</h1>
         <p className="text-muted-foreground">
-          Toda la operación gira alrededor de los pedidos de la marca activa.
+          Toda la operación gira alrededor de las ventas de la marca activa.
         </p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4 mb-8">
-        <Stat label="Pedidos" value={statsQuery.data?.orders ?? "—"} />
+        <Stat label="Ventas" value={statsQuery.data?.orders ?? "—"} />
         <Stat label="Tu rol" value={roles.length > 0 ? roles.join(", ") : "Sin rol"} muted />
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <ActionCard to="/erp/orders" icon={ClipboardList} title="Pedidos" desc="Crea, edita y haz seguimiento a los pedidos." />
+        <ActionCard to="/erp/orders" icon={ClipboardList} title="Ventas" desc="Crea, edita y haz seguimiento a las ventas." />
         {isAdmin && (
           <ActionCard to="/erp/settings/statuses" icon={Settings} title="Estados" desc="Configura el flujo de estados de la marca." />
         )}
