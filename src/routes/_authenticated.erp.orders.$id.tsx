@@ -16,6 +16,8 @@ import { StatusBadge } from "@/features/orders/status-badge";
 import { OrderItemsEditor, formatMoney } from "@/features/orders/order-items-editor";
 import { AmountOrPercentInput } from "@/features/orders/amount-percent-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
+import type { PendingImage } from "@/features/orders/image-uploader";
+import { uploadOrderImages } from "@/lib/image-upload";
 import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 import { InvoicePanel } from "@/features/invoices/invoice-panel";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
@@ -100,6 +102,8 @@ function OrderDetail() {
   const [editTax, setEditTax] = useState(0);
   const [editETA, setEditETA] = useState<string>("");
   const [editItems, setEditItems] = useState<(OrderItemInput & { id?: string })[]>([]);
+  const [editExistingImages, setEditExistingImages] = useState<string[][]>([]);
+  const [editPendingImages, setEditPendingImages] = useState<PendingImage[][]>([]);
 
   // Hydration: only sync from server when NOT editing or when the order id changes.
   // This prevents losing in-progress edits when other queries (status, history, audit)
@@ -118,6 +122,8 @@ function OrderDetail() {
       id: it.id, description: it.description, quantity: Number(it.quantity),
       unit_price: Number(it.unit_price), sort_order: it.sort_order,
     })));
+    setEditExistingImages(its.map((it) => (Array.isArray(it.images) ? [...it.images] : [])));
+    setEditPendingImages(its.map(() => []));
     hydratedFor.current = id;
   }, [orderQuery.data, editing, id]);
 
@@ -167,9 +173,19 @@ function OrderDetail() {
 
       for (let i = 0; i < editItems.length; i++) {
         const it = editItems[i];
+        const existing = editExistingImages[i] ?? [];
+        const pending = editPendingImages[i] ?? [];
+        const orig = it.id ? origMap.get(it.id) : null;
+        const origImages: string[] = Array.isArray(orig?.images) ? orig!.images : [];
+        const imagesChanged =
+          !it.id ||
+          pending.length > 0 ||
+          existing.length !== origImages.length ||
+          existing.some((u, k) => u !== origImages[k]);
+
+        let itemId = it.id ?? null;
         if (it.id) {
           keptIds.add(it.id);
-          const orig = origMap.get(it.id);
           const changed = !orig
             || orig.description !== it.description
             || Number(orig.quantity) !== Number(it.quantity)
@@ -185,14 +201,31 @@ function OrderDetail() {
             if (error) throw error;
           }
         } else {
-          const { error } = await supabase.from("order_items").insert({
+          const { data: inserted, error } = await supabase.from("order_items").insert({
             order_id: id,
             description: it.description,
             quantity: it.quantity,
             unit_price: it.unit_price,
             sort_order: i,
-          });
+          }).select("id").single();
           if (error) throw error;
+          itemId = inserted.id;
+        }
+
+        if (itemId && imagesChanged) {
+          let uploadedUrls: string[] = [];
+          if (pending.length > 0) {
+            uploadedUrls = await uploadOrderImages(
+              pending.map((p) => p.file),
+              `items/${itemId}`,
+            );
+          }
+          const finalUrls = [...existing, ...uploadedUrls];
+          const { error: imgErr } = await supabase
+            .from("order_items")
+            .update({ images: finalUrls as never })
+            .eq("id", itemId);
+          if (imgErr) throw imgErr;
         }
       }
       // Delete removed
@@ -274,7 +307,14 @@ function OrderDetail() {
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-sm font-medium mb-3">Productos</p>
             {editing ? (
-              <OrderItemsEditor items={editItems} onChange={setEditItems} />
+              <OrderItemsEditor
+                items={editItems}
+                onChange={setEditItems}
+                existingImages={editExistingImages}
+                pendingImages={editPendingImages}
+                onExistingImagesChange={setEditExistingImages}
+                onPendingImagesChange={setEditPendingImages}
+              />
             ) : (
               <>
                 {/* Desktop: tabla */}

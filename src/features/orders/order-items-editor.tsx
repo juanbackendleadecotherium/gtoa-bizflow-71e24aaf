@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { MoneyInput } from "@/features/orders/money-input";
+import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
 import type { OrderItemInput } from "@/features/orders/schemas";
 
 function AutoTextarea({
@@ -46,13 +47,35 @@ function parseDecimal(val: string) {
 export function OrderItemsEditor({
   items,
   onChange,
+  existingImages,
+  pendingImages,
+  onExistingImagesChange,
+  onPendingImagesChange,
 }: {
   items: OrderItemInput[];
   onChange: (items: OrderItemInput[]) => void;
+  existingImages?: string[][];
+  pendingImages?: PendingImage[][];
+  onExistingImagesChange?: (next: string[][]) => void;
+  onPendingImagesChange?: (next: PendingImage[][]) => void;
 }) {
-  const add = () =>
+  const imagesEnabled =
+    !!existingImages && !!pendingImages && !!onExistingImagesChange && !!onPendingImagesChange;
+
+  const add = () => {
     onChange([...items, { description: "", quantity: 1, unit_price: 0, sort_order: items.length }]);
-  const remove = (idx: number) => onChange(items.filter((_, i) => i !== idx));
+    if (imagesEnabled) {
+      onExistingImagesChange!([...(existingImages ?? []), []]);
+      onPendingImagesChange!([...(pendingImages ?? []), []]);
+    }
+  };
+  const remove = (idx: number) => {
+    onChange(items.filter((_, i) => i !== idx));
+    if (imagesEnabled) {
+      onExistingImagesChange!((existingImages ?? []).filter((_, i) => i !== idx));
+      onPendingImagesChange!((pendingImages ?? []).filter((_, i) => i !== idx));
+    }
+  };
   const update = (idx: number, patch: Partial<OrderItemInput>) =>
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
 
@@ -146,6 +169,30 @@ export function OrderItemsEditor({
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
+
+              {imagesEnabled && (
+                <div className="sm:col-span-12">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                    Imágenes de referencia · planimetría
+                  </Label>
+                  <ImageUploader
+                    multiple
+                    pending={pendingImages?.[idx] ?? []}
+                    onChangePending={(next) => {
+                      const arr = (pendingImages ?? []).slice();
+                      arr[idx] = next;
+                      onPendingImagesChange!(arr);
+                    }}
+                    existingUrls={existingImages?.[idx] ?? []}
+                    onRemoveExisting={(url) => {
+                      const arr = (existingImages ?? []).slice();
+                      arr[idx] = (arr[idx] ?? []).filter((u) => u !== url);
+                      onExistingImagesChange!(arr);
+                    }}
+                    hint="Se usarán al enviar a producción para construir la planimetría."
+                  />
+                </div>
+              )}
             </div>
           );
         })}
