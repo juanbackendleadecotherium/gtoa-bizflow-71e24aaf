@@ -142,6 +142,97 @@ export type Database = {
           },
         ]
       }
+      invoice_versions: {
+        Row: {
+          advance_snapshot: number
+          balance_snapshot: number
+          brand_id: string
+          brand_snapshot: Json | null
+          change_summary: string | null
+          created_at: string
+          customer_snapshot: Json | null
+          discount_snapshot: number
+          id: string
+          invoice_id: string
+          invoice_number: string
+          issued_by: string | null
+          issued_by_email: string | null
+          items_snapshot: Json | null
+          order_id: string
+          pdf_path: string
+          subtotal_snapshot: number
+          tax_snapshot: number
+          total_snapshot: number
+          version_number: number
+        }
+        Insert: {
+          advance_snapshot?: number
+          balance_snapshot?: number
+          brand_id: string
+          brand_snapshot?: Json | null
+          change_summary?: string | null
+          created_at?: string
+          customer_snapshot?: Json | null
+          discount_snapshot?: number
+          id?: string
+          invoice_id: string
+          invoice_number: string
+          issued_by?: string | null
+          issued_by_email?: string | null
+          items_snapshot?: Json | null
+          order_id: string
+          pdf_path: string
+          subtotal_snapshot?: number
+          tax_snapshot?: number
+          total_snapshot?: number
+          version_number: number
+        }
+        Update: {
+          advance_snapshot?: number
+          balance_snapshot?: number
+          brand_id?: string
+          brand_snapshot?: Json | null
+          change_summary?: string | null
+          created_at?: string
+          customer_snapshot?: Json | null
+          discount_snapshot?: number
+          id?: string
+          invoice_id?: string
+          invoice_number?: string
+          issued_by?: string | null
+          issued_by_email?: string | null
+          items_snapshot?: Json | null
+          order_id?: string
+          pdf_path?: string
+          subtotal_snapshot?: number
+          tax_snapshot?: number
+          total_snapshot?: number
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_versions_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_versions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_versions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           advance_snapshot: number
