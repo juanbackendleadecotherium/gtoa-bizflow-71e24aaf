@@ -125,7 +125,11 @@ export function InvoicePanel({ order }: { order: Order }) {
         terms_version: terms?.version ?? null,
       };
 
-      // Generate PDF
+      // Generate PDF (lazy-load — @react-pdf/renderer is not SSR-safe)
+      const [{ pdf }, { InvoiceDocument }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("./invoice-document"),
+      ]);
       const blob = await pdf(<InvoiceDocument data={data} />).toBlob();
 
       // Upload to storage
