@@ -12,6 +12,7 @@ import {
 import { StatusBadge } from "@/features/orders/status-badge";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { NewCustomerDialog } from "@/features/customers/new-customer-dialog";
+import { PaymentBadge, InvoicedBadge } from "@/features/invoices/invoice-badges";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/")({
   component: OrdersPage,
@@ -41,7 +42,7 @@ function OrdersPage() {
     queryFn: async () => {
       let q = supabase
         .from("orders")
-        .select("id, order_number, invoice_number, total, created_at, status_id, customer_name, customer_phone, customer_doc_number, status:order_statuses(name,color)")
+        .select("id, order_number, invoice_number, total, advance_amount, created_at, status_id, customer_name, customer_phone, customer_doc_number, status:order_statuses(name,color), invoices(id)")
         .eq("brand_id", selectedBrandId!)
         .order("created_at", { ascending: false });
       if (statusFilter !== "all") q = q.eq("status_id", statusFilter);
@@ -129,7 +130,11 @@ function OrdersPage() {
                       {o.customer_phone && <p className="text-[11px] text-muted-foreground">{o.customer_phone}</p>}
                     </td>
                     <td className="px-4 py-3">
-                      {o.status ? <StatusBadge name={o.status.name} color={o.status.color} /> : "—"}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {o.status ? <StatusBadge name={o.status.name} color={o.status.color} /> : "—"}
+                        <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
+                        {o.invoices?.length > 0 && <InvoicedBadge />}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatMoney(o.total)}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(o.created_at).toLocaleDateString("es-CO")}</td>
@@ -147,11 +152,15 @@ function OrdersPage() {
                   params={{ id: o.id }}
                   className="flex flex-col gap-1 px-4 py-3 hover:bg-muted/30"
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="font-medium">{o.order_number}</span>
                     {o.status && <StatusBadge name={o.status.name} color={o.status.color} />}
                   </div>
                   <p className="text-sm">{o.customer_name ?? "—"}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
+                    {o.invoices?.length > 0 && <InvoicedBadge />}
+                  </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{new Date(o.created_at).toLocaleDateString("es-CO")}</span>
                     <span className="tabular-nums font-medium text-foreground">{formatMoney(o.total)}</span>
