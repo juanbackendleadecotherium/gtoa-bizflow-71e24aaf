@@ -16,6 +16,7 @@ import {
 import { MoneyInput } from "@/features/orders/money-input";
 import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
 import { uploadOrderImage } from "@/lib/image-upload";
+import { DEPOSIT_ACCOUNTS, ACCOUNT_REQUIRED_METHODS } from "./deposit-accounts";
 import { formatMoney } from "@/features/orders/order-items-editor";
 
 const METHODS = ["Transferencia", "Efectivo", "Tarjeta", "PSE", "Nequi", "Daviplata", "Otro"];
