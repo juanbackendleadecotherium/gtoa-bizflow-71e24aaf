@@ -82,7 +82,7 @@ export function BrandProvider({ userId, children }: { userId: string | undefined
   }, [selectedBrandId]);
 
   const selectedBrand = brands.find((b) => b.id === selectedBrandId) ?? null;
-  const loading = rolesQuery.isLoading || brandsQuery.isLoading;
+  const loading = !userId || rolesQuery.isPending || brandsQuery.isPending;
 
   const value: BrandCtx = {
     brands, loading, selectedBrand, selectedBrandId,
