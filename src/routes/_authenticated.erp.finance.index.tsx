@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { TrendingUp, Wallet, Receipt, AlertCircle, Loader2 } from "lucide-react";
+import { TrendingUp, Wallet, Receipt, AlertCircle, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { formatMoney } from "@/features/orders/order-items-editor";
@@ -73,7 +73,7 @@ function FinanceDashboard() {
     },
   });
 
-  // Recaudado por cuenta bancaria (mes seleccionado)
+  // Recaudado por cuenta bancaria (mes seleccionado) — con desglose por factura
   const accountsQuery = useQuery({
     queryKey: ["finance-accounts", selectedBrandId, monthOffset],
     enabled: !!selectedBrandId,
@@ -81,13 +81,13 @@ function FinanceDashboard() {
       const [payRes, advRes] = await Promise.all([
         supabase
           .from("order_payments")
-          .select("amount, deposit_account, paid_at")
+          .select("amount, deposit_account, paid_at, order_id, orders:order_id(order_number, invoice_number, customer_name)")
           .eq("brand_id", selectedBrandId!)
           .gte("paid_at", monthStart.toISOString().slice(0, 10))
           .lt("paid_at", monthEnd.toISOString().slice(0, 10)),
         supabase
           .from("orders")
-          .select("advance_amount, advance_deposit_account, created_at")
+          .select("id, order_number, invoice_number, customer_name, advance_amount, advance_deposit_account, created_at")
           .eq("brand_id", selectedBrandId!)
           .gt("advance_amount", 0)
           .gte("created_at", monthStart.toISOString())
@@ -95,20 +95,46 @@ function FinanceDashboard() {
       ]);
       if (payRes.error) throw payRes.error;
       if (advRes.error) throw advRes.error;
-      const acc = new Map<string, number>();
+      type Entry = { label: string; ref: string; customer: string; amount: number; kind: "abono" | "pago"; date: string };
+      const acc = new Map<string, { total: number; entries: Entry[] }>();
+      const push = (k: string, e: Entry) => {
+        const cur = acc.get(k) ?? { total: 0, entries: [] };
+        cur.total += e.amount;
+        cur.entries.push(e);
+        acc.set(k, cur);
+      };
       for (const p of payRes.data ?? []) {
         const k = (p as any).deposit_account || "__sin_asignar__";
-        acc.set(k, (acc.get(k) ?? 0) + Number((p as any).amount));
+        const o = (p as any).orders ?? {};
+        push(k, {
+          label: o.invoice_number ?? o.order_number ?? "—",
+          ref: o.invoice_number ? "Factura" : "Orden",
+          customer: o.customer_name ?? "—",
+          amount: Number((p as any).amount),
+          kind: "pago",
+          date: (p as any).paid_at,
+        });
       }
       for (const o of advRes.data ?? []) {
         const k = (o as any).advance_deposit_account || "__sin_asignar__";
-        acc.set(k, (acc.get(k) ?? 0) + Number((o as any).advance_amount));
+        push(k, {
+          label: (o as any).invoice_number ?? (o as any).order_number ?? "—",
+          ref: (o as any).invoice_number ? "Factura" : "Orden",
+          customer: (o as any).customer_name ?? "—",
+          amount: Number((o as any).advance_amount),
+          kind: "abono",
+          date: ((o as any).created_at ?? "").slice(0, 10),
+        });
       }
       return Array.from(acc.entries())
-        .map(([account, total]) => ({ account, total }))
+        .map(([account, v]) => ({ account, total: v.total, entries: v.entries.sort((a, b) => b.amount - a.amount) }))
         .sort((a, b) => b.total - a.total);
     },
   });
+
+  const [expandedAccounts, setExpandedAccounts] = useState<Record<string, boolean>>({});
+  const toggleAccount = (k: string) => setExpandedAccounts((s) => ({ ...s, [k]: !s[k] }));
+
 
   const monthRows = q.data ?? [];
   const totalVendido = monthRows.reduce((s, r) => s + Number(r.total), 0);
@@ -151,7 +177,7 @@ function FinanceDashboard() {
 
       <div className="rounded-xl border border-border bg-surface p-5">
         <p className="text-sm font-medium mb-1">Recaudado por cuenta</p>
-        <p className="text-xs text-muted-foreground mb-3">Suma de abonos iniciales y pagos del mes seleccionado.</p>
+        <p className="text-xs text-muted-foreground mb-3">Suma de abonos iniciales y pagos del mes seleccionado. Haz clic en una cuenta para ver el detalle por factura.</p>
         {(accountsQuery.data ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin movimientos registrados este mes.</p>
         ) : (
@@ -160,21 +186,49 @@ function FinanceDashboard() {
               const totalAccounts = (accountsQuery.data ?? []).reduce((s, x) => s + x.total, 0);
               const pct = totalAccounts > 0 ? Math.round((r.total / totalAccounts) * 100) : 0;
               const isUnassigned = r.account === "__sin_asignar__";
+              const isOpen = !!expandedAccounts[r.account];
               return (
-                <li key={r.account} className="flex items-center justify-between py-2 text-sm">
-                  <span className={isUnassigned ? "text-amber-700 dark:text-amber-400" : ""}>
-                    {isUnassigned ? "⚠ Sin cuenta asignada" : formatDepositAccount(r.account)}
-                  </span>
-                  <span className="flex items-center gap-3">
-                    <span className="text-[11px] text-muted-foreground tabular-nums">{pct}%</span>
-                    <span className="tabular-nums font-medium">{formatMoney(r.total)}</span>
-                  </span>
+                <li key={r.account} className="py-2 text-sm">
+                  <button
+                    onClick={() => toggleAccount(r.account)}
+                    className="w-full flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
+                  >
+                    <span className={`flex items-center gap-1.5 ${isUnassigned ? "text-amber-700 dark:text-amber-400" : ""}`}>
+                      {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                      {isUnassigned ? "⚠ Sin cuenta asignada" : formatDepositAccount(r.account)}
+                      <span className="text-[11px] text-muted-foreground ml-1">({r.entries.length} movimiento{r.entries.length === 1 ? "" : "s"})</span>
+                    </span>
+                    <span className="flex items-center gap-3">
+                      <span className="text-[11px] text-muted-foreground tabular-nums">{pct}%</span>
+                      <span className="tabular-nums font-medium">{formatMoney(r.total)}</span>
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <ul className="mt-2 ml-5 pl-3 border-l border-border space-y-1.5">
+                      {r.entries.map((e, i) => (
+                        <li key={i} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span className={`shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${e.kind === "abono" ? "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"}`}>
+                              {e.kind === "abono" ? "Abono inicial" : "Pago"}
+                            </span>
+                            <span className="font-medium truncate">{e.ref} {e.label}</span>
+                            <span className="text-muted-foreground truncate">· {e.customer}</span>
+                          </span>
+                          <span className="flex items-center gap-3 shrink-0">
+                            <span className="text-[10px] text-muted-foreground tabular-nums">{e.date}</span>
+                            <span className="tabular-nums">{formatMoney(e.amount)}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               );
             })}
           </ul>
         )}
       </div>
+
 
 
 
