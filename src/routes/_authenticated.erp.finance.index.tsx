@@ -73,7 +73,7 @@ function FinanceDashboard() {
     },
   });
 
-  // Recaudado por cuenta bancaria (mes seleccionado)
+  // Recaudado por cuenta bancaria (mes seleccionado) — con desglose por factura
   const accountsQuery = useQuery({
     queryKey: ["finance-accounts", selectedBrandId, monthOffset],
     enabled: !!selectedBrandId,
@@ -81,13 +81,13 @@ function FinanceDashboard() {
       const [payRes, advRes] = await Promise.all([
         supabase
           .from("order_payments")
-          .select("amount, deposit_account, paid_at")
+          .select("amount, deposit_account, paid_at, order_id, orders:order_id(order_number, invoice_number, customer_name)")
           .eq("brand_id", selectedBrandId!)
           .gte("paid_at", monthStart.toISOString().slice(0, 10))
           .lt("paid_at", monthEnd.toISOString().slice(0, 10)),
         supabase
           .from("orders")
-          .select("advance_amount, advance_deposit_account, created_at")
+          .select("id, order_number, invoice_number, customer_name, advance_amount, advance_deposit_account, created_at")
           .eq("brand_id", selectedBrandId!)
           .gt("advance_amount", 0)
           .gte("created_at", monthStart.toISOString())
@@ -95,20 +95,46 @@ function FinanceDashboard() {
       ]);
       if (payRes.error) throw payRes.error;
       if (advRes.error) throw advRes.error;
-      const acc = new Map<string, number>();
+      type Entry = { label: string; ref: string; customer: string; amount: number; kind: "abono" | "pago"; date: string };
+      const acc = new Map<string, { total: number; entries: Entry[] }>();
+      const push = (k: string, e: Entry) => {
+        const cur = acc.get(k) ?? { total: 0, entries: [] };
+        cur.total += e.amount;
+        cur.entries.push(e);
+        acc.set(k, cur);
+      };
       for (const p of payRes.data ?? []) {
         const k = (p as any).deposit_account || "__sin_asignar__";
-        acc.set(k, (acc.get(k) ?? 0) + Number((p as any).amount));
+        const o = (p as any).orders ?? {};
+        push(k, {
+          label: o.invoice_number ?? o.order_number ?? "—",
+          ref: o.invoice_number ? "Factura" : "Orden",
+          customer: o.customer_name ?? "—",
+          amount: Number((p as any).amount),
+          kind: "pago",
+          date: (p as any).paid_at,
+        });
       }
       for (const o of advRes.data ?? []) {
         const k = (o as any).advance_deposit_account || "__sin_asignar__";
-        acc.set(k, (acc.get(k) ?? 0) + Number((o as any).advance_amount));
+        push(k, {
+          label: (o as any).invoice_number ?? (o as any).order_number ?? "—",
+          ref: (o as any).invoice_number ? "Factura" : "Orden",
+          customer: (o as any).customer_name ?? "—",
+          amount: Number((o as any).advance_amount),
+          kind: "abono",
+          date: ((o as any).created_at ?? "").slice(0, 10),
+        });
       }
       return Array.from(acc.entries())
-        .map(([account, total]) => ({ account, total }))
+        .map(([account, v]) => ({ account, total: v.total, entries: v.entries.sort((a, b) => b.amount - a.amount) }))
         .sort((a, b) => b.total - a.total);
     },
   });
+
+  const [expandedAccounts, setExpandedAccounts] = useState<Record<string, boolean>>({});
+  const toggleAccount = (k: string) => setExpandedAccounts((s) => ({ ...s, [k]: !s[k] }));
+
 
   const monthRows = q.data ?? [];
   const totalVendido = monthRows.reduce((s, r) => s + Number(r.total), 0);
