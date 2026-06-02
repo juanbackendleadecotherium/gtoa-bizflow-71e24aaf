@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { TrendingUp, Wallet, Receipt, AlertCircle, Loader2 } from "lucide-react";
+import { TrendingUp, Wallet, Receipt, AlertCircle, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { formatMoney } from "@/features/orders/order-items-editor";
