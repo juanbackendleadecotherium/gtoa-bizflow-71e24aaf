@@ -177,7 +177,7 @@ function FinanceDashboard() {
 
       <div className="rounded-xl border border-border bg-surface p-5">
         <p className="text-sm font-medium mb-1">Recaudado por cuenta</p>
-        <p className="text-xs text-muted-foreground mb-3">Suma de abonos iniciales y pagos del mes seleccionado.</p>
+        <p className="text-xs text-muted-foreground mb-3">Suma de abonos iniciales y pagos del mes seleccionado. Haz clic en una cuenta para ver el detalle por factura.</p>
         {(accountsQuery.data ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin movimientos registrados este mes.</p>
         ) : (
@@ -186,21 +186,49 @@ function FinanceDashboard() {
               const totalAccounts = (accountsQuery.data ?? []).reduce((s, x) => s + x.total, 0);
               const pct = totalAccounts > 0 ? Math.round((r.total / totalAccounts) * 100) : 0;
               const isUnassigned = r.account === "__sin_asignar__";
+              const isOpen = !!expandedAccounts[r.account];
               return (
-                <li key={r.account} className="flex items-center justify-between py-2 text-sm">
-                  <span className={isUnassigned ? "text-amber-700 dark:text-amber-400" : ""}>
-                    {isUnassigned ? "⚠ Sin cuenta asignada" : formatDepositAccount(r.account)}
-                  </span>
-                  <span className="flex items-center gap-3">
-                    <span className="text-[11px] text-muted-foreground tabular-nums">{pct}%</span>
-                    <span className="tabular-nums font-medium">{formatMoney(r.total)}</span>
-                  </span>
+                <li key={r.account} className="py-2 text-sm">
+                  <button
+                    onClick={() => toggleAccount(r.account)}
+                    className="w-full flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity"
+                  >
+                    <span className={`flex items-center gap-1.5 ${isUnassigned ? "text-amber-700 dark:text-amber-400" : ""}`}>
+                      {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                      {isUnassigned ? "⚠ Sin cuenta asignada" : formatDepositAccount(r.account)}
+                      <span className="text-[11px] text-muted-foreground ml-1">({r.entries.length} movimiento{r.entries.length === 1 ? "" : "s"})</span>
+                    </span>
+                    <span className="flex items-center gap-3">
+                      <span className="text-[11px] text-muted-foreground tabular-nums">{pct}%</span>
+                      <span className="tabular-nums font-medium">{formatMoney(r.total)}</span>
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <ul className="mt-2 ml-5 pl-3 border-l border-border space-y-1.5">
+                      {r.entries.map((e, i) => (
+                        <li key={i} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span className={`shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${e.kind === "abono" ? "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"}`}>
+                              {e.kind === "abono" ? "Abono inicial" : "Pago"}
+                            </span>
+                            <span className="font-medium truncate">{e.ref} {e.label}</span>
+                            <span className="text-muted-foreground truncate">· {e.customer}</span>
+                          </span>
+                          <span className="flex items-center gap-3 shrink-0">
+                            <span className="text-[10px] text-muted-foreground tabular-nums">{e.date}</span>
+                            <span className="tabular-nums">{formatMoney(e.amount)}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               );
             })}
           </ul>
         )}
       </div>
+
 
 
 
