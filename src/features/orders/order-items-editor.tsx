@@ -22,22 +22,47 @@ function parseDecimal(val: string) {
   return isNaN(num) ? null : num;
 }
 
-/** Editor de descripción en un modal amplio para descripciones largas. */
+/**
+ * El producto se guarda en la columna `description` como:
+ *   `<título>\n\n<cuerpo opcional>`
+ * Estas utilidades permiten editar título y cuerpo por separado en la UI
+ * sin modificar el esquema de la base de datos.
+ */
+function splitTitleBody(raw: string): { title: string; body: string } {
+  const text = raw ?? "";
+  const idx = text.indexOf("\n");
+  if (idx === -1) return { title: text, body: "" };
+  const title = text.slice(0, idx);
+  const body = text.slice(idx + 1).replace(/^\n+/, "");
+  return { title, body };
+}
+
+function joinTitleBody(title: string, body: string): string {
+  const t = title.trim();
+  const b = body.trim();
+  if (!t && !b) return "";
+  if (!b) return t;
+  if (!t) return b;
+  return `${t}\n\n${b}`;
+}
+
+/** Editor de descripción larga en un modal amplio. */
 function DescriptionDialog({
   open,
   onOpenChange,
   value,
   onSave,
+  title,
   index,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   value: string;
   onSave: (v: string) => void;
+  title: string;
   index: number;
 }) {
   const [draft, setDraft] = useState(value);
-  // Re-sincroniza cuando se abre con un valor distinto
   if (open && draft !== value && draft === "") setDraft(value);
 
   const lines = draft.split("\n").length;
@@ -53,10 +78,12 @@ function DescriptionDialog({
     >
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Descripción del producto #{index + 1}</DialogTitle>
+          <DialogTitle>
+            Descripción · {title || `Producto #${index + 1}`}
+          </DialogTitle>
           <DialogDescription>
-            Estas especificaciones se imprimen tal cual en la planimetría de producción. Usa saltos
-            de línea para separar secciones (medidas, telas, acabados, etc.).
+            Estas especificaciones se imprimen en la planimetría de producción. Usa saltos de línea
+            para separar secciones (medidas, telas, acabados, etc.).
           </DialogDescription>
         </DialogHeader>
         <Textarea
@@ -71,9 +98,6 @@ function DescriptionDialog({
         <div className="flex items-center justify-between text-[11px] text-muted-foreground">
           <span>
             {lines} línea{lines === 1 ? "" : "s"} · {chars} caracteres
-          </span>
-          <span className="hidden sm:inline">
-            Tip: presiona ⌘/Ctrl + Enter para guardar
           </span>
         </div>
         <DialogFooter>
@@ -95,20 +119,21 @@ function DescriptionDialog({
   );
 }
 
-/** Vista compacta de la descripción con preview clampeado + botón para expandir. */
+/** Preview compacto del cuerpo de la descripción + botón para abrir el modal. */
 function DescriptionField({
-  value,
+  body,
   onChange,
+  title,
   index,
 }: {
-  value: string;
+  body: string;
   onChange: (v: string) => void;
+  title: string;
   index: number;
 }) {
   const [open, setOpen] = useState(false);
-  const isEmpty = !value.trim();
-  const lineCount = value.split("\n").filter(Boolean).length;
-  const firstLine = value.split("\n").find((l) => l.trim()) ?? "";
+  const isEmpty = !body.trim();
+  const lineCount = body.split("\n").filter(Boolean).length;
 
   return (
     <>
@@ -120,18 +145,18 @@ function DescriptionField({
         {isEmpty ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Pencil className="h-3.5 w-3.5" />
-            <span>Toca aquí para escribir la descripción del producto</span>
+            <span>Toca aquí para escribir la descripción (especificaciones)</span>
           </div>
         ) : (
           <>
             <div className="flex items-start justify-between gap-2">
-              <p className="text-sm font-medium text-foreground line-clamp-1">
-                {firstLine || "Producto sin título"}
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Descripción / especificaciones
               </p>
               <Maximize2 className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5 group-hover:text-accent transition-colors" />
             </div>
             <p className="text-xs text-muted-foreground whitespace-pre-line line-clamp-3 leading-snug">
-              {value}
+              {body}
             </p>
             <div className="flex items-center gap-2 pt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/80">
               <span>
@@ -146,8 +171,9 @@ function DescriptionField({
       <DescriptionDialog
         open={open}
         onOpenChange={setOpen}
-        value={value}
+        value={body}
         onSave={onChange}
+        title={title}
         index={index}
       />
     </>
@@ -205,6 +231,7 @@ export function OrderItemsEditor({
       <div className="space-y-3">
         {items.map((it, idx) => {
           const lineTotal = Number(it.quantity || 0) * Number(it.unit_price || 0);
+          const { title, body } = splitTitleBody(it.description);
           return (
             <div
               key={idx}
@@ -227,12 +254,33 @@ export function OrderItemsEditor({
                 </Button>
               </div>
 
-              {/* Descripción compacta con dialog */}
-              <DescriptionField
-                value={it.description}
-                onChange={(v) => update(idx, { description: v })}
-                index={idx}
-              />
+              {/* Título del producto */}
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
+                  Título del producto
+                </Label>
+                <Input
+                  value={title}
+                  onChange={(e) =>
+                    update(idx, { description: joinTitleBody(e.target.value, body) })
+                  }
+                  placeholder="Ej. Sofá modular 3 puestos"
+                  className="h-10"
+                />
+              </div>
+
+              {/* Descripción / especificaciones */}
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
+                  Descripción
+                </Label>
+                <DescriptionField
+                  body={body}
+                  onChange={(v) => update(idx, { description: joinTitleBody(title, v) })}
+                  title={title}
+                  index={idx}
+                />
+              </div>
 
               {/* Fila numérica: cantidad / precio / total */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
