@@ -24,7 +24,6 @@ type Row = {
   sale_date: string | null;
   total: number;
   advance_amount: number;
-  advance_deposit_account: string | null;
   payments_total: number;
   paid_total: number;
   balance: number;
