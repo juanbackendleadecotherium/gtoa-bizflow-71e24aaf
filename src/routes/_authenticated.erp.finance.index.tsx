@@ -241,6 +241,7 @@ function FinanceDashboard() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">
+                  <th className="py-2 pr-3 w-6"></th>
                   <th className="py-2 pr-3">Venta</th>
                   <th className="py-2 pr-3">Cliente</th>
                   <th className="py-2 pr-3">Vendedor</th>
@@ -251,14 +252,7 @@ function FinanceDashboard() {
               </thead>
               <tbody>
                 {monthRows.map((r) => (
-                  <tr key={r.order_id} className="border-b border-border/60 last:border-0">
-                    <td className="py-2 pr-3 font-medium">{r.invoice_number ?? r.order_number}</td>
-                    <td className="py-2 pr-3">{r.customer_name ?? "—"}</td>
-                    <td className="py-2 pr-3 text-muted-foreground text-xs">{r.seller_label}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(r.total)}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{formatMoney(r.paid_total)}</td>
-                    <td className={`py-2 text-right tabular-nums font-medium ${Number(r.balance) > 0 ? "text-amber-700 dark:text-amber-400" : ""}`}>{formatMoney(r.balance)}</td>
-                  </tr>
+                  <SaleRow key={r.order_id} row={r} />
                 ))}
               </tbody>
             </table>
