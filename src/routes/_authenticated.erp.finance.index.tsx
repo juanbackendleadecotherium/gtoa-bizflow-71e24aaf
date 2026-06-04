@@ -263,6 +263,132 @@ function FinanceDashboard() {
   );
 }
 
+
+function SaleRow({ row: r }: { row: Row }) {
+  const [open, setOpen] = useState(false);
+  const pct = Number(r.total) > 0 ? Math.min(100, Math.round((Number(r.paid_total) / Number(r.total)) * 100)) : 0;
+
+  const detailsQ = useQuery({
+    queryKey: ["finance-row-details", r.order_id],
+    enabled: open,
+    queryFn: async () => {
+      const [pays, ord] = await Promise.all([
+        supabase
+          .from("order_payments")
+          .select("id, amount, paid_at, method, reference, deposit_account")
+          .eq("order_id", r.order_id)
+          .order("paid_at", { ascending: true }),
+        supabase
+          .from("orders")
+          .select("advance_deposit_account")
+          .eq("id", r.order_id)
+          .maybeSingle(),
+      ]);
+      if (pays.error) throw pays.error;
+      if (ord.error) throw ord.error;
+      return { payments: pays.data ?? [], advanceAccount: (ord.data?.advance_deposit_account as string | null) ?? null };
+    },
+  });
+
+  type Abono = { kind: "abono" | "pago"; amount: number; date: string; account: string | null; method?: string | null; reference?: string | null };
+  const abonos: Abono[] = [];
+  if (open && detailsQ.data) {
+    if (Number(r.advance_amount) > 0) {
+      abonos.push({
+        kind: "abono",
+        amount: Number(r.advance_amount),
+        date: (r.sale_date ?? r.created_at).slice(0, 10),
+        account: detailsQ.data.advanceAccount,
+      });
+    }
+    for (const p of detailsQ.data.payments) {
+      abonos.push({
+        kind: "pago",
+        amount: Number((p as any).amount),
+        date: (p as any).paid_at,
+        account: (p as any).deposit_account ?? null,
+        method: (p as any).method,
+        reference: (p as any).reference,
+      });
+    }
+  }
+
+  return (
+    <>
+      <tr className="border-b border-border/60 last:border-0 hover:bg-muted/30">
+        <td className="py-2 pr-1">
+          <button onClick={() => setOpen((s) => !s)} className="text-muted-foreground hover:text-foreground" aria-label={open ? "Contraer" : "Expandir"}>
+            {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </button>
+        </td>
+        <td className="py-2 pr-3 font-medium">{r.invoice_number ?? r.order_number}</td>
+        <td className="py-2 pr-3">{r.customer_name ?? "—"}</td>
+        <td className="py-2 pr-3 text-muted-foreground text-xs">{r.seller_label}</td>
+        <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(r.total)}</td>
+        <td className="py-2 pr-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{formatMoney(r.paid_total)}</td>
+        <td className={`py-2 text-right tabular-nums font-medium ${Number(r.balance) > 0 ? "text-amber-700 dark:text-amber-400" : ""}`}>{formatMoney(r.balance)}</td>
+      </tr>
+      {open && (
+        <tr className="border-b border-border/60 bg-muted/20">
+          <td></td>
+          <td colSpan={6} className="py-3 pr-3">
+            {detailsQ.isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : (
+              <ul className="space-y-2">
+                {abonos.length === 0 ? (
+                  <li className="text-xs text-muted-foreground">Sin abonos registrados.</li>
+                ) : abonos.map((a, i) => {
+                  const aPct = Number(r.total) > 0 ? Math.min(100, Math.round((a.amount / Number(r.total)) * 100)) : 0;
+                  return (
+                    <li key={i} className="rounded-md border border-border bg-background px-3 py-2 text-xs">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="flex items-center gap-2 flex-wrap">
+                          <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${a.kind === "abono" ? "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"}`}>
+                            {a.kind === "abono" ? "Abono inicial" : "Pago"}
+                          </span>
+                          <span className="font-medium">Factura {r.invoice_number ?? r.order_number}</span>
+                          <span className="text-muted-foreground">· {a.date}</span>
+                        </span>
+                        <span className="tabular-nums font-semibold">{formatMoney(a.amount)}</span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-2 text-muted-foreground flex-wrap">
+                        <span>Cuenta: <span className="text-foreground">{a.account ? formatDepositAccount(a.account) : "—"}</span></span>
+                        {a.method && <span>{a.method}{a.reference ? ` · ${a.reference}` : ""}</span>}
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                        <span>Total venta: <span className="tabular-nums font-medium text-foreground">{formatMoney(r.total)}</span></span>
+                        <span>Aporta: <span className="tabular-nums font-medium text-foreground">{aPct}%</span></span>
+                      </div>
+                    </li>
+                  );
+                })}
+                <li className="rounded-md border border-border bg-background px-3 py-2">
+                  <div className="flex items-center justify-between text-xs mb-1.5 flex-wrap gap-2">
+                    <span className="font-medium">Avance total</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      <span className="text-emerald-700 dark:text-emerald-400 font-medium">{formatMoney(r.paid_total)}</span>
+                      {" / "}{formatMoney(r.total)}
+                      {" · Saldo "}<span className={`font-medium ${Number(r.balance) > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>{formatMoney(r.balance)}</span>
+                    </span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${pct >= 100 ? "bg-emerald-500" : "bg-primary"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-right mt-1">{pct}% pagado</p>
+                </li>
+              </ul>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
 function Kpi({
   icon: Icon, label, value, sub, accent,
 }: { icon: any; label: string; value: string; sub?: string; accent?: string }) {
