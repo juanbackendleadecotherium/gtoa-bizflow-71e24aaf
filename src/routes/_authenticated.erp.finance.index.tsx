@@ -51,7 +51,7 @@ function FinanceDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_financials")
-        .select("order_id, brand_id, order_number, invoice_number, customer_name, created_at, sale_date, total, advance_amount, payments_total, paid_total, balance, payment_status, days_since_sale, seller_label")
+        .select("order_id, brand_id, order_number, invoice_number, customer_name, created_at, sale_date, total, advance_amount, advance_deposit_account, payments_total, paid_total, balance, payment_status, days_since_sale, seller_label")
         .eq("brand_id", selectedBrandId!)
         .gte("created_at", monthStart.toISOString())
         .lt("created_at", monthEnd.toISOString());
