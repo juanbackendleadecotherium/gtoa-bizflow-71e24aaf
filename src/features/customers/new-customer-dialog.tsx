@@ -747,35 +747,62 @@ export function NewCustomerDialog({
                     key={idx}
                     className="rounded-lg border border-border bg-surface p-3 space-y-3"
                   >
-                    <div className="grid grid-cols-12 gap-2 items-center">
-                      <Input
-                        className="col-span-12 sm:col-span-7"
-                        placeholder="Descripción"
-                        value={it.description}
-                        onChange={(e) => updateItem(idx, "description", e.target.value)}
-                      />
-                      <Input
-                        className="col-span-3 sm:col-span-2 text-right"
-                        type="text"
-                        inputMode="decimal"
-                        value={it.quantity === 0 ? "" : String(it.quantity)}
-                        onChange={(e) => updateItem(idx, "quantity", e.target.value)}
-                      />
-                      <MoneyInput
-                        className="col-span-7 sm:col-span-2 text-right"
-                        value={Number(it.unit_price) || 0}
-                        onValueChange={(n) => updateItem(idx, "unit_price", String(n))}
-                      />
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="col-span-2 sm:col-span-1"
-                        onClick={() => removeItem(idx)}
-                      >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </div>
+                    {(() => {
+                      const raw = it.description ?? "";
+                      const nlIdx = raw.indexOf("\n");
+                      const title = nlIdx === -1 ? raw : raw.slice(0, nlIdx);
+                      const body = nlIdx === -1 ? "" : raw.slice(nlIdx + 1).replace(/^\n+/, "");
+                      const join = (t: string, b: string) => {
+                        const tt = t.trim();
+                        const bb = b.trim();
+                        if (!tt && !bb) return "";
+                        if (!bb) return tt;
+                        if (!tt) return bb;
+                        return `${tt}\n\n${bb}`;
+                      };
+                      return (
+                        <div className="grid grid-cols-12 gap-2 items-start">
+                          <div className="col-span-12 sm:col-span-7 space-y-2">
+                            <Input
+                              placeholder="Título del producto (ej. Sofá modular 3 puestos)"
+                              value={title}
+                              onChange={(e) =>
+                                updateItem(idx, "description", join(e.target.value, body))
+                              }
+                            />
+                            <Textarea
+                              placeholder="Descripción detallada (medidas, telas, acabados, etc.)"
+                              value={body}
+                              onChange={(e) =>
+                                updateItem(idx, "description", join(title, e.target.value))
+                              }
+                              className="min-h-[80px] text-sm"
+                            />
+                          </div>
+                          <Input
+                            className="col-span-3 sm:col-span-2 text-right"
+                            type="text"
+                            inputMode="decimal"
+                            value={it.quantity === 0 ? "" : String(it.quantity)}
+                            onChange={(e) => updateItem(idx, "quantity", e.target.value)}
+                          />
+                          <MoneyInput
+                            className="col-span-7 sm:col-span-2 text-right"
+                            value={Number(it.unit_price) || 0}
+                            onValueChange={(n) => updateItem(idx, "unit_price", String(n))}
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="col-span-2 sm:col-span-1"
+                            onClick={() => removeItem(idx)}
+                          >
+                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      );
+                    })()}
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
                         Imágenes de referencia
