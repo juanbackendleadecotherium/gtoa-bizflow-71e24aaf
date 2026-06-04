@@ -38,12 +38,13 @@ function splitTitleBody(raw: string): { title: string; body: string } {
 }
 
 function joinTitleBody(title: string, body: string): string {
-  const t = title.trim();
-  const b = body.trim();
-  if (!t && !b) return "";
-  if (!b) return t;
-  if (!t) return b;
-  return `${t}\n\n${b}`;
+  // No recortamos espacios aquí: si lo hacemos, el usuario no puede escribir
+  // un espacio al final del título (se borra en cada pulsación y bloquea
+  // escribir varias palabras). El trim final se hace al guardar.
+  if (!title && !body) return "";
+  if (!body) return title;
+  if (!title) return `\n\n${body}`;
+  return `${title}\n\n${body}`;
 }
 
 /** Editor de descripción larga en un modal amplio. */
