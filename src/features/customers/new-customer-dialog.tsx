@@ -753,12 +753,12 @@ export function NewCustomerDialog({
                       const title = nlIdx === -1 ? raw : raw.slice(0, nlIdx);
                       const body = nlIdx === -1 ? "" : raw.slice(nlIdx + 1).replace(/^\n+/, "");
                       const join = (t: string, b: string) => {
-                        const tt = t.trim();
-                        const bb = b.trim();
-                        if (!tt && !bb) return "";
-                        if (!bb) return tt;
-                        if (!tt) return bb;
-                        return `${tt}\n\n${bb}`;
+                        // No trim aquí: si recortamos, el usuario no puede escribir
+                        // un espacio al final del título (se borra en cada tecla).
+                        if (!t && !b) return "";
+                        if (!b) return t;
+                        if (!t) return `\n\n${b}`;
+                        return `${t}\n\n${b}`;
                       };
                       return (
                         <div className="grid grid-cols-12 gap-2 items-start">
