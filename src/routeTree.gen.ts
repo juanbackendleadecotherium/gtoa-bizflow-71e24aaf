@@ -26,6 +26,7 @@ import { Route as AuthenticatedErpSettingsStatusesRouteImport } from './routes/_
 import { Route as AuthenticatedErpSettingsBrandBillingRouteImport } from './routes/_authenticated.erp.settings.brand-billing'
 import { Route as AuthenticatedErpRealProductionProduccionRouteImport } from './routes/_authenticated.erp.real-production.produccion'
 import { Route as AuthenticatedErpRealProductionLogisticaRouteImport } from './routes/_authenticated.erp.real-production.logistica'
+import { Route as AuthenticatedErpRealProductionIdRouteImport } from './routes/_authenticated.erp.real-production.$id'
 import { Route as AuthenticatedErpProductionIdRouteImport } from './routes/_authenticated.erp.production.$id'
 import { Route as AuthenticatedErpOrdersIdRouteImport } from './routes/_authenticated.erp.orders.$id'
 import { Route as AuthenticatedErpFinanceSellersRouteImport } from './routes/_authenticated.erp.finance.sellers'
@@ -126,6 +127,12 @@ const AuthenticatedErpRealProductionLogisticaRoute =
     path: '/logistica',
     getParentRoute: () => AuthenticatedErpRealProductionRoute,
   } as any)
+const AuthenticatedErpRealProductionIdRoute =
+  AuthenticatedErpRealProductionIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedErpRealProductionRoute,
+  } as any)
 const AuthenticatedErpProductionIdRoute =
   AuthenticatedErpProductionIdRouteImport.update({
     id: '/production/$id',
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/production/$id': typeof AuthenticatedErpProductionIdRoute
+  '/erp/real-production/$id': typeof AuthenticatedErpRealProductionIdRoute
   '/erp/real-production/logistica': typeof AuthenticatedErpRealProductionLogisticaRoute
   '/erp/real-production/produccion': typeof AuthenticatedErpRealProductionProduccionRoute
   '/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
@@ -189,6 +197,7 @@ export interface FileRoutesByTo {
   '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/production/$id': typeof AuthenticatedErpProductionIdRoute
+  '/erp/real-production/$id': typeof AuthenticatedErpRealProductionIdRoute
   '/erp/real-production/logistica': typeof AuthenticatedErpRealProductionLogisticaRoute
   '/erp/real-production/produccion': typeof AuthenticatedErpRealProductionProduccionRoute
   '/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
@@ -214,6 +223,7 @@ export interface FileRoutesById {
   '/_authenticated/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/_authenticated/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/_authenticated/erp/production/$id': typeof AuthenticatedErpProductionIdRoute
+  '/_authenticated/erp/real-production/$id': typeof AuthenticatedErpRealProductionIdRoute
   '/_authenticated/erp/real-production/logistica': typeof AuthenticatedErpRealProductionLogisticaRoute
   '/_authenticated/erp/real-production/produccion': typeof AuthenticatedErpRealProductionProduccionRoute
   '/_authenticated/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/erp/finance/sellers'
     | '/erp/orders/$id'
     | '/erp/production/$id'
+    | '/erp/real-production/$id'
     | '/erp/real-production/logistica'
     | '/erp/real-production/produccion'
     | '/erp/settings/brand-billing'
@@ -258,6 +269,7 @@ export interface FileRouteTypes {
     | '/erp/finance/sellers'
     | '/erp/orders/$id'
     | '/erp/production/$id'
+    | '/erp/real-production/$id'
     | '/erp/real-production/logistica'
     | '/erp/real-production/produccion'
     | '/erp/settings/brand-billing'
@@ -282,6 +294,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/finance/sellers'
     | '/_authenticated/erp/orders/$id'
     | '/_authenticated/erp/production/$id'
+    | '/_authenticated/erp/real-production/$id'
     | '/_authenticated/erp/real-production/logistica'
     | '/_authenticated/erp/real-production/produccion'
     | '/_authenticated/erp/settings/brand-billing'
@@ -420,6 +433,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpRealProductionLogisticaRouteImport
       parentRoute: typeof AuthenticatedErpRealProductionRoute
     }
+    '/_authenticated/erp/real-production/$id': {
+      id: '/_authenticated/erp/real-production/$id'
+      path: '/$id'
+      fullPath: '/erp/real-production/$id'
+      preLoaderRoute: typeof AuthenticatedErpRealProductionIdRouteImport
+      parentRoute: typeof AuthenticatedErpRealProductionRoute
+    }
     '/_authenticated/erp/production/$id': {
       id: '/_authenticated/erp/production/$id'
       path: '/production/$id'
@@ -497,6 +517,7 @@ const AuthenticatedErpOrdersRouteWithChildren =
   )
 
 interface AuthenticatedErpRealProductionRouteChildren {
+  AuthenticatedErpRealProductionIdRoute: typeof AuthenticatedErpRealProductionIdRoute
   AuthenticatedErpRealProductionLogisticaRoute: typeof AuthenticatedErpRealProductionLogisticaRoute
   AuthenticatedErpRealProductionProduccionRoute: typeof AuthenticatedErpRealProductionProduccionRoute
   AuthenticatedErpRealProductionIndexRoute: typeof AuthenticatedErpRealProductionIndexRoute
@@ -504,6 +525,8 @@ interface AuthenticatedErpRealProductionRouteChildren {
 
 const AuthenticatedErpRealProductionRouteChildren: AuthenticatedErpRealProductionRouteChildren =
   {
+    AuthenticatedErpRealProductionIdRoute:
+      AuthenticatedErpRealProductionIdRoute,
     AuthenticatedErpRealProductionLogisticaRoute:
       AuthenticatedErpRealProductionLogisticaRoute,
     AuthenticatedErpRealProductionProduccionRoute:
