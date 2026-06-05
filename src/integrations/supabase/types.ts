@@ -481,6 +481,7 @@ export type Database = {
           images: Json
           line_total: number
           order_id: string
+          production_order_id: string | null
           quantity: number
           sort_order: number
           unit_price: number
@@ -493,6 +494,7 @@ export type Database = {
           images?: Json
           line_total?: number
           order_id: string
+          production_order_id?: string | null
           quantity?: number
           sort_order?: number
           unit_price?: number
@@ -505,6 +507,7 @@ export type Database = {
           images?: Json
           line_total?: number
           order_id?: string
+          production_order_id?: string | null
           quantity?: number
           sort_order?: number
           unit_price?: number
@@ -523,6 +526,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
             referencedColumns: ["id"]
           },
         ]
