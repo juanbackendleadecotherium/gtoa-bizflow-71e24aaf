@@ -118,12 +118,10 @@ const styles = StyleSheet.create({
     color: SUB, marginBottom: 10,
   },
   refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
-  refCell: { width: "50%", paddingHorizontal: 5, paddingBottom: 10 },
-  refImageBox: {
-    width: "100%", height: 260, borderRadius: 10, overflow: "hidden",
-    justifyContent: "center", alignItems: "center",
+  refCell: { width: "50%", paddingHorizontal: 5, paddingBottom: 10, alignItems: "center" },
+  refImage: {
+    width: "100%", height: 260, objectFit: "contain", borderRadius: 10,
   },
-  refImage: { width: "100%", height: "100%", objectFit: "contain" },
   refCaption: { fontSize: 8, color: MUTED, marginTop: 4, textAlign: "center", fontStyle: "italic" },
 
   // === NOTES =================================================================
