@@ -87,7 +87,7 @@ async function buildPlanData(
   };
 }
 
-async function generatePlanimetryForOrder(opts: {
+export async function generatePlanimetryForOrder(opts: {
   productionOrderId: string;
   productionCode: string;
   orderId: string;
