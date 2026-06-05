@@ -84,12 +84,10 @@ const styles = StyleSheet.create({
   deliveryValue: { fontSize: 13, fontWeight: 700, fontStyle: "italic" },
 
   // Hero image — narrower than full width but still legible, centered
-  heroImageWrap: { alignItems: "center" },
-  heroImageBox: {
-    width: "72%", height: 320, borderRadius: 12, overflow: "hidden",
-    justifyContent: "center", alignItems: "center",
+  heroImageWrap: { alignItems: "center", width: "100%" },
+  heroImage: {
+    width: "72%", height: 320, objectFit: "contain", borderRadius: 12,
   },
-  heroImage: { width: "100%", height: "100%", objectFit: "contain" },
   heroNoImage: {
     width: "72%", height: 320, borderRadius: 12, borderWidth: 1, borderStyle: "dashed",
     borderColor: LINE, justifyContent: "center", alignItems: "center",
@@ -120,12 +118,10 @@ const styles = StyleSheet.create({
     color: SUB, marginBottom: 10,
   },
   refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
-  refCell: { width: "50%", paddingHorizontal: 5, paddingBottom: 10 },
-  refImageBox: {
-    width: "100%", height: 260, borderRadius: 10, overflow: "hidden",
-    justifyContent: "center", alignItems: "center",
+  refCell: { width: "50%", paddingHorizontal: 5, paddingBottom: 10, alignItems: "center" },
+  refImage: {
+    width: "100%", height: 260, objectFit: "contain", borderRadius: 10,
   },
-  refImage: { width: "100%", height: "100%", objectFit: "contain" },
   refCaption: { fontSize: 8, color: MUTED, marginTop: 4, textAlign: "center", fontStyle: "italic" },
 
   // === NOTES =================================================================
@@ -238,9 +234,7 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
 
               <View style={styles.heroImageWrap}>
                 {hero ? (
-                  <View style={styles.heroImageBox}>
-                    <Image src={hero} style={styles.heroImage} />
-                  </View>
+                  <Image src={hero} style={styles.heroImage} />
                 ) : (
                   <View style={styles.heroNoImage}>
                     <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
@@ -270,9 +264,7 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                 <View style={styles.refGrid}>
                   {rest.map((url, i) => (
                     <View key={i} style={styles.refCell} wrap={false}>
-                      <View style={styles.refImageBox}>
-                        <Image src={url} style={styles.refImage} />
-                      </View>
+                      <Image src={url} style={styles.refImage} />
                       <Text style={styles.refCaption}>Referencia {i + 2}</Text>
                     </View>
                   ))}
