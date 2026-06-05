@@ -34,7 +34,7 @@ const SUB = "#3d3d3d";
 const MUTED = "#6b6b6b";
 const CARD = "#c9c7c2";       // warm gray card (like reference)
 const CARD_SOFT = "#d8d6d1";  // softer inner area
-const PAPER = "#ebe9e4";      // page background
+const PAPER = "#c9c7c2";      // unified gray background (same as cards)
 const LINE = "#9a9893";
 const ACCENT_DEFAULT = "#e8542a"; // warm orange highlight
 
