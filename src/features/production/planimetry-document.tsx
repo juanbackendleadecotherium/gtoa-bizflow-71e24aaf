@@ -87,14 +87,12 @@ const styles = StyleSheet.create({
   heroImageWrap: { alignItems: "center" },
   heroImageBox: {
     width: "72%", height: 320, borderRadius: 12, overflow: "hidden",
-    backgroundColor: "#ffffff", borderWidth: 0.5, borderColor: LINE,
-    justifyContent: "center", alignItems: "center", padding: 6,
+    justifyContent: "center", alignItems: "center",
   },
   heroImage: { width: "100%", height: "100%", objectFit: "contain" },
   heroNoImage: {
     width: "72%", height: 320, borderRadius: 12, borderWidth: 1, borderStyle: "dashed",
     borderColor: LINE, justifyContent: "center", alignItems: "center",
-    backgroundColor: "#ffffff",
   },
   heroNoImageText: { fontSize: 9, color: MUTED, fontStyle: "italic" },
   heroProductName: {
@@ -125,8 +123,7 @@ const styles = StyleSheet.create({
   refCell: { width: "50%", paddingHorizontal: 5, paddingBottom: 10 },
   refImageBox: {
     width: "100%", height: 260, borderRadius: 10, overflow: "hidden",
-    backgroundColor: "#ffffff", borderWidth: 0.5, borderColor: LINE,
-    justifyContent: "center", alignItems: "center", padding: 6,
+    justifyContent: "center", alignItems: "center",
   },
   refImage: { width: "100%", height: "100%", objectFit: "contain" },
   refCaption: { fontSize: 8, color: MUTED, marginTop: 4, textAlign: "center", fontStyle: "italic" },
