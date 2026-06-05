@@ -26,6 +26,7 @@ import { PaymentsPanel } from "@/features/finance/payments-panel";
 import { formatDepositAccount } from "@/features/finance/deposit-accounts";
 import { DeleteOrderDialog } from "@/features/orders/delete-order-dialog";
 import { ProductionSection } from "@/features/production/send-to-production-button";
+import { RealProductionSection } from "@/features/real-production/send-to-real-production-button";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -509,6 +510,8 @@ function OrderDetail() {
           />
 
           <ProductionSection orderId={o.id} brandId={o.brand_id} />
+
+          <RealProductionSection orderId={o.id} brandId={o.brand_id} orderTotal={Number(o.total) || 0} />
 
 
 

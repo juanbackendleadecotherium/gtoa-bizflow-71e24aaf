@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      brand_production_settings: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          min_margin_pct: number
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          min_margin_pct?: number
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          min_margin_pct?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       brands: {
         Row: {
           address: string | null
@@ -1090,6 +1114,170 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      real_production_audit_log: {
+        Row: {
+          action: string
+          brand_id: string
+          changed_by: string | null
+          changed_by_email: string | null
+          created_at: string
+          field: string | null
+          id: string
+          new_value: Json | null
+          note: string | null
+          old_value: Json | null
+          real_production_order_id: string
+        }
+        Insert: {
+          action: string
+          brand_id: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          field?: string | null
+          id?: string
+          new_value?: Json | null
+          note?: string | null
+          old_value?: Json | null
+          real_production_order_id: string
+        }
+        Update: {
+          action?: string
+          brand_id?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          field?: string | null
+          id?: string
+          new_value?: Json | null
+          note?: string | null
+          old_value?: Json | null
+          real_production_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "real_production_audit_log_real_production_order_id_fkey"
+            columns: ["real_production_order_id"]
+            isOneToOne: false
+            referencedRelation: "real_production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      real_production_orders: {
+        Row: {
+          brand_id: string
+          code: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          delivered_at: string | null
+          delivery_target: string | null
+          id: string
+          margin_pct: number | null
+          notes: string | null
+          order_id: string
+          planimetry_ok: boolean
+          qc_ok: boolean
+          sale_total_snapshot: number
+          stage: string
+          supplier_approved: boolean
+          supplier_cost: number | null
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          code: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          delivered_at?: string | null
+          delivery_target?: string | null
+          id?: string
+          margin_pct?: number | null
+          notes?: string | null
+          order_id: string
+          planimetry_ok?: boolean
+          qc_ok?: boolean
+          sale_total_snapshot?: number
+          stage?: string
+          supplier_approved?: boolean
+          supplier_cost?: number | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          code?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          delivered_at?: string | null
+          delivery_target?: string | null
+          id?: string
+          margin_pct?: number | null
+          notes?: string | null
+          order_id?: string
+          planimetry_ok?: boolean
+          qc_ok?: boolean
+          sale_total_snapshot?: number
+          stage?: string
+          supplier_approved?: boolean
+          supplier_cost?: number | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          brand_id: string
+          category: string | null
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          category?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          category?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
