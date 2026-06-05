@@ -16,7 +16,7 @@ import { StageBadge } from "@/features/real-production/stage-badge";
 import { MarginIndicator, formatMoney } from "@/features/real-production/margin-indicator";
 
 export const Route = createFileRoute("/_authenticated/erp/real-production/$id")({
-  component: RealProductionDetail;
+  component: RealProductionDetail,
 });
 
 function RealProductionDetail() {
