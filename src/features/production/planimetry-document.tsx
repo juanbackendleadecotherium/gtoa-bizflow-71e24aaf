@@ -40,7 +40,7 @@ const ACCENT_DEFAULT = "#e8542a"; // warm orange highlight
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 18, paddingBottom: 36, paddingHorizontal: 18,
+    paddingTop: 18, paddingBottom: 70, paddingHorizontal: 18,
     fontSize: 10, color: INK, fontFamily: "Helvetica",
     backgroundColor: PAPER,
   },
