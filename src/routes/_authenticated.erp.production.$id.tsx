@@ -136,6 +136,37 @@ function ProductionDetail() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const regen = useMutation({
+    mutationFn: async () => {
+      if (!prod.data?.order_id) throw new Error("Esta orden no está vinculada a una venta");
+      const { data: linked, error: liErr } = await supabase
+        .from("order_items").select("id").eq("production_order_id", id);
+      if (liErr) throw liErr;
+      let itemIds = (linked ?? []).map((r: any) => r.id);
+      if (itemIds.length === 0) {
+        const { data: all, error: aErr } = await supabase
+          .from("order_items").select("id").eq("order_id", prod.data.order_id);
+        if (aErr) throw aErr;
+        itemIds = (all ?? []).map((r: any) => r.id);
+      }
+      if (itemIds.length === 0) throw new Error("No hay productos para incluir");
+      return generatePlanimetryForOrder({
+        productionOrderId: id,
+        productionCode: prod.data.code,
+        orderId: prod.data.order_id,
+        brandId: prod.data.brand_id,
+        selectedItemIds: itemIds,
+        noteOverride: "Planimetría regenerada con el formato actualizado",
+      });
+    },
+    onSuccess: (v) => {
+      toast.success(`Planimetría v${v} regenerada`);
+      qc.invalidateQueries({ queryKey: ["planimetries", id] });
+      qc.invalidateQueries({ queryKey: ["production-audit", id] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
   if (prod.isLoading) {
     return <div className="py-12 text-center"><Loader2 className="h-5 w-5 animate-spin inline text-muted-foreground" /></div>;
   }
