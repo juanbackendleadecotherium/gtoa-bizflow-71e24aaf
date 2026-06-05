@@ -264,9 +264,7 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                 <View style={styles.refGrid}>
                   {rest.map((url, i) => (
                     <View key={i} style={styles.refCell} wrap={false}>
-                      <View style={styles.refImageBox}>
-                        <Image src={url} style={styles.refImage} />
-                      </View>
+                      <Image src={url} style={styles.refImage} />
                       <Text style={styles.refCaption}>Referencia {i + 2}</Text>
                     </View>
                   ))}
