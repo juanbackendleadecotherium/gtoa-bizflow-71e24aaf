@@ -103,7 +103,7 @@ async function buildPlanData(
   const items = await Promise.all(
     filteredItems.map(async (it: any) => {
       const rawImages: string[] = Array.isArray(it.images) ? it.images : [];
-      const resolved = await Promise.all(rawImages.map((u) => urlToDataUri(u)));
+      const resolved = await Promise.all(rawImages.map(async (u) => (await urlToDataUri(u)) ?? u));
       return {
         description: it.description ?? "",
         quantity: Number(it.quantity ?? 1),
