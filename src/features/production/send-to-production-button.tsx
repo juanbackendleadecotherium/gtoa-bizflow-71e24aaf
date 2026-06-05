@@ -402,8 +402,8 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
                   return (
                     <li key={it.id}>
                       <Label htmlFor={`item-${it.id}`}
-                        className="flex items-start gap-3 rounded-lg border border-border p-2.5 cursor-pointer hover:border-primary/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                        <Checkbox id={`item-${it.id}`} checked={checked} onCheckedChange={() => toggleItem(it.id)} className="mt-0.5" />
+                        className="flex items-center gap-3 rounded-lg border border-border p-2.5 cursor-pointer hover:border-primary/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5 overflow-hidden">
+                        <Checkbox id={`item-${it.id}`} checked={checked} onCheckedChange={() => toggleItem(it.id)} className="shrink-0" />
                         {it.images[0] ? (
                           <img src={it.images[0]} alt="" className="h-10 w-10 rounded object-cover border border-border shrink-0" />
                         ) : (
@@ -412,15 +412,21 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{it.description || "(sin descripción)"}</p>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className="text-[11px] text-muted-foreground">Cant: {it.quantity}</span>
+                          <p className="text-sm font-medium truncate" title={it.description || ""}>
+                            {(() => {
+                              const words = (it.description || "(sin descripción)").trim().split(/\s+/);
+                              const short = words.slice(0, 3).join(" ");
+                              return words.length > 3 ? `${short}…` : short;
+                            })()}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px] text-muted-foreground shrink-0">Cant: {it.quantity}</span>
                             {sentCode ? (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">
-                                Ya en {sentCode}
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono truncate">
+                                {sentCode}
                               </span>
                             ) : (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">
                                 Nuevo
                               </span>
                             )}
