@@ -1,65 +1,77 @@
-## Objetivo
 
-Cuando una venta tiene varios productos, poder elegir exactamente cuáles enviar a producción (sin obligar a mandar todos), y dejar registrado qué producto pertenece a qué orden PROD para evitar duplicados y dar trazabilidad.
+## Resumen
 
-## UX del diálogo "Enviar a producción"
+Crear un nuevo módulo independiente **Producción Real** (paralelo al módulo de Producción actual, que se queda intacto) con dos dashboards: **Producción** y **Logística**. Cada orden de "producción real" se crea a partir de una venta, sigue el flujo del mapa mental, y se entrega automáticamente a Logística cuando se marca como Terminado.
 
-Al pulsar el botón se abre un diálogo con tres bloques:
-
-1. **Destino** (igual que hoy)
-   - Crear orden nueva, o
-   - Actualizar una orden existente (PROD-…-00004 …)
-
-2. **Productos a incluir** (nuevo)
-   - Lista de los ítems de la venta con checkbox por cada uno.
-   - Cada fila muestra: miniatura (si hay imagen), título/descripción, cantidad, y un badge de estado:
-     - `Nuevo` (nunca enviado) — checkbox marcado por defecto.
-     - `Ya en PROD-…-00004` — checkbox desmarcado, badge gris con link a esa orden.
-   - Acciones rápidas arriba: **Seleccionar todos** · **Solo no enviados** · **Ninguno**.
-   - Contador en vivo: "3 de 5 productos seleccionados".
-
-3. **Confirmar**
-   - Botón deshabilitado si no hay nada marcado.
-   - Toast final: "Planimetría v2 generada con 2 productos en PROD-…-00004".
-
-Si la venta tiene **un solo ítem**, se omite el bloque 2 y funciona como hoy (un clic).
-
-## Tracking ítem → orden
-
-Nueva columna `production_order_id uuid` en `order_items` (nullable, FK a `production_orders` con `ON DELETE SET NULL`).
-
-- Al confirmar el envío, los ítems seleccionados se actualizan con el `production_order_id` destino.
-- Si un ítem ya tenía una orden y se reasigna, se sobrescribe (caso raro pero soportado).
-- En `production_orders` el detalle puede listar sus ítems con un simple `select … where production_order_id = …`.
-
-## Generación de planimetría
-
-`generatePlanimetryForOrder` recibe ahora `selectedItemIds: string[]` y filtra los `order_items` por ese conjunto antes de armar el PDF. El resto del flujo (versión, upload, insert en `production_planimetries`) no cambia.
-
-## Cambios técnicos
-
-**Migración**
-```sql
-ALTER TABLE public.order_items
-  ADD COLUMN production_order_id uuid
-  REFERENCES public.production_orders(id) ON DELETE SET NULL;
-CREATE INDEX ON public.order_items(production_order_id);
+```text
+Venta ──► Producción Real
+            ├─ Producción (dashboard)
+            │   1. Revisar planimetría
+            │   2. Seleccionar proveedor
+            │   3. Negociar (margen ≥ 45%)
+            │   4. Aprobar proveedor
+            │   5. Seguimiento producción
+            │   6. Terminado ───────────┐
+            │                           │ (automático)
+            └─ Logística (dashboard) ◄──┘
+                1. Control de calidad
+                2. Entrega → Cliente | Bodega
 ```
-RLS de `order_items` ya autoriza via la venta dueña, no requiere policy nueva.
 
-**`src/features/production/send-to-production-button.tsx`**
-- Query extra `order-items-for-production` que carga `id, description, quantity, images, sort_order, production_order_id` de la venta.
-- Estado `selectedItemIds: Set<string>` con default = ítems sin `production_order_id` (o todos si es la primera vez).
-- Render del nuevo bloque "Productos a incluir" con `Checkbox` + badges + acciones rápidas.
-- `generatePlanimetryForOrder` recibe y filtra por `selectedItemIds`.
-- Después del insert en `production_planimetries`, `UPDATE order_items SET production_order_id = <target> WHERE id IN (selectedItemIds)`.
-- Invalidar también `order-items-for-production` y la query de detalle de la orden de producción.
+## Cambios en base de datos
 
-**`src/routes/_authenticated.erp.production.$id.tsx`** (ajuste menor)
-- Mostrar la lista de ítems vinculados (`order_items where production_order_id = this.id`) en lugar de todos los ítems de la venta, para que el detalle de la orden refleje solo lo que realmente se mandó.
+Nuevas tablas en `public` (con GRANTs + RLS por marca, igual al patrón existente):
 
-## Resultado
+- **`suppliers`** — catálogo reutilizable de proveedores por marca.
+  - Campos clave: `brand_id`, `name`, `category` (ej. "sofás", "camas", "comedores"), `contact_name`, `phone`, `email`, `notes`, `is_active`.
+- **`brand_production_settings`** — un registro por marca para configuración.
+  - Campos clave: `brand_id` (unique), `min_margin_pct` (default 45).
+- **`real_production_orders`** — orden de producción real ligada a una venta.
+  - Campos clave: `brand_id`, `order_id`, `code` (auto: `RP-{slug}-{año}-{seq}`), `stage` (`planimetria` | `proveedor` | `negociacion` | `aprobado` | `seguimiento` | `terminado` | `control_calidad` | `entrega` | `entregado`), `planimetry_ok` (bool), `supplier_id`, `supplier_cost`, `sale_total_snapshot`, `margin_pct` (calculado), `supplier_approved` (bool), `delivery_target` (`cliente` | `bodega`), `qc_ok` (bool), `completed_at`, `delivered_at`, `notes`.
+- **`real_production_audit_log`** — bitácora del flujo (mismo patrón que `production_audit_log`).
 
-- Venta con sofá + comedor + mesa → "Enviar a producción" → marco solo sofá → crea PROD-00004 con planimetría v1 (sofá). Sofá queda vinculado a PROD-00004.
-- Días después marco comedor → "Enviar a producción" → diálogo muestra comedor como `Nuevo` y sofá como `Ya en PROD-00004` desmarcado → elijo "Crear orden nueva" → PROD-00005 v1 (comedor).
-- Mesa queda pendiente, visible como `Nuevo` la próxima vez.
+Función SQL `assign_real_production_code()` + trigger para generar `code`. Trigger de auditoría que registra cambios de `stage`, proveedor, margen, etc. Función `advance_real_production_stage(p_id, p_stage, p_note)` para validar transiciones (ej. no pasar a "aprobado" si margen < `min_margin_pct`).
+
+RLS: mismas reglas que tablas existentes (`has_brand_access` para SELECT, `can_write_brand` para escritura, admin para DELETE).
+
+## Cambios en la app
+
+### Rutas nuevas (TanStack file-based)
+
+- `src/routes/_authenticated.erp.real-production.tsx` — layout con `<Outlet/>` y tabs/botones **Producción** y **Logística**.
+- `src/routes/_authenticated.erp.real-production.index.tsx` — redirige a `/erp/real-production/produccion`.
+- `src/routes/_authenticated.erp.real-production.produccion.tsx` — dashboard de Producción (lista de órdenes en etapas planimetría→seguimiento).
+- `src/routes/_authenticated.erp.real-production.logistica.tsx` — dashboard de Logística (lista en etapas control_calidad→entregado).
+- `src/routes/_authenticated.erp.real-production.$id.tsx` — detalle de orden con el flujo paso a paso (revisar planimetría, elegir proveedor, registrar costo, ver % margen en vivo, aprobar, seguimiento, marcar terminado / QC / entrega).
+- `src/routes/_authenticated.erp.settings.suppliers.tsx` — CRUD del catálogo de proveedores por marca.
+
+### Componentes
+
+`src/features/real-production/`:
+- `real-production-meta.ts` — etapas, colores, labels.
+- `stage-badge.tsx` — badge de etapa.
+- `supplier-picker.tsx` — selector de proveedor desde catálogo (filtrado por marca + categoría).
+- `margin-indicator.tsx` — muestra costo, venta, % margen y semáforo verde/rojo según `min_margin_pct`.
+- `production-dashboard.tsx` — tabla/grid de órdenes en fase de producción.
+- `logistics-dashboard.tsx` — tabla/grid de órdenes en fase de logística.
+- `stage-stepper.tsx` — stepper visual del flujo en el detalle.
+- `send-to-real-production-button.tsx` — botón en la página de venta para crear una orden de producción real (similar al existente para producción).
+
+### Navegación
+
+- Agregar entrada **Producción Real** en el sidebar/menú del ERP (`src/routes/_authenticated.erp.tsx`), junto a Producción.
+- Agregar enlace a **Proveedores** dentro de Settings (solo admin).
+
+### Lógica clave (cliente)
+
+- Margen = `(sale_total - supplier_cost) / sale_total * 100` (configurable a futuro). El umbral `min_margin_pct` se lee de `brand_production_settings`.
+- El botón "Aprobar proveedor" se deshabilita si `margin_pct < min_margin_pct` y muestra un mensaje pidiendo renegociar.
+- Al marcar etapa **Terminado**, la orden pasa automáticamente a la lista de Logística (siguiente etapa = `control_calidad`).
+- En Logística: marcar QC OK → elegir destino (Cliente / Bodega) → marcar Entregado.
+
+## Fuera del alcance (para mantenerlo enfocado)
+
+- No se toca el módulo de Producción existente ni sus planimetrías/órdenes.
+- No se mueven datos del módulo viejo al nuevo (corren en paralelo).
+- No se generan PDFs nuevos en esta fase (se pueden agregar después).
+- No se integra inventario/bodega real — "Bodega" es solo una marca de destino.
