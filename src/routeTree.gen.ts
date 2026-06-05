@@ -14,8 +14,10 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedErpRouteImport } from './routes/_authenticated.erp'
 import { Route as AuthenticatedErpIndexRouteImport } from './routes/_authenticated.erp.index'
+import { Route as AuthenticatedErpRealProductionRouteImport } from './routes/_authenticated.erp.real-production'
 import { Route as AuthenticatedErpOrdersRouteImport } from './routes/_authenticated.erp.orders'
 import { Route as AuthenticatedErpFinanceRouteImport } from './routes/_authenticated.erp.finance'
+import { Route as AuthenticatedErpRealProductionIndexRouteImport } from './routes/_authenticated.erp.real-production.index'
 import { Route as AuthenticatedErpProductionIndexRouteImport } from './routes/_authenticated.erp.production.index'
 import { Route as AuthenticatedErpOrdersIndexRouteImport } from './routes/_authenticated.erp.orders.index'
 import { Route as AuthenticatedErpFinanceIndexRouteImport } from './routes/_authenticated.erp.finance.index'
@@ -52,6 +54,12 @@ const AuthenticatedErpIndexRoute = AuthenticatedErpIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedErpRoute,
 } as any)
+const AuthenticatedErpRealProductionRoute =
+  AuthenticatedErpRealProductionRouteImport.update({
+    id: '/real-production',
+    path: '/real-production',
+    getParentRoute: () => AuthenticatedErpRoute,
+  } as any)
 const AuthenticatedErpOrdersRoute = AuthenticatedErpOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -62,6 +70,12 @@ const AuthenticatedErpFinanceRoute = AuthenticatedErpFinanceRouteImport.update({
   path: '/finance',
   getParentRoute: () => AuthenticatedErpRoute,
 } as any)
+const AuthenticatedErpRealProductionIndexRoute =
+  AuthenticatedErpRealProductionIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedErpRealProductionRoute,
+  } as any)
 const AuthenticatedErpProductionIndexRoute =
   AuthenticatedErpProductionIndexRouteImport.update({
     id: '/production/',
@@ -135,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/erp': typeof AuthenticatedErpRouteWithChildren
   '/erp/finance': typeof AuthenticatedErpFinanceRouteWithChildren
   '/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
+  '/erp/real-production': typeof AuthenticatedErpRealProductionRouteWithChildren
   '/erp/': typeof AuthenticatedErpIndexRoute
   '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
@@ -147,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/erp/finance/': typeof AuthenticatedErpFinanceIndexRoute
   '/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
   '/erp/production/': typeof AuthenticatedErpProductionIndexRoute
+  '/erp/real-production/': typeof AuthenticatedErpRealProductionIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -163,6 +179,7 @@ export interface FileRoutesByTo {
   '/erp/finance': typeof AuthenticatedErpFinanceIndexRoute
   '/erp/orders': typeof AuthenticatedErpOrdersIndexRoute
   '/erp/production': typeof AuthenticatedErpProductionIndexRoute
+  '/erp/real-production': typeof AuthenticatedErpRealProductionIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -172,6 +189,7 @@ export interface FileRoutesById {
   '/_authenticated/erp': typeof AuthenticatedErpRouteWithChildren
   '/_authenticated/erp/finance': typeof AuthenticatedErpFinanceRouteWithChildren
   '/_authenticated/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
+  '/_authenticated/erp/real-production': typeof AuthenticatedErpRealProductionRouteWithChildren
   '/_authenticated/erp/': typeof AuthenticatedErpIndexRoute
   '/_authenticated/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/_authenticated/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
@@ -184,6 +202,7 @@ export interface FileRoutesById {
   '/_authenticated/erp/finance/': typeof AuthenticatedErpFinanceIndexRoute
   '/_authenticated/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
   '/_authenticated/erp/production/': typeof AuthenticatedErpProductionIndexRoute
+  '/_authenticated/erp/real-production/': typeof AuthenticatedErpRealProductionIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -193,6 +212,7 @@ export interface FileRouteTypes {
     | '/erp'
     | '/erp/finance'
     | '/erp/orders'
+    | '/erp/real-production'
     | '/erp/'
     | '/erp/finance/deletions'
     | '/erp/finance/receivables'
@@ -205,6 +225,7 @@ export interface FileRouteTypes {
     | '/erp/finance/'
     | '/erp/orders/'
     | '/erp/production/'
+    | '/erp/real-production/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -221,6 +242,7 @@ export interface FileRouteTypes {
     | '/erp/finance'
     | '/erp/orders'
     | '/erp/production'
+    | '/erp/real-production'
   id:
     | '__root__'
     | '/'
@@ -229,6 +251,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp'
     | '/_authenticated/erp/finance'
     | '/_authenticated/erp/orders'
+    | '/_authenticated/erp/real-production'
     | '/_authenticated/erp/'
     | '/_authenticated/erp/finance/deletions'
     | '/_authenticated/erp/finance/receivables'
@@ -241,6 +264,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/finance/'
     | '/_authenticated/erp/orders/'
     | '/_authenticated/erp/production/'
+    | '/_authenticated/erp/real-production/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -286,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpIndexRouteImport
       parentRoute: typeof AuthenticatedErpRoute
     }
+    '/_authenticated/erp/real-production': {
+      id: '/_authenticated/erp/real-production'
+      path: '/real-production'
+      fullPath: '/erp/real-production'
+      preLoaderRoute: typeof AuthenticatedErpRealProductionRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
     '/_authenticated/erp/orders': {
       id: '/_authenticated/erp/orders'
       path: '/orders'
@@ -299,6 +330,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/erp/finance'
       preLoaderRoute: typeof AuthenticatedErpFinanceRouteImport
       parentRoute: typeof AuthenticatedErpRoute
+    }
+    '/_authenticated/erp/real-production/': {
+      id: '/_authenticated/erp/real-production/'
+      path: '/'
+      fullPath: '/erp/real-production/'
+      preLoaderRoute: typeof AuthenticatedErpRealProductionIndexRouteImport
+      parentRoute: typeof AuthenticatedErpRealProductionRoute
     }
     '/_authenticated/erp/production/': {
       id: '/_authenticated/erp/production/'
@@ -418,9 +456,25 @@ const AuthenticatedErpOrdersRouteWithChildren =
     AuthenticatedErpOrdersRouteChildren,
   )
 
+interface AuthenticatedErpRealProductionRouteChildren {
+  AuthenticatedErpRealProductionIndexRoute: typeof AuthenticatedErpRealProductionIndexRoute
+}
+
+const AuthenticatedErpRealProductionRouteChildren: AuthenticatedErpRealProductionRouteChildren =
+  {
+    AuthenticatedErpRealProductionIndexRoute:
+      AuthenticatedErpRealProductionIndexRoute,
+  }
+
+const AuthenticatedErpRealProductionRouteWithChildren =
+  AuthenticatedErpRealProductionRoute._addFileChildren(
+    AuthenticatedErpRealProductionRouteChildren,
+  )
+
 interface AuthenticatedErpRouteChildren {
   AuthenticatedErpFinanceRoute: typeof AuthenticatedErpFinanceRouteWithChildren
   AuthenticatedErpOrdersRoute: typeof AuthenticatedErpOrdersRouteWithChildren
+  AuthenticatedErpRealProductionRoute: typeof AuthenticatedErpRealProductionRouteWithChildren
   AuthenticatedErpIndexRoute: typeof AuthenticatedErpIndexRoute
   AuthenticatedErpProductionIdRoute: typeof AuthenticatedErpProductionIdRoute
   AuthenticatedErpSettingsBrandBillingRoute: typeof AuthenticatedErpSettingsBrandBillingRoute
@@ -432,6 +486,8 @@ interface AuthenticatedErpRouteChildren {
 const AuthenticatedErpRouteChildren: AuthenticatedErpRouteChildren = {
   AuthenticatedErpFinanceRoute: AuthenticatedErpFinanceRouteWithChildren,
   AuthenticatedErpOrdersRoute: AuthenticatedErpOrdersRouteWithChildren,
+  AuthenticatedErpRealProductionRoute:
+    AuthenticatedErpRealProductionRouteWithChildren,
   AuthenticatedErpIndexRoute: AuthenticatedErpIndexRoute,
   AuthenticatedErpProductionIdRoute: AuthenticatedErpProductionIdRoute,
   AuthenticatedErpSettingsBrandBillingRoute:
@@ -464,3 +520,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
