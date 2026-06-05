@@ -83,15 +83,16 @@ const styles = StyleSheet.create({
   deliveryLabel: { fontSize: 11, fontWeight: 700, fontStyle: "italic", color: INK },
   deliveryValue: { fontSize: 13, fontWeight: 700, fontStyle: "italic" },
 
-  // BIG hero image — full width, contain (no crop)
+  // Hero image — narrower than full width but still legible, centered
+  heroImageWrap: { alignItems: "center" },
   heroImageBox: {
-    width: "100%", height: 360, borderRadius: 12, overflow: "hidden",
+    width: "72%", height: 320, borderRadius: 12, overflow: "hidden",
     backgroundColor: "#ffffff", borderWidth: 0.5, borderColor: LINE,
     justifyContent: "center", alignItems: "center", padding: 6,
   },
   heroImage: { width: "100%", height: "100%", objectFit: "contain" },
   heroNoImage: {
-    width: "100%", height: 360, borderRadius: 12, borderWidth: 1, borderStyle: "dashed",
+    width: "72%", height: 320, borderRadius: 12, borderWidth: 1, borderStyle: "dashed",
     borderColor: LINE, justifyContent: "center", alignItems: "center",
     backgroundColor: "#ffffff",
   },
@@ -238,15 +239,17 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                 ) : null}
               </View>
 
-              {hero ? (
-                <View style={styles.heroImageBox}>
-                  <Image src={hero} style={styles.heroImage} />
-                </View>
-              ) : (
-                <View style={styles.heroNoImage}>
-                  <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
-                </View>
-              )}
+              <View style={styles.heroImageWrap}>
+                {hero ? (
+                  <View style={styles.heroImageBox}>
+                    <Image src={hero} style={styles.heroImage} />
+                  </View>
+                ) : (
+                  <View style={styles.heroNoImage}>
+                    <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.heroProductName}>{title}</Text>
               <Text style={styles.heroProductCaption}>Imagen de referencia principal</Text>
             </View>

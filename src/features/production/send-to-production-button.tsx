@@ -29,6 +29,22 @@ type ItemRow = {
   production_order_id: string | null;
 };
 
+async function urlToDataUri(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 async function buildPlanData(
   orderId: string, brandId: string, productionCode: string, selectedItemIds: string[],
 ): Promise<PlanimetryDocumentData> {
@@ -55,15 +71,24 @@ async function buildPlanData(
   }
 
   const selectedSet = new Set(selectedItemIds);
-  const items = (order.items ?? [])
+  const filteredItems = (order.items ?? [])
     .filter((it: any) => selectedSet.has(it.id))
     .slice()
-    .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-    .map((it: any) => ({
-      description: it.description ?? "",
-      quantity: Number(it.quantity ?? 1),
-      images: Array.isArray(it.images) ? (it.images as string[]) : [],
-    }));
+    .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  // Pre-fetch all images as data URIs so @react-pdf/renderer never fails
+  // on network/CORS issues for the first image of the document.
+  const items = await Promise.all(
+    filteredItems.map(async (it: any) => {
+      const rawImages: string[] = Array.isArray(it.images) ? it.images : [];
+      const resolved = await Promise.all(rawImages.map((u) => urlToDataUri(u)));
+      return {
+        description: it.description ?? "",
+        quantity: Number(it.quantity ?? 1),
+        images: resolved.filter((u): u is string => !!u),
+      };
+    }),
+  );
 
   return {
     production_code: productionCode,
