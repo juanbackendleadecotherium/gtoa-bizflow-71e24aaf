@@ -34,7 +34,7 @@ export function RealProductionSection({
         brand_id: brandId,
         order_id: orderId,
         sale_total_snapshot: orderTotal,
-      }).select("id").maybeSingle();
+      } as any).select("id").maybeSingle();
       if (error) throw error;
       return data?.id as string;
     },
