@@ -40,7 +40,7 @@ const ACCENT_DEFAULT = "#e8542a"; // warm orange highlight
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 18, paddingBottom: 36, paddingHorizontal: 18,
+    paddingTop: 18, paddingBottom: 70, paddingHorizontal: 18,
     fontSize: 10, color: INK, fontFamily: "Helvetica",
     backgroundColor: PAPER,
   },
@@ -143,8 +143,9 @@ const styles = StyleSheet.create({
   // === FOOTER ================================================================
   footer: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 18, paddingTop: 8,
-    position: "absolute", bottom: 14, left: 0, right: 0,
+    paddingHorizontal: 18, paddingTop: 10,
+    position: "absolute", bottom: 18, left: 0, right: 0,
+    backgroundColor: PAPER,
   },
   logoBox: { width: 90, height: 32, justifyContent: "center" },
   logo: { maxWidth: 90, maxHeight: 32, objectFit: "contain" },
