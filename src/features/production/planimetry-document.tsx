@@ -84,12 +84,10 @@ const styles = StyleSheet.create({
   deliveryValue: { fontSize: 13, fontWeight: 700, fontStyle: "italic" },
 
   // Hero image — narrower than full width but still legible, centered
-  heroImageWrap: { alignItems: "center" },
-  heroImageBox: {
-    width: "72%", height: 320, borderRadius: 12, overflow: "hidden",
-    justifyContent: "center", alignItems: "center",
+  heroImageWrap: { alignItems: "center", width: "100%" },
+  heroImage: {
+    width: "72%", height: 320, objectFit: "contain", borderRadius: 12,
   },
-  heroImage: { width: "100%", height: "100%", objectFit: "contain" },
   heroNoImage: {
     width: "72%", height: 320, borderRadius: 12, borderWidth: 1, borderStyle: "dashed",
     borderColor: LINE, justifyContent: "center", alignItems: "center",
