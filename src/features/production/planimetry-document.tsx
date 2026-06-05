@@ -236,9 +236,7 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
 
               <View style={styles.heroImageWrap}>
                 {hero ? (
-                  <View style={styles.heroImageBox}>
-                    <Image src={hero} style={styles.heroImage} />
-                  </View>
+                  <Image src={hero} style={styles.heroImage} />
                 ) : (
                   <View style={styles.heroNoImage}>
                     <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
