@@ -239,15 +239,17 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                 ) : null}
               </View>
 
-              {hero ? (
-                <View style={styles.heroImageBox}>
-                  <Image src={hero} style={styles.heroImage} />
-                </View>
-              ) : (
-                <View style={styles.heroNoImage}>
-                  <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
-                </View>
-              )}
+              <View style={styles.heroImageWrap}>
+                {hero ? (
+                  <View style={styles.heroImageBox}>
+                    <Image src={hero} style={styles.heroImage} />
+                  </View>
+                ) : (
+                  <View style={styles.heroNoImage}>
+                    <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.heroProductName}>{title}</Text>
               <Text style={styles.heroProductCaption}>Imagen de referencia principal</Text>
             </View>
