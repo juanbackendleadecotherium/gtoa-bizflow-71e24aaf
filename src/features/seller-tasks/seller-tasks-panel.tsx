@@ -1,6 +1,5 @@
-import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type Task = {
@@ -54,15 +53,9 @@ export function OrderSellerTasksBadge({ orderId }: { orderId: string }) {
                 Sin detalle. Contacta a producción.
               </p>
             )}
-            {t.production_order_id && (
-              <Link
-                to="/erp/production/$id"
-                params={{ id: t.production_order_id }}
-                className="text-xs text-primary inline-flex items-center gap-1 mt-2 hover:underline"
-              >
-                Ir a la orden de producción <ArrowRight className="h-3 w-3" />
-              </Link>
-            )}
+            <p className="mt-2 text-xs text-muted-foreground">
+              Carga la planimetría corregida desde esta venta para reenviarla a producción.
+            </p>
           </li>
         ))}
       </ul>
