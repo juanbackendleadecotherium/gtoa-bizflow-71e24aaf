@@ -42,6 +42,25 @@ function TrackingPage() {
   const [search, setSearch] = useState("");
   const selectedBrand = brands.find((b) => b.id === selectedBrandId);
 
+  // Realtime: refresca cuando cualquier production_order de la marca cambia
+  useEffect(() => {
+    if (!selectedBrandId) return;
+    const channel = supabase
+      .channel(`production-tracking-${selectedBrandId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "production_orders", filter: `brand_id=eq.${selectedBrandId}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
+          qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
+          qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedBrandId, qc]);
+
+
   const q = useQuery({
     queryKey: ["production-orders-drive", selectedBrandId, novedadFilter, year],
     enabled: !!selectedBrandId,
