@@ -103,22 +103,13 @@ function MyTasks() {
                       </p>
                     </div>
                     <div className="flex gap-2 flex-wrap">
-                      {t.production_order_id && (
-                        <Link
-                          to="/erp/production/$id"
-                          params={{ id: t.production_order_id }}
-                          className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
-                        >
-                          Ir a producción <ArrowRight className="h-3 w-3" />
-                        </Link>
-                      )}
                       {t.order_id && (
                         <Link
                           to="/erp/orders/$id"
                           params={{ id: t.order_id }}
                           className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
                         >
-                          Ir a venta <ArrowRight className="h-3 w-3" />
+                          Ir a la venta para corregir <ArrowRight className="h-3 w-3" />
                         </Link>
                       )}
                     </div>
