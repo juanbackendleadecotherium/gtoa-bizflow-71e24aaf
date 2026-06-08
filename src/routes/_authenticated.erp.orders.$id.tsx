@@ -510,6 +510,8 @@ function OrderDetail() {
             advance={Number(o.advance_amount) || 0}
           />
 
+          <OrderSellerTasksBadge orderId={o.id} />
+
           <ProductionSection orderId={o.id} brandId={o.brand_id} />
 
           <RealProductionSection orderId={o.id} brandId={o.brand_id} orderTotal={Number(o.total) || 0} />
