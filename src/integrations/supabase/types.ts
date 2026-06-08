@@ -954,6 +954,8 @@ export type Database = {
           assigned_to: string | null
           assigned_to_label: string | null
           brand_id: string
+          client_actual_date: string | null
+          client_promised_date: string | null
           code: string
           completed_at: string | null
           created_at: string
@@ -961,11 +963,22 @@ export type Database = {
           created_by_email: string | null
           due_date: string | null
           id: string
+          invoice_date: string | null
+          manufacturing_cost: number | null
+          margin_pct: number | null
           notes: string | null
+          novedad: Database["public"]["Enums"]["production_novedad"]
           order_id: string
+          planimetry_sent_date: string | null
           priority: string
+          production_owner_id: string | null
+          production_start_date: string | null
+          quotation_date: string | null
           start_date: string | null
           status: string
+          supplier_actual_date: string | null
+          supplier_id: string | null
+          supplier_promised_date: string | null
           updated_at: string
           workshop: string | null
         }
@@ -973,6 +986,8 @@ export type Database = {
           assigned_to?: string | null
           assigned_to_label?: string | null
           brand_id: string
+          client_actual_date?: string | null
+          client_promised_date?: string | null
           code: string
           completed_at?: string | null
           created_at?: string
@@ -980,11 +995,22 @@ export type Database = {
           created_by_email?: string | null
           due_date?: string | null
           id?: string
+          invoice_date?: string | null
+          manufacturing_cost?: number | null
+          margin_pct?: number | null
           notes?: string | null
+          novedad?: Database["public"]["Enums"]["production_novedad"]
           order_id: string
+          planimetry_sent_date?: string | null
           priority?: string
+          production_owner_id?: string | null
+          production_start_date?: string | null
+          quotation_date?: string | null
           start_date?: string | null
           status?: string
+          supplier_actual_date?: string | null
+          supplier_id?: string | null
+          supplier_promised_date?: string | null
           updated_at?: string
           workshop?: string | null
         }
@@ -992,6 +1018,8 @@ export type Database = {
           assigned_to?: string | null
           assigned_to_label?: string | null
           brand_id?: string
+          client_actual_date?: string | null
+          client_promised_date?: string | null
           code?: string
           completed_at?: string | null
           created_at?: string
@@ -999,11 +1027,22 @@ export type Database = {
           created_by_email?: string | null
           due_date?: string | null
           id?: string
+          invoice_date?: string | null
+          manufacturing_cost?: number | null
+          margin_pct?: number | null
           notes?: string | null
+          novedad?: Database["public"]["Enums"]["production_novedad"]
           order_id?: string
+          planimetry_sent_date?: string | null
           priority?: string
+          production_owner_id?: string | null
+          production_start_date?: string | null
+          quotation_date?: string | null
           start_date?: string | null
           status?: string
+          supplier_actual_date?: string | null
+          supplier_id?: string | null
+          supplier_promised_date?: string | null
           updated_at?: string
           workshop?: string | null
         }
@@ -1236,6 +1275,51 @@ export type Database = {
         }
         Relationships: []
       }
+      seller_tasks: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          order_id: string | null
+          production_order_id: string | null
+          reason: string | null
+          resolved_at: string | null
+          seller_id: string
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          production_order_id?: string | null
+          reason?: string | null
+          resolved_at?: string | null
+          seller_id: string
+          status?: string
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          production_order_id?: string | null
+          reason?: string | null
+          resolved_at?: string | null
+          seller_id?: string
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           brand_id: string
@@ -1431,6 +1515,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "operativo" | "finanzas" | "ventas" | "vendedor"
+      production_novedad:
+        | "pendiente"
+        | "cotizando"
+        | "produccion"
+        | "entrega_inmediata"
+        | "entregada"
+        | "anulada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1559,6 +1650,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "operativo", "finanzas", "ventas", "vendedor"],
+      production_novedad: [
+        "pendiente",
+        "cotizando",
+        "produccion",
+        "entrega_inmediata",
+        "entregada",
+        "anulada",
+      ],
     },
   },
 } as const
