@@ -270,9 +270,26 @@ function Shell() {
           </div>
         </header>
 
-        <main className="flex-1 p-6 sm:p-8 max-w-6xl w-full mx-auto">
-          <Outlet />
-        </main>
+        <MainContainer />
+      </div>
+    </div>
+  );
+}
+
+function MainContainer() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const wide = pathname.includes("/production/tracking");
+  return (
+    <main className={`flex-1 p-6 sm:p-8 w-full mx-auto ${wide ? "max-w-none" : "max-w-6xl"}`}>
+      <Outlet />
+    </main>
+  );
+}
+
+function _Closer() {
+  return (
+    <div>
+      <div></div>
 
       </div>
     </div>
