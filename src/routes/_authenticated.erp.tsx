@@ -121,6 +121,7 @@ function Shell() {
           {NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
             const Icon = item.icon;
             const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
+            const showBadge = item.to === "/erp/my-tasks" && pendingTasks > 0;
             return (
               <Link
                 key={item.to}
@@ -132,7 +133,12 @@ function Shell() {
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {showBadge && (
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold animate-pulse">
+                    {pendingTasks}
+                  </span>
+                )}
               </Link>
             );
           })}
