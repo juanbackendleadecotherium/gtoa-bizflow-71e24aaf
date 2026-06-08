@@ -77,19 +77,34 @@ function ProductionDetail() {
   const [form, setForm] = useState({
     status: "pendiente", priority: "normal", workshop: "", assigned_to_label: "",
     start_date: "", due_date: "", notes: "",
+    novedad: "pendiente", supplier_id: "", manufacturing_cost: "",
+    invoice_date: "", planimetry_sent_date: "", quotation_date: "", production_start_date: "",
+    supplier_promised_date: "", supplier_actual_date: "", client_promised_date: "", client_actual_date: "",
   });
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (prod.data) {
+      const d: any = prod.data;
       setForm({
-        status: prod.data.status ?? "pendiente",
-        priority: prod.data.priority ?? "normal",
-        workshop: prod.data.workshop ?? "",
-        assigned_to_label: prod.data.assigned_to_label ?? "",
-        start_date: prod.data.start_date ?? "",
-        due_date: prod.data.due_date ?? "",
-        notes: prod.data.notes ?? "",
+        status: d.status ?? "pendiente",
+        priority: d.priority ?? "normal",
+        workshop: d.workshop ?? "",
+        assigned_to_label: d.assigned_to_label ?? "",
+        start_date: d.start_date ?? "",
+        due_date: d.due_date ?? "",
+        notes: d.notes ?? "",
+        novedad: d.novedad ?? "pendiente",
+        supplier_id: d.supplier_id ?? "",
+        manufacturing_cost: d.manufacturing_cost != null ? String(d.manufacturing_cost) : "",
+        invoice_date: d.invoice_date ?? "",
+        planimetry_sent_date: d.planimetry_sent_date ?? "",
+        quotation_date: d.quotation_date ?? "",
+        production_start_date: d.production_start_date ?? "",
+        supplier_promised_date: d.supplier_promised_date ?? "",
+        supplier_actual_date: d.supplier_actual_date ?? "",
+        client_promised_date: d.client_promised_date ?? "",
+        client_actual_date: d.client_actual_date ?? "",
       });
       setDirty(false);
     }
@@ -105,6 +120,17 @@ function ProductionDetail() {
         start_date: form.start_date || null,
         due_date: form.due_date || null,
         notes: form.notes || null,
+        novedad: form.novedad as any,
+        supplier_id: form.supplier_id || null,
+        manufacturing_cost: form.manufacturing_cost ? Number(form.manufacturing_cost) : null,
+        invoice_date: form.invoice_date || null,
+        planimetry_sent_date: form.planimetry_sent_date || null,
+        quotation_date: form.quotation_date || null,
+        production_start_date: form.production_start_date || null,
+        supplier_promised_date: form.supplier_promised_date || null,
+        supplier_actual_date: form.supplier_actual_date || null,
+        client_promised_date: form.client_promised_date || null,
+        client_actual_date: form.client_actual_date || null,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -112,7 +138,7 @@ function ProductionDetail() {
       toast.success("Orden de producción actualizada");
       qc.invalidateQueries({ queryKey: ["production-order", id] });
       qc.invalidateQueries({ queryKey: ["production-audit", id] });
-      qc.invalidateQueries({ queryKey: ["production-orders"] });
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
       setDirty(false);
     },
     onError: (e: any) => toast.error(e.message ?? "Error"),
