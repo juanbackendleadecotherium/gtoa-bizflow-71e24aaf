@@ -72,7 +72,7 @@ function TrackingPage() {
 
   const updateField = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Record<string, any> }) => {
-      const { error } = await supabase.from("production_orders").update(patch).eq("id", id);
+      const { error } = await (supabase.from("production_orders") as any).update(patch).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
