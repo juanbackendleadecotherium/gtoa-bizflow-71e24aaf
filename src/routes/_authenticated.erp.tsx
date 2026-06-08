@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { BrandProvider, useBrand } from "@/features/brands/brand-context";
+import { useMyPendingTasksCount } from "@/features/seller-tasks/seller-tasks-panel";
 
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
@@ -70,6 +71,8 @@ function Shell() {
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pendingTasksQuery = useMyPendingTasksCount(userId);
+  const pendingTasks = pendingTasksQuery.data ?? 0;
 
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
@@ -118,6 +121,7 @@ function Shell() {
           {NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
             const Icon = item.icon;
             const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
+            const showBadge = item.to === "/erp/my-tasks" && pendingTasks > 0;
             return (
               <Link
                 key={item.to}
@@ -129,7 +133,12 @@ function Shell() {
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {showBadge && (
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold animate-pulse">
+                    {pendingTasks}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -218,6 +227,7 @@ function Shell() {
                   {NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
                     const Icon = item.icon;
                     const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
+                    const showBadge = item.to === "/erp/my-tasks" && pendingTasks > 0;
                     return (
                       <Link
                         key={item.to}
@@ -230,7 +240,12 @@ function Shell() {
                         }`}
                       >
                         <Icon className="h-4 w-4" />
-                        {item.label}
+                        <span className="flex-1">{item.label}</span>
+                        {showBadge && (
+                          <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold animate-pulse">
+                            {pendingTasks}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}

@@ -81,12 +81,19 @@ function MyTasks() {
           ) : (
             <ul className="space-y-2">
               {tasks.map((t) => (
-                <li key={t.id} className="rounded-xl border border-border bg-surface p-4">
+                <li key={t.id} className={`rounded-xl border p-4 ${t.status === "pendiente" ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface"}`}>
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">{t.title}</p>
-                      {t.reason && (
-                        <p className="text-xs text-muted-foreground mt-1 italic">"{t.reason}"</p>
+                      {t.reason ? (
+                        <div className="mt-2 rounded-md bg-amber-500/10 border border-amber-500/30 p-2.5">
+                          <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-300 mb-1">
+                            Qué debes corregir
+                          </p>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{t.reason}</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-1 italic">Sin detalle.</p>
                       )}
                       <p className="text-[11px] text-muted-foreground mt-2">
                         Creada: {new Date(t.created_at).toLocaleString("es-CO")}

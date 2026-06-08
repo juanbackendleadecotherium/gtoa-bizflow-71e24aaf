@@ -31,25 +31,36 @@ export function OrderSellerTasksBadge({ orderId }: { orderId: string }) {
   if (q.isLoading || tasks.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+    <div className="rounded-xl border-2 border-amber-500/60 bg-amber-500/10 p-4 space-y-3 shadow-sm">
       <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
         <AlertTriangle className="h-4 w-4" />
         <p className="text-sm font-semibold">
-          Tareas pendientes para ti ({tasks.length})
+          Producción te devolvió esta venta ({tasks.length} {tasks.length === 1 ? "tarea" : "tareas"})
         </p>
       </div>
       <ul className="space-y-2">
         {tasks.map((t) => (
-          <li key={t.id} className="rounded-lg bg-background border border-border p-3 text-sm">
-            <p className="font-medium">{t.title}</p>
-            {t.reason && <p className="text-xs text-muted-foreground mt-1 italic">Motivo: "{t.reason}"</p>}
+          <li key={t.id} className="rounded-lg bg-background border border-amber-500/30 p-3 text-sm">
+            <p className="font-semibold text-amber-900 dark:text-amber-200">{t.title}</p>
+            {t.reason ? (
+              <div className="mt-2 rounded-md bg-amber-500/10 border border-amber-500/30 p-2.5">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-300 mb-1">
+                  Qué debes corregir
+                </p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{t.reason}</p>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground italic">
+                Sin detalle. Contacta a producción.
+              </p>
+            )}
             {t.production_order_id && (
               <Link
                 to="/erp/production/$id"
                 params={{ id: t.production_order_id }}
                 className="text-xs text-primary inline-flex items-center gap-1 mt-2 hover:underline"
               >
-                Subir planimetría corregida <ArrowRight className="h-3 w-3" />
+                Ir a la orden de producción <ArrowRight className="h-3 w-3" />
               </Link>
             )}
           </li>
