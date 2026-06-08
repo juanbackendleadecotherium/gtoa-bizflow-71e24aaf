@@ -30,6 +30,8 @@ import { Route as AuthenticatedErpSettingsBrandBillingRouteImport } from './rout
 import { Route as AuthenticatedErpRealProductionProduccionRouteImport } from './routes/_authenticated.erp.real-production.produccion'
 import { Route as AuthenticatedErpRealProductionLogisticaRouteImport } from './routes/_authenticated.erp.real-production.logistica'
 import { Route as AuthenticatedErpRealProductionIdRouteImport } from './routes/_authenticated.erp.real-production.$id'
+import { Route as AuthenticatedErpProductionTrackingRouteImport } from './routes/_authenticated.erp.production.tracking'
+import { Route as AuthenticatedErpProductionApprovalsRouteImport } from './routes/_authenticated.erp.production.approvals'
 import { Route as AuthenticatedErpProductionIdRouteImport } from './routes/_authenticated.erp.production.$id'
 import { Route as AuthenticatedErpOrdersIdRouteImport } from './routes/_authenticated.erp.orders.$id'
 import { Route as AuthenticatedErpFinanceSellersRouteImport } from './routes/_authenticated.erp.finance.sellers'
@@ -153,6 +155,18 @@ const AuthenticatedErpRealProductionIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedErpRealProductionRoute,
   } as any)
+const AuthenticatedErpProductionTrackingRoute =
+  AuthenticatedErpProductionTrackingRouteImport.update({
+    id: '/production/tracking',
+    path: '/production/tracking',
+    getParentRoute: () => AuthenticatedErpRoute,
+  } as any)
+const AuthenticatedErpProductionApprovalsRoute =
+  AuthenticatedErpProductionApprovalsRouteImport.update({
+    id: '/production/approvals',
+    path: '/production/approvals',
+    getParentRoute: () => AuthenticatedErpRoute,
+  } as any)
 const AuthenticatedErpProductionIdRoute =
   AuthenticatedErpProductionIdRouteImport.update({
     id: '/production/$id',
@@ -199,6 +213,8 @@ export interface FileRoutesByFullPath {
   '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/production/$id': typeof AuthenticatedErpProductionIdRoute
+  '/erp/production/approvals': typeof AuthenticatedErpProductionApprovalsRoute
+  '/erp/production/tracking': typeof AuthenticatedErpProductionTrackingRoute
   '/erp/real-production/$id': typeof AuthenticatedErpRealProductionIdRoute
   '/erp/real-production/logistica': typeof AuthenticatedErpRealProductionLogisticaRoute
   '/erp/real-production/produccion': typeof AuthenticatedErpRealProductionProduccionRoute
@@ -222,6 +238,8 @@ export interface FileRoutesByTo {
   '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/production/$id': typeof AuthenticatedErpProductionIdRoute
+  '/erp/production/approvals': typeof AuthenticatedErpProductionApprovalsRoute
+  '/erp/production/tracking': typeof AuthenticatedErpProductionTrackingRoute
   '/erp/real-production/$id': typeof AuthenticatedErpRealProductionIdRoute
   '/erp/real-production/logistica': typeof AuthenticatedErpRealProductionLogisticaRoute
   '/erp/real-production/produccion': typeof AuthenticatedErpRealProductionProduccionRoute
@@ -251,6 +269,8 @@ export interface FileRoutesById {
   '/_authenticated/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
   '/_authenticated/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/_authenticated/erp/production/$id': typeof AuthenticatedErpProductionIdRoute
+  '/_authenticated/erp/production/approvals': typeof AuthenticatedErpProductionApprovalsRoute
+  '/_authenticated/erp/production/tracking': typeof AuthenticatedErpProductionTrackingRoute
   '/_authenticated/erp/real-production/$id': typeof AuthenticatedErpRealProductionIdRoute
   '/_authenticated/erp/real-production/logistica': typeof AuthenticatedErpRealProductionLogisticaRoute
   '/_authenticated/erp/real-production/produccion': typeof AuthenticatedErpRealProductionProduccionRoute
@@ -280,6 +300,8 @@ export interface FileRouteTypes {
     | '/erp/finance/sellers'
     | '/erp/orders/$id'
     | '/erp/production/$id'
+    | '/erp/production/approvals'
+    | '/erp/production/tracking'
     | '/erp/real-production/$id'
     | '/erp/real-production/logistica'
     | '/erp/real-production/produccion'
@@ -303,6 +325,8 @@ export interface FileRouteTypes {
     | '/erp/finance/sellers'
     | '/erp/orders/$id'
     | '/erp/production/$id'
+    | '/erp/production/approvals'
+    | '/erp/production/tracking'
     | '/erp/real-production/$id'
     | '/erp/real-production/logistica'
     | '/erp/real-production/produccion'
@@ -331,6 +355,8 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/finance/sellers'
     | '/_authenticated/erp/orders/$id'
     | '/_authenticated/erp/production/$id'
+    | '/_authenticated/erp/production/approvals'
+    | '/_authenticated/erp/production/tracking'
     | '/_authenticated/erp/real-production/$id'
     | '/_authenticated/erp/real-production/logistica'
     | '/_authenticated/erp/real-production/produccion'
@@ -499,6 +525,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpRealProductionIdRouteImport
       parentRoute: typeof AuthenticatedErpRealProductionRoute
     }
+    '/_authenticated/erp/production/tracking': {
+      id: '/_authenticated/erp/production/tracking'
+      path: '/production/tracking'
+      fullPath: '/erp/production/tracking'
+      preLoaderRoute: typeof AuthenticatedErpProductionTrackingRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
+    '/_authenticated/erp/production/approvals': {
+      id: '/_authenticated/erp/production/approvals'
+      path: '/production/approvals'
+      fullPath: '/erp/production/approvals'
+      preLoaderRoute: typeof AuthenticatedErpProductionApprovalsRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
     '/_authenticated/erp/production/$id': {
       id: '/_authenticated/erp/production/$id'
       path: '/production/$id'
@@ -607,6 +647,8 @@ interface AuthenticatedErpRouteChildren {
   AuthenticatedErpRealProductionRoute: typeof AuthenticatedErpRealProductionRouteWithChildren
   AuthenticatedErpIndexRoute: typeof AuthenticatedErpIndexRoute
   AuthenticatedErpProductionIdRoute: typeof AuthenticatedErpProductionIdRoute
+  AuthenticatedErpProductionApprovalsRoute: typeof AuthenticatedErpProductionApprovalsRoute
+  AuthenticatedErpProductionTrackingRoute: typeof AuthenticatedErpProductionTrackingRoute
   AuthenticatedErpSettingsBrandBillingRoute: typeof AuthenticatedErpSettingsBrandBillingRoute
   AuthenticatedErpSettingsStatusesRoute: typeof AuthenticatedErpSettingsStatusesRoute
   AuthenticatedErpSettingsSuppliersRoute: typeof AuthenticatedErpSettingsSuppliersRoute
@@ -623,6 +665,10 @@ const AuthenticatedErpRouteChildren: AuthenticatedErpRouteChildren = {
     AuthenticatedErpRealProductionRouteWithChildren,
   AuthenticatedErpIndexRoute: AuthenticatedErpIndexRoute,
   AuthenticatedErpProductionIdRoute: AuthenticatedErpProductionIdRoute,
+  AuthenticatedErpProductionApprovalsRoute:
+    AuthenticatedErpProductionApprovalsRoute,
+  AuthenticatedErpProductionTrackingRoute:
+    AuthenticatedErpProductionTrackingRoute,
   AuthenticatedErpSettingsBrandBillingRoute:
     AuthenticatedErpSettingsBrandBillingRoute,
   AuthenticatedErpSettingsStatusesRoute: AuthenticatedErpSettingsStatusesRoute,
