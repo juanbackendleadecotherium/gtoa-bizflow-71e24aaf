@@ -45,6 +45,8 @@ function TrackingPage() {
   const q = useQuery({
     queryKey: ["production-orders-drive", selectedBrandId, novedadFilter, year],
     enabled: !!selectedBrandId,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       const from = `${year}-01-01`;
       const to = `${year + 1}-01-01`;
