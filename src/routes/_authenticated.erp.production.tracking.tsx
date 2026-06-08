@@ -72,11 +72,10 @@ function TrackingPage() {
       let query = supabase
         .from("production_orders")
         .select(`
-          id, code, novedad, status, manufacturing_cost, margin_pct,
+          id, code, novedad, status, supplier_id, manufacturing_cost, margin_pct,
           invoice_date, planimetry_sent_date, quotation_date, production_start_date,
           supplier_promised_date, supplier_actual_date, client_promised_date, client_actual_date,
           assigned_to_label, notes, created_at,
-          supplier:suppliers!supplier_id(id, name),
           order:orders!order_id(id, order_number, invoice_number, customer_name, total)
         `)
         .eq("brand_id", selectedBrandId!)
@@ -87,7 +86,18 @@ function TrackingPage() {
       if (novedadFilter !== "all") query = query.eq("novedad", novedadFilter as any);
       const { data, error } = await query;
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      const supplierIds = Array.from(new Set(rows.map((r: any) => r.supplier_id).filter(Boolean)));
+      if (supplierIds.length === 0) return rows.map((r: any) => ({ ...r, supplier: null }));
+
+      const { data: suppliers, error: supplierError } = await supabase
+        .from("suppliers")
+        .select("id, name")
+        .in("id", supplierIds);
+      if (supplierError) throw supplierError;
+
+      const suppliersById = new Map((suppliers ?? []).map((s: any) => [s.id, s]));
+      return rows.map((r: any) => ({ ...r, supplier: suppliersById.get(r.supplier_id) ?? null }));
     },
   });
 
