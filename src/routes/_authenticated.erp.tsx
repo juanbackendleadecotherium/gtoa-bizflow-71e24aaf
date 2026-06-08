@@ -71,6 +71,8 @@ function Shell() {
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pendingTasksQuery = useMyPendingTasksCount(userId);
+  const pendingTasks = pendingTasksQuery.data ?? 0;
 
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
