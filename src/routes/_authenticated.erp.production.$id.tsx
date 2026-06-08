@@ -25,7 +25,19 @@ function ProductionDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { isAdmin } = useBrand();
+  const { isAdmin, selectedBrandId } = useBrand();
+
+  const suppliers = useQuery({
+    queryKey: ["suppliers-list", selectedBrandId],
+    enabled: !!selectedBrandId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("suppliers").select("id, name")
+        .eq("brand_id", selectedBrandId!).eq("is_active", true).order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const prod = useQuery({
     queryKey: ["production-order", id],
