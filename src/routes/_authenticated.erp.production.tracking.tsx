@@ -18,20 +18,16 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 const ACCEPTED_STATUSES = ["en_proceso", "control_calidad", "listo", "entregado"];
 
-const DATE_FIELDS = [
-  { key: "invoice_date", label: "F. FACT." },
-  { key: "planimetry_sent_date", label: "PLANI." },
-  { key: "quotation_date", label: "COTIZ." },
-  { key: "production_start_date", label: "PRODUC." },
-  { key: "supplier_promised_date", label: "ENT. PROV." },
-  { key: "supplier_actual_date", label: "ENT. REAL PROV." },
-  { key: "client_promised_date", label: "PROMESA CLI." },
-  { key: "client_actual_date", label: "ENT. REAL CLI." },
-] as const;
-
 function fmtMoney(n: number | null | undefined) {
   if (n == null) return "—";
   return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
+}
+
+function daysDiff(a: string | null, b: string | null): number | null {
+  if (!a || !b) return null;
+  const da = new Date(a).getTime();
+  const db = new Date(b).getTime();
+  return Math.round((da - db) / 86400000);
 }
 
 function TrackingPage() {
@@ -42,7 +38,6 @@ function TrackingPage() {
   const [search, setSearch] = useState("");
   const selectedBrand = brands.find((b) => b.id === selectedBrandId);
 
-  // Realtime: refresca cuando cualquier production_order de la marca cambia
   useEffect(() => {
     if (!selectedBrandId) return;
     const channel = supabase
@@ -60,7 +55,6 @@ function TrackingPage() {
     return () => { supabase.removeChannel(channel); };
   }, [selectedBrandId, qc]);
 
-
   const q = useQuery({
     queryKey: ["production-orders-drive", selectedBrandId, novedadFilter, year],
     enabled: !!selectedBrandId,
@@ -75,8 +69,11 @@ function TrackingPage() {
           id, code, novedad, status, supplier_id, manufacturing_cost, margin_pct,
           invoice_date, planimetry_sent_date, quotation_date, production_start_date,
           supplier_promised_date, supplier_actual_date, client_promised_date, client_actual_date,
-          assigned_to_label, notes, created_at,
-          order:orders!order_id(id, order_number, invoice_number, customer_name, total)
+          assigned_to_label, notes, created_at, order_id,
+          order:orders!order_id(
+            id, order_number, invoice_number, customer_name, customer_phone, customer_email,
+            total, seller_id
+          )
         `)
         .eq("brand_id", selectedBrandId!)
         .in("status", ACCEPTED_STATUSES)
@@ -86,18 +83,39 @@ function TrackingPage() {
       if (novedadFilter !== "all") query = query.eq("novedad", novedadFilter as any);
       const { data, error } = await query;
       if (error) throw error;
-      const rows = data ?? [];
-      const supplierIds = Array.from(new Set(rows.map((r: any) => r.supplier_id).filter(Boolean)));
-      if (supplierIds.length === 0) return rows.map((r: any) => ({ ...r, supplier: null }));
+      const rows = (data ?? []) as any[];
 
-      const { data: suppliers, error: supplierError } = await supabase
-        .from("suppliers")
-        .select("id, name")
-        .in("id", supplierIds);
-      if (supplierError) throw supplierError;
+      const supplierIds = Array.from(new Set(rows.map((r) => r.supplier_id).filter(Boolean)));
+      const orderIds = Array.from(new Set(rows.map((r) => r.order_id).filter(Boolean)));
+      const sellerIds = Array.from(new Set(rows.map((r) => r.order?.seller_id).filter(Boolean)));
 
-      const suppliersById = new Map((suppliers ?? []).map((s: any) => [s.id, s]));
-      return rows.map((r: any) => ({ ...r, supplier: suppliersById.get(r.supplier_id) ?? null }));
+      const [suppliersRes, itemsRes, sellersRes] = await Promise.all([
+        supplierIds.length
+          ? supabase.from("suppliers").select("id, name").in("id", supplierIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        orderIds.length
+          ? supabase.from("order_items").select("order_id, description, sort_order").in("order_id", orderIds).order("sort_order", { ascending: true })
+          : Promise.resolve({ data: [], error: null } as any),
+        sellerIds.length
+          ? supabase.from("profiles").select("user_id, display_name, email").in("user_id", sellerIds)
+          : Promise.resolve({ data: [], error: null } as any),
+      ]);
+
+      const suppliersById = new Map((suppliersRes.data ?? []).map((s: any) => [s.id, s]));
+      const sellersById = new Map((sellersRes.data ?? []).map((s: any) => [s.user_id, s]));
+      const itemsByOrder = new Map<string, any[]>();
+      for (const it of (itemsRes.data ?? []) as any[]) {
+        const arr = itemsByOrder.get(it.order_id) ?? [];
+        arr.push(it);
+        itemsByOrder.set(it.order_id, arr);
+      }
+
+      return rows.map((r) => ({
+        ...r,
+        supplier: suppliersById.get(r.supplier_id) ?? null,
+        items: itemsByOrder.get(r.order_id) ?? [],
+        seller: r.order?.seller_id ? sellersById.get(r.order.seller_id) ?? null : null,
+      }));
     },
   });
 
@@ -121,7 +139,8 @@ function TrackingPage() {
       r.assigned_to_label?.toLowerCase().includes(term) ||
       r.order?.invoice_number?.toLowerCase().includes(term) ||
       r.order?.order_number?.toLowerCase().includes(term) ||
-      r.order?.customer_name?.toLowerCase().includes(term),
+      r.order?.customer_name?.toLowerCase().includes(term) ||
+      r.seller?.display_name?.toLowerCase().includes(term),
     );
   }, [q.data, search]);
 
@@ -166,7 +185,7 @@ function TrackingPage() {
         <div className="relative flex-1 min-w-[220px]">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar FAC, cliente, proveedor, código…" className="pl-9" />
+            placeholder="Buscar FAC, cliente, proveedor, vendedor…" className="pl-9" />
         </div>
         <Select value={novedadFilter} onValueChange={setNovedadFilter}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -193,14 +212,35 @@ function TrackingPage() {
         </div>
       ) : (
         <div className="rounded-xl border border-border bg-surface overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-[11px] table-fixed">
+            <colgroup>
+              <col style={{ width: 90 }} />   {/* FAC / Vendedor */}
+              <col style={{ width: 150 }} />  {/* Cliente / Contacto */}
+              <col />                          {/* Producto / Observación (flex) */}
+              <col style={{ width: 110 }} /> {/* Proveedor */}
+              <col style={{ width: 90 }} />   {/* F. Fact */}
+              <col style={{ width: 90 }} />   {/* Plani */}
+              <col style={{ width: 90 }} />   {/* Cotiz */}
+              <col style={{ width: 90 }} />   {/* SLA Prod */}
+              <col style={{ width: 100 }} /> {/* Ent prov / Real prov */}
+              <col style={{ width: 100 }} /> {/* Promesa cli / Real cli */}
+              <col style={{ width: 100 }} /> {/* Desv / Novedad */}
+              <col style={{ width: 110 }} /> {/* Venta / Costo / Margen */}
+            </colgroup>
             <thead className="bg-muted/40 text-muted-foreground">
-              <tr>
-                {["FAC", "PROVEEDOR", ...DATE_FIELDS.map(f => f.label), "NOVEDAD", "CLIENTE", "PRODUCCIÓN", "VENTA", "COSTO", "MARGEN"].map((h) => (
-                  <th key={h} className="px-2 py-2.5 text-left font-medium whitespace-nowrap border-b border-border uppercase text-[10px] tracking-wider">
-                    {h}
-                  </th>
-                ))}
+              <tr className="text-[10px] uppercase tracking-wider">
+                <Th>FAC<br/><span className="text-muted-foreground/70 normal-case font-normal">Vendedor</span></Th>
+                <Th>Cliente<br/><span className="text-muted-foreground/70 normal-case font-normal">Contacto</span></Th>
+                <Th>Producto<br/><span className="text-muted-foreground/70 normal-case font-normal">Observación</span></Th>
+                <Th>Proveedor</Th>
+                <Th>F. Factura</Th>
+                <Th>Planimetría</Th>
+                <Th>Cotización</Th>
+                <Th>SLA Producción</Th>
+                <Th>Ent. Prov.<br/><span className="text-muted-foreground/70 normal-case font-normal">Real Prov.</span></Th>
+                <Th>Promesa Cli.<br/><span className="text-muted-foreground/70 normal-case font-normal">Real Cli.</span></Th>
+                <Th>Desviación<br/><span className="text-muted-foreground/70 normal-case font-normal">Novedad</span></Th>
+                <Th className="text-right">Venta / Costo<br/><span className="text-muted-foreground/70 normal-case font-normal">Margen</span></Th>
               </tr>
             </thead>
             <tbody>
@@ -212,36 +252,82 @@ function TrackingPage() {
                   : margin >= 45 ? "text-emerald-600 dark:text-emerald-400"
                   : margin >= 30 ? "text-amber-600 dark:text-amber-400"
                   : "text-rose-600 dark:text-rose-400";
+
+                const desv = daysDiff(r.client_actual_date, r.client_promised_date);
+                const desvColor =
+                  desv == null ? "text-muted-foreground"
+                  : desv <= 0 ? "text-emerald-600 dark:text-emerald-400"
+                  : desv <= 3 ? "text-amber-600 dark:text-amber-400"
+                  : "text-rose-600 dark:text-rose-400";
+                const desvLabel = desv == null ? "—" : `${desv > 0 ? "+" : ""}${desv}d`;
+
+                const productos = (r.items ?? []).map((it: any) => it.description).filter(Boolean);
+                const productoMain = productos[0] ?? "—";
+                const productoExtra = productos.length > 1 ? ` +${productos.length - 1}` : "";
+
+                const contacto = r.order?.customer_phone || r.order?.customer_email || "—";
+                const vendedor = r.seller?.display_name || r.seller?.email || "—";
+
                 return (
-                  <tr key={r.id} className="border-b border-border hover:bg-muted/20 transition-colors">
-                    <td className="px-2 py-1.5 whitespace-nowrap font-mono">
-                      <Link to="/erp/production/$id" params={{ id: r.id }} className="text-primary hover:underline">
+                  <tr key={r.id} className="border-b border-border hover:bg-muted/20 transition-colors align-top">
+                    {/* FAC + Vendedor */}
+                    <td className="px-2 py-1.5">
+                      <Link to="/erp/production/$id" params={{ id: r.id }} className="text-primary hover:underline font-mono text-[11px] block truncate">
                         {r.order?.invoice_number ?? r.code}
                       </Link>
+                      <div className="text-[10px] text-muted-foreground truncate" title={vendedor}>{vendedor}</div>
                     </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">{r.supplier?.name ?? "—"}</td>
-                    {DATE_FIELDS.map((f) => (
-                      <td key={f.key} className="px-1 py-1 whitespace-nowrap">
-                        <EditableDate
-                          value={r[f.key]}
-                          onSave={(v) => updateField.mutate({ id: r.id, patch: { [f.key]: v } })}
-                        />
-                      </td>
-                    ))}
-                    <td className="px-1 py-1 whitespace-nowrap">
-                      <EditableNovedad
-                        value={r.novedad}
-                        onSave={(v) => updateField.mutate({ id: r.id, patch: { novedad: v } })}
-                      />
+
+                    {/* Cliente + Contacto */}
+                    <td className="px-2 py-1.5">
+                      <div className="truncate font-medium" title={r.order?.customer_name}>{r.order?.customer_name ?? "—"}</div>
+                      <div className="text-[10px] text-muted-foreground truncate" title={contacto}>{contacto}</div>
                     </td>
-                    <td className="px-2 py-1.5 max-w-[180px] truncate" title={r.order?.customer_name}>
-                      {r.order?.customer_name ?? "—"}
+
+                    {/* Producto + Observación */}
+                    <td className="px-2 py-1.5">
+                      <div className="truncate" title={productos.join(" · ")}>
+                        {productoMain}{productoExtra && <span className="text-muted-foreground">{productoExtra}</span>}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground line-clamp-2" title={r.notes ?? ""}>
+                        {r.notes || "—"}
+                      </div>
                     </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">{r.assigned_to_label ?? "—"}</td>
-                    <td className="px-2 py-1.5 whitespace-nowrap text-right">{fmtMoney(total)}</td>
-                    <td className="px-2 py-1.5 whitespace-nowrap text-right">{fmtMoney(r.manufacturing_cost)}</td>
-                    <td className={`px-2 py-1.5 whitespace-nowrap text-right font-semibold ${marginColor}`}>
-                      {margin == null ? "—" : `${margin.toFixed(0)}%`}
+
+                    {/* Proveedor */}
+                    <td className="px-2 py-1.5 truncate" title={r.supplier?.name ?? ""}>{r.supplier?.name ?? "—"}</td>
+
+                    {/* Fechas individuales */}
+                    <td className="px-1 py-1"><EditableDate value={r.invoice_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { invoice_date: v } })} /></td>
+                    <td className="px-1 py-1"><EditableDate value={r.planimetry_sent_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { planimetry_sent_date: v } })} /></td>
+                    <td className="px-1 py-1"><EditableDate value={r.quotation_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { quotation_date: v } })} /></td>
+                    <td className="px-1 py-1"><EditableDate value={r.production_start_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { production_start_date: v } })} /></td>
+
+                    {/* Ent Prov / Real Prov apilados */}
+                    <td className="px-1 py-1 space-y-1">
+                      <EditableDate value={r.supplier_promised_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { supplier_promised_date: v } })} />
+                      <EditableDate value={r.supplier_actual_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { supplier_actual_date: v } })} />
+                    </td>
+
+                    {/* Promesa Cli / Real Cli apilados */}
+                    <td className="px-1 py-1 space-y-1">
+                      <EditableDate value={r.client_promised_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { client_promised_date: v } })} />
+                      <EditableDate value={r.client_actual_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { client_actual_date: v } })} />
+                    </td>
+
+                    {/* Desviación + Novedad apilados */}
+                    <td className="px-1 py-1 space-y-1">
+                      <div className={`text-[11px] font-semibold text-center ${desvColor}`}>{desvLabel}</div>
+                      <EditableNovedad value={r.novedad} onSave={(v) => updateField.mutate({ id: r.id, patch: { novedad: v } })} />
+                    </td>
+
+                    {/* Venta / Costo / Margen */}
+                    <td className="px-2 py-1.5 text-right">
+                      <div className="font-medium tabular-nums">{fmtMoney(total)}</div>
+                      <div className="text-[10px] text-muted-foreground tabular-nums">{fmtMoney(r.manufacturing_cost)}</div>
+                      <div className={`text-[11px] font-semibold tabular-nums ${marginColor}`}>
+                        {margin == null ? "—" : `${margin.toFixed(0)}%`}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -251,6 +337,14 @@ function TrackingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <th className={`px-2 py-2 text-left font-medium border-b border-border leading-tight ${className}`}>
+      {children}
+    </th>
   );
 }
 
@@ -266,7 +360,7 @@ function EditableDate({ value, onSave }: { value: string | null; onSave: (v: str
         const next = v || null;
         if (next !== (value ?? null)) onSave(next);
       }}
-      className="bg-transparent border border-transparent hover:border-border focus:border-primary focus:bg-background rounded px-1.5 py-1 text-[11px] w-[110px] outline-none transition-colors"
+      className="bg-transparent border border-transparent hover:border-border focus:border-primary focus:bg-background rounded px-1 py-0.5 text-[10px] w-full outline-none transition-colors"
     />
   );
 }
@@ -277,7 +371,7 @@ function EditableNovedad({ value, onSave }: { value: string | null; onSave: (v: 
     <select
       value={value ?? "pendiente"}
       onChange={(e) => onSave(e.target.value)}
-      className={`appearance-none border rounded-full px-2 py-0.5 text-[11px] font-medium cursor-pointer outline-none focus:ring-2 focus:ring-primary/40 ${meta.color}`}
+      className={`appearance-none border rounded-full px-1.5 py-0.5 text-[10px] font-medium cursor-pointer outline-none focus:ring-2 focus:ring-primary/40 w-full text-center ${meta.color}`}
     >
       {NOVEDADES.map((n) => (
         <option key={n.value} value={n.value} className="bg-background text-foreground">{n.label}</option>
