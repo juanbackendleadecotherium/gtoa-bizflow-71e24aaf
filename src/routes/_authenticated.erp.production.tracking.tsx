@@ -214,18 +214,18 @@ function TrackingPage() {
         <div className="rounded-xl border border-border bg-surface overflow-x-auto">
           <table className="w-full text-[11px] table-fixed">
             <colgroup>
-              <col style={{ width: 90 }} />   {/* FAC / Vendedor */}
-              <col style={{ width: 150 }} />  {/* Cliente / Contacto */}
-              <col />                          {/* Producto / Observación (flex) */}
-              <col style={{ width: 110 }} /> {/* Proveedor */}
-              <col style={{ width: 90 }} />   {/* F. Fact */}
-              <col style={{ width: 90 }} />   {/* Plani */}
-              <col style={{ width: 90 }} />   {/* Cotiz */}
-              <col style={{ width: 90 }} />   {/* SLA Prod */}
-              <col style={{ width: 100 }} /> {/* Ent prov / Real prov */}
-              <col style={{ width: 100 }} /> {/* Promesa cli / Real cli */}
-              <col style={{ width: 100 }} /> {/* Desv / Novedad */}
-              <col style={{ width: 110 }} /> {/* Venta / Costo / Margen */}
+              <col style={{ width: 90 }} />
+              <col style={{ width: 150 }} />
+              <col />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 110 }} />
             </colgroup>
             <thead className="bg-muted/40 text-muted-foreground">
               <tr className="text-[10px] uppercase tracking-wider">
