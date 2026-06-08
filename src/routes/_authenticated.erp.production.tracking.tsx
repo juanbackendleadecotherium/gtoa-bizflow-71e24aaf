@@ -286,10 +286,10 @@ function TrackingPage() {
 
                     {/* Producto + Observación */}
                     <td className="px-2 py-1.5">
-                      <div className="truncate" title={productos.join(" · ")}>
+                      <div className="line-clamp-2 break-words leading-snug" title={productos.join(" · ")}>
                         {productoMain}{productoExtra && <span className="text-muted-foreground">{productoExtra}</span>}
                       </div>
-                      <div className="text-[10px] text-muted-foreground line-clamp-2" title={r.notes ?? ""}>
+                      <div className="text-[10px] text-muted-foreground line-clamp-2 break-words leading-snug" title={r.notes ?? ""}>
                         {r.notes || "—"}
                       </div>
                     </td>
