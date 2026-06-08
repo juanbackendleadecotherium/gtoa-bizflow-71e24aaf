@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { BrandProvider, useBrand } from "@/features/brands/brand-context";
+import { useMyPendingTasksCount } from "@/features/seller-tasks/seller-tasks-panel";
 
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
