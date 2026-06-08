@@ -286,12 +286,3 @@ function MainContainer() {
   );
 }
 
-function _Closer() {
-  return (
-    <div>
-      <div></div>
-
-      </div>
-    </div>
-  );
-}
