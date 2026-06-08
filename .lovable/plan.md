@@ -1,77 +1,73 @@
+## Objetivo
 
-## Resumen
+Llevar el módulo **Producción** del ERP al nivel del Drive de seguimiento: replicar las columnas que usa el equipo, separar la vista por marca (como las pestañas MD/EM/GT/CD), y cerrar el ciclo de rechazo de planimetría con tareas para el vendedor.
 
-Crear un nuevo módulo independiente **Producción Real** (paralelo al módulo de Producción actual, que se queda intacto) con dos dashboards: **Producción** y **Logística**. Cada orden de "producción real" se crea a partir de una venta, sigue el flujo del mapa mental, y se entrega automáticamente a Logística cuando se marca como Terminado.
+## 1. Campos del Drive → modelo de datos
 
-```text
-Venta ──► Producción Real
-            ├─ Producción (dashboard)
-            │   1. Revisar planimetría
-            │   2. Seleccionar proveedor
-            │   3. Negociar (margen ≥ 45%)
-            │   4. Aprobar proveedor
-            │   5. Seguimiento producción
-            │   6. Terminado ───────────┐
-            │                           │ (automático)
-            └─ Logística (dashboard) ◄──┘
-                1. Control de calidad
-                2. Entrega → Cliente | Bodega
-```
+Amplío `production_orders` con los hitos del Drive (todos opcionales — el flujo los va llenando):
 
-## Cambios en base de datos
+| Columna Drive | Campo nuevo en `production_orders` |
+|---|---|
+| FAC | `invoice_number` (ya está en `orders`, lo muestro aquí) |
+| PROVEEDOR | `supplier_id` (FK opcional → `suppliers`) |
+| FECHA FACTURA | `invoice_date` |
+| PLANIMETRÍA | `planimetry_sent_date` (fecha que se envió al proveedor) |
+| COTIZACIÓN | `quotation_date` |
+| PRODUCCIÓN | `production_start_date` |
+| ENTREGA PROVEEDOR | `supplier_promised_date` (lo que prometió el proveedor) |
+| ENTREGA REAL PROVEEDOR | `supplier_actual_date` (fecha real de entrega a bodega) |
+| FECHA PROMESA CLIENTE | `client_promised_date` |
+| ENTREGA REAL A CLIENTE | `client_actual_date` |
+| NOVEDAD | `novedad` (enum: `cotizando`, `produccion`, `entrega_inmediata`, `entregada`, `anulada`, `pendiente`) — reemplaza el `status` actual como etapa visible |
+| PRODUCCIÓN (JV) | `production_owner_id` (FK opcional → `profiles`, responsable interno) |
+| VENDEDOR | derivado de `orders.seller_id` |
+| PRECIO VENTA | derivado de `orders.total` |
+| COSTO FABRICACIÓN | `manufacturing_cost` |
+| MARGEN | calculado (trigger) = `(total − manufacturing_cost) / total` |
+| OBSERVACIÓN | `notes` (ya existe) |
 
-Nuevas tablas en `public` (con GRANTs + RLS por marca, igual al patrón existente):
+El `status` actual (`pendiente / en_proceso / listo / rechazada`) se mantiene como **estado del flujo interno** (aceptar planimetría, rechazar, etc.); `novedad` es la **etiqueta que ve el equipo** y que se exporta visualmente como en el Drive.
 
-- **`suppliers`** — catálogo reutilizable de proveedores por marca.
-  - Campos clave: `brand_id`, `name`, `category` (ej. "sofás", "camas", "comedores"), `contact_name`, `phone`, `email`, `notes`, `is_active`.
-- **`brand_production_settings`** — un registro por marca para configuración.
-  - Campos clave: `brand_id` (unique), `min_margin_pct` (default 45).
-- **`real_production_orders`** — orden de producción real ligada a una venta.
-  - Campos clave: `brand_id`, `order_id`, `code` (auto: `RP-{slug}-{año}-{seq}`), `stage` (`planimetria` | `proveedor` | `negociacion` | `aprobado` | `seguimiento` | `terminado` | `control_calidad` | `entrega` | `entregado`), `planimetry_ok` (bool), `supplier_id`, `supplier_cost`, `sale_total_snapshot`, `margin_pct` (calculado), `supplier_approved` (bool), `delivery_target` (`cliente` | `bodega`), `qc_ok` (bool), `completed_at`, `delivered_at`, `notes`.
-- **`real_production_audit_log`** — bitácora del flujo (mismo patrón que `production_audit_log`).
+## 2. Vista por marca (pestañas tipo Drive)
 
-Función SQL `assign_real_production_code()` + trigger para generar `code`. Trigger de auditoría que registra cambios de `stage`, proveedor, margen, etc. Función `advance_real_production_stage(p_id, p_stage, p_note)` para validar transiciones (ej. no pasar a "aprobado" si margen < `min_margin_pct`).
+En `/erp/production` agrego una barra de pestañas con las marcas a las que el usuario tiene acceso (MD, EM, GT, CD…). Cada pestaña filtra la tabla por `brand_id`. El filtro por año queda como dropdown secundario (por defecto el año actual). No duplicamos tablas: una sola lista filtrada, igual que las hojas del Drive.
 
-RLS: mismas reglas que tablas existentes (`has_brand_access` para SELECT, `can_write_brand` para escritura, admin para DELETE).
+La tabla muestra las mismas columnas del Drive, en el mismo orden, con celdas editables inline para las fechas y la novedad (los vendedores y producción la llenan ahí mismo).
 
-## Cambios en la app
+## 3. Rechazo de planimetría → tareas del vendedor
 
-### Rutas nuevas (TanStack file-based)
+Cuando producción rechaza una planimetría (`reject_production_with_reason` ya existe):
 
-- `src/routes/_authenticated.erp.real-production.tsx` — layout con `<Outlet/>` y tabs/botones **Producción** y **Logística**.
-- `src/routes/_authenticated.erp.real-production.index.tsx` — redirige a `/erp/real-production/produccion`.
-- `src/routes/_authenticated.erp.real-production.produccion.tsx` — dashboard de Producción (lista de órdenes en etapas planimetría→seguimiento).
-- `src/routes/_authenticated.erp.real-production.logistica.tsx` — dashboard de Logística (lista en etapas control_calidad→entregado).
-- `src/routes/_authenticated.erp.real-production.$id.tsx` — detalle de orden con el flujo paso a paso (revisar planimetría, elegir proveedor, registrar costo, ver % margen en vivo, aprobar, seguimiento, marcar terminado / QC / entrega).
-- `src/routes/_authenticated.erp.settings.suppliers.tsx` — CRUD del catálogo de proveedores por marca.
+- Se crea una fila en una tabla nueva `seller_tasks`:
+  - `seller_id`, `order_id`, `production_order_id`, `brand_id`
+  - `type = 'fix_planimetry'`
+  - `title`, `reason` (el motivo del rechazo)
+  - `status` (`pendiente` / `resuelta`), `created_at`, `resolved_at`
+- Se marca automáticamente como **resuelta** cuando el vendedor sube una nueva versión de planimetría a esa orden (no hay límite de intentos; cada rechazo crea una tarea nueva).
 
-### Componentes
+**UI nueva:**
 
-`src/features/real-production/`:
-- `real-production-meta.ts` — etapas, colores, labels.
-- `stage-badge.tsx` — badge de etapa.
-- `supplier-picker.tsx` — selector de proveedor desde catálogo (filtrado por marca + categoría).
-- `margin-indicator.tsx` — muestra costo, venta, % margen y semáforo verde/rojo según `min_margin_pct`.
-- `production-dashboard.tsx` — tabla/grid de órdenes en fase de producción.
-- `logistics-dashboard.tsx` — tabla/grid de órdenes en fase de logística.
-- `stage-stepper.tsx` — stepper visual del flujo en el detalle.
-- `send-to-real-production-button.tsx` — botón en la página de venta para crear una orden de producción real (similar al existente para producción).
+- **`/erp/my-tasks`** — vista "Mis tareas" con pendientes/resueltas, filtros por marca, link directo a la venta y a la orden de producción.
+- **Badge en el detalle de la venta** (`/erp/orders/$id`) cuando hay tareas `fix_planimetry` pendientes, con el motivo y un CTA "Subir planimetría corregida".
+- **Contador en el sidebar** junto a "Mis tareas" con las pendientes del vendedor.
 
-### Navegación
+## 4. Acceso multi-rol (de la conversación previa)
 
-- Agregar entrada **Producción Real** en el sidebar/menú del ERP (`src/routes/_authenticated.erp.tsx`), junto a Producción.
-- Agregar enlace a **Proveedores** dentro de Settings (solo admin).
+Tu usuario queda con rol `admin` para ver todos los módulos. El switch de rol queda fuera de este hito — luego asignamos visibilidad por rol.
 
-### Lógica clave (cliente)
+## Detalles técnicos
 
-- Margen = `(sale_total - supplier_cost) / sale_total * 100` (configurable a futuro). El umbral `min_margin_pct` se lee de `brand_production_settings`.
-- El botón "Aprobar proveedor" se deshabilita si `margin_pct < min_margin_pct` y muestra un mensaje pidiendo renegociar.
-- Al marcar etapa **Terminado**, la orden pasa automáticamente a la lista de Logística (siguiente etapa = `control_calidad`).
-- En Logística: marcar QC OK → elegir destino (Cliente / Bodega) → marcar Entregado.
+- **Migración 1** — `ALTER TABLE production_orders` con los campos nuevos; agregar enum `production_novedad`; trigger para `margin_pct`; índice por `(brand_id, novedad)`.
+- **Migración 2** — `CREATE TABLE seller_tasks` con GRANTs + RLS (vendedor ve las suyas, admin todas, ventas con `has_brand_access`); trigger en `production_planimetries` que marca como resueltas las tareas `fix_planimetry` pendientes de esa `production_order_id` al insertar una versión nueva; trigger en `production_orders` que crea una tarea cuando `status` pasa a `rechazada`.
+- **Frontend** — refactor de `_authenticated.erp.production.index.tsx` con tabs de marca + tabla extendida; nueva ruta `_authenticated.erp.my-tasks.tsx`; badge reutilizable en el detalle de venta y producción; item de sidebar.
+- **Server functions** — `getMyTasks`, `resolveTask` (manual), `updateProductionTrackingFields` (para edición inline de fechas/novedad/costo).
+- Respeto la regla de memoria: `staleTime 5min`, `refetchOnMount: false`, sin tocar `AuthSync`.
 
-## Fuera del alcance (para mantenerlo enfocado)
+## Lo que NO entra en este hito
 
-- No se toca el módulo de Producción existente ni sus planimetrías/órdenes.
-- No se mueven datos del módulo viejo al nuevo (corren en paralelo).
-- No se generan PDFs nuevos en esta fase (se pueden agregar después).
-- No se integra inventario/bodega real — "Bodega" es solo una marca de destino.
+- Sincronización real con Google Drive (lectura/escritura de la hoja).
+- Notificaciones push/email.
+- Permisos por rol granulares (queda para después, según lo conversado).
+- Lógica de `real_production_orders` (ya existe en paralelo y se mantiene).
+
+¿Avanzo?
