@@ -1,6 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Loader2, Send } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { generatePlanimetryForOrder } from "@/features/production/send-to-production-button";
 
 type Task = {
   id: string;
@@ -12,6 +15,8 @@ type Task = {
 
 /** Inline badge for a specific order — shows pending fix tasks for the seller. */
 export function OrderSellerTasksBadge({ orderId }: { orderId: string }) {
+  const qc = useQueryClient();
+
   const q = useQuery({
     queryKey: ["seller-tasks", "by-order", orderId],
     queryFn: async () => {
@@ -26,6 +31,58 @@ export function OrderSellerTasksBadge({ orderId }: { orderId: string }) {
     },
   });
 
+  const resend = useMutation({
+    mutationFn: async (task: Task) => {
+      if (!task.production_order_id) throw new Error("La tarea no tiene orden de producción asociada");
+
+      const { data: prod, error: prodErr } = await supabase
+        .from("production_orders")
+        .select("id, code, brand_id, status")
+        .eq("id", task.production_order_id)
+        .maybeSingle();
+      if (prodErr) throw prodErr;
+      if (!prod) throw new Error("Orden de producción no encontrada");
+
+      const { data: items, error: itemsErr } = await supabase
+        .from("order_items")
+        .select("id")
+        .eq("order_id", orderId)
+        .eq("production_order_id", task.production_order_id);
+      if (itemsErr) throw itemsErr;
+      const ids = (items ?? []).map((i: any) => i.id);
+      if (ids.length === 0) throw new Error("No hay productos vinculados a esta orden de producción");
+
+      await generatePlanimetryForOrder({
+        productionOrderId: prod.id,
+        productionCode: prod.code,
+        orderId,
+        brandId: prod.brand_id,
+        selectedItemIds: ids,
+        noteOverride: `Planimetría corregida tras rechazo: ${task.reason ?? "(sin detalle)"}`,
+      });
+
+      // Re-open the production order so the team ve la corrección nuevamente
+      if (prod.status === "rechazada") {
+        const { error: upErr } = await supabase
+          .from("production_orders")
+          .update({ status: "pendiente" })
+          .eq("id", prod.id);
+        if (upErr) throw upErr;
+      }
+
+      return prod.code;
+    },
+    onSuccess: (code) => {
+      toast.success(`Actualización enviada a producción (${code})`);
+      qc.invalidateQueries({ queryKey: ["seller-tasks", "by-order", orderId] });
+      qc.invalidateQueries({ queryKey: ["production-by-order", orderId] });
+      qc.invalidateQueries({ queryKey: ["production-orders"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const tasks = q.data ?? [];
   if (q.isLoading || tasks.length === 0) return null;
 
@@ -38,26 +95,38 @@ export function OrderSellerTasksBadge({ orderId }: { orderId: string }) {
         </p>
       </div>
       <ul className="space-y-2">
-        {tasks.map((t) => (
-          <li key={t.id} className="rounded-lg bg-background border border-amber-500/30 p-3 text-sm">
-            <p className="font-semibold text-amber-900 dark:text-amber-200">{t.title}</p>
-            {t.reason ? (
-              <div className="mt-2 rounded-md bg-amber-500/10 border border-amber-500/30 p-2.5">
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-300 mb-1">
-                  Qué debes corregir
+        {tasks.map((t) => {
+          const pending = resend.isPending && resend.variables?.id === t.id;
+          return (
+            <li key={t.id} className="rounded-lg bg-background border border-amber-500/30 p-3 text-sm space-y-2">
+              <p className="font-semibold text-amber-900 dark:text-amber-200">{t.title}</p>
+              {t.reason ? (
+                <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-2.5">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-300 mb-1">
+                    Qué debes corregir
+                  </p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{t.reason}</p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  Sin detalle. Contacta a producción.
                 </p>
-                <p className="text-sm text-foreground whitespace-pre-wrap">{t.reason}</p>
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground italic">
-                Sin detalle. Contacta a producción.
+              )}
+              <p className="text-xs text-muted-foreground">
+                Edita la venta (productos, imágenes o notas) y envía la actualización para regenerar la planimetría automáticamente.
               </p>
-            )}
-            <p className="mt-2 text-xs text-muted-foreground">
-              Carga la planimetría corregida desde esta venta para reenviarla a producción.
-            </p>
-          </li>
-        ))}
+              <Button
+                size="sm"
+                className="w-full gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => resend.mutate(t)}
+                disabled={pending}
+              >
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Enviar actualización
+              </Button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
