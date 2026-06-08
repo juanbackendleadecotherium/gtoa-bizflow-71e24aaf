@@ -1,8 +1,8 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, ClipboardList, Settings,
-  LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft, Menu, X,
-  FileText, Receipt, Wallet, Factory, Truck, Users, ListTodo,
+  LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft, Menu,
+  FileText, Receipt, Wallet, Factory, BarChart3, Users, ListTodo,
 } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -53,7 +53,7 @@ const NAV: NavItem[] = [
   { label: "Dashboard", to: "/erp", icon: LayoutDashboard, exact: true },
   { label: "Ventas", to: "/erp/orders", icon: ClipboardList },
   { label: "Producción", to: "/erp/production", icon: Factory },
-  { label: "Producción Real", to: "/erp/real-production", icon: Truck },
+  { label: "Gráficas ERP", to: "/erp/analytics", icon: BarChart3, adminOnly: true },
   { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo },
   { label: "Finanzas", to: "/erp/finance", icon: Wallet, adminOnly: true },
   { label: "Estados", to: "/erp/settings/statuses", icon: Settings, adminOnly: true },
