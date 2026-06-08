@@ -53,7 +53,7 @@ const NAV: NavItem[] = [
   { label: "Dashboard", to: "/erp", icon: LayoutDashboard, exact: true },
   { label: "Ventas", to: "/erp/orders", icon: ClipboardList },
   { label: "Producción", to: "/erp/production", icon: Factory },
-  { label: "Producción Real", to: "/erp/real-production", icon: Truck },
+  { label: "Gráficas ERP", to: "/erp/analytics", icon: BarChart3, adminOnly: true },
   { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo },
   { label: "Finanzas", to: "/erp/finance", icon: Wallet, adminOnly: true },
   { label: "Estados", to: "/erp/settings/statuses", icon: Settings, adminOnly: true },
