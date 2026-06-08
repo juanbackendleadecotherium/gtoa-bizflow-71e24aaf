@@ -27,6 +27,7 @@ import { formatDepositAccount } from "@/features/finance/deposit-accounts";
 import { DeleteOrderDialog } from "@/features/orders/delete-order-dialog";
 import { ProductionSection } from "@/features/production/send-to-production-button";
 import { RealProductionSection } from "@/features/real-production/send-to-real-production-button";
+import { OrderSellerTasksBadge } from "@/features/seller-tasks/seller-tasks-panel";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -508,6 +509,8 @@ function OrderDetail() {
             total={Number(o.total) || 0}
             advance={Number(o.advance_amount) || 0}
           />
+
+          <OrderSellerTasksBadge orderId={o.id} />
 
           <ProductionSection orderId={o.id} brandId={o.brand_id} />
 

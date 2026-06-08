@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { PRODUCTION_STATUSES, PRIORITIES } from "@/features/production/production-meta";
+import { NOVEDADES } from "@/features/production/novedad-meta";
 import { ProductionStatusBadge } from "@/features/production/status-badge";
 import { PlanimetryUploader, type Planimetry } from "@/features/production/planimetry-uploader";
 import { ReasonDialog } from "@/features/production/reason-dialog";
@@ -24,7 +25,19 @@ function ProductionDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { isAdmin } = useBrand();
+  const { isAdmin, selectedBrandId } = useBrand();
+
+  const suppliers = useQuery({
+    queryKey: ["suppliers-list", selectedBrandId],
+    enabled: !!selectedBrandId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("suppliers").select("id, name")
+        .eq("brand_id", selectedBrandId!).eq("is_active", true).order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const prod = useQuery({
     queryKey: ["production-order", id],
@@ -64,19 +77,34 @@ function ProductionDetail() {
   const [form, setForm] = useState({
     status: "pendiente", priority: "normal", workshop: "", assigned_to_label: "",
     start_date: "", due_date: "", notes: "",
+    novedad: "pendiente", supplier_id: "", manufacturing_cost: "",
+    invoice_date: "", planimetry_sent_date: "", quotation_date: "", production_start_date: "",
+    supplier_promised_date: "", supplier_actual_date: "", client_promised_date: "", client_actual_date: "",
   });
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (prod.data) {
+      const d: any = prod.data;
       setForm({
-        status: prod.data.status ?? "pendiente",
-        priority: prod.data.priority ?? "normal",
-        workshop: prod.data.workshop ?? "",
-        assigned_to_label: prod.data.assigned_to_label ?? "",
-        start_date: prod.data.start_date ?? "",
-        due_date: prod.data.due_date ?? "",
-        notes: prod.data.notes ?? "",
+        status: d.status ?? "pendiente",
+        priority: d.priority ?? "normal",
+        workshop: d.workshop ?? "",
+        assigned_to_label: d.assigned_to_label ?? "",
+        start_date: d.start_date ?? "",
+        due_date: d.due_date ?? "",
+        notes: d.notes ?? "",
+        novedad: d.novedad ?? "pendiente",
+        supplier_id: d.supplier_id ?? "",
+        manufacturing_cost: d.manufacturing_cost != null ? String(d.manufacturing_cost) : "",
+        invoice_date: d.invoice_date ?? "",
+        planimetry_sent_date: d.planimetry_sent_date ?? "",
+        quotation_date: d.quotation_date ?? "",
+        production_start_date: d.production_start_date ?? "",
+        supplier_promised_date: d.supplier_promised_date ?? "",
+        supplier_actual_date: d.supplier_actual_date ?? "",
+        client_promised_date: d.client_promised_date ?? "",
+        client_actual_date: d.client_actual_date ?? "",
       });
       setDirty(false);
     }
@@ -92,6 +120,17 @@ function ProductionDetail() {
         start_date: form.start_date || null,
         due_date: form.due_date || null,
         notes: form.notes || null,
+        novedad: form.novedad as any,
+        supplier_id: form.supplier_id || null,
+        manufacturing_cost: form.manufacturing_cost ? Number(form.manufacturing_cost) : null,
+        invoice_date: form.invoice_date || null,
+        planimetry_sent_date: form.planimetry_sent_date || null,
+        quotation_date: form.quotation_date || null,
+        production_start_date: form.production_start_date || null,
+        supplier_promised_date: form.supplier_promised_date || null,
+        supplier_actual_date: form.supplier_actual_date || null,
+        client_promised_date: form.client_promised_date || null,
+        client_actual_date: form.client_actual_date || null,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -99,7 +138,7 @@ function ProductionDetail() {
       toast.success("Orden de producción actualizada");
       qc.invalidateQueries({ queryKey: ["production-order", id] });
       qc.invalidateQueries({ queryKey: ["production-audit", id] });
-      qc.invalidateQueries({ queryKey: ["production-orders"] });
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
       setDirty(false);
     },
     onError: (e: any) => toast.error(e.message ?? "Error"),
@@ -278,6 +317,83 @@ function ProductionDetail() {
             <div>
               <Label className="text-xs">Notas internas</Label>
               <Textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} placeholder="Especificaciones, materiales, observaciones…" />
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h2 className="text-sm font-medium text-muted-foreground">Seguimiento (Drive)</h2>
+              {form.manufacturing_cost && p.order && (() => {
+                const total = Number((p.order as any)?.total) || 0;
+                const cost = Number(form.manufacturing_cost);
+                const m = total > 0 ? ((total - cost) / total) * 100 : null;
+                if (m == null) return null;
+                const cls = m >= 45 ? "text-emerald-600 dark:text-emerald-400"
+                  : m >= 30 ? "text-amber-600 dark:text-amber-400"
+                  : "text-rose-600 dark:text-rose-400";
+                return <span className={`text-xs font-semibold ${cls}`}>Margen: {m.toFixed(1)}%</span>;
+              })()}
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs">Novedad</Label>
+                <Select value={form.novedad} onValueChange={(v) => update("novedad", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {NOVEDADES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Proveedor</Label>
+                <Select value={form.supplier_id || "__none__"} onValueChange={(v) => update("supplier_id", v === "__none__" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Sin proveedor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin proveedor</SelectItem>
+                    {(suppliers.data ?? []).map((s: any) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Costo fabricación (COP)</Label>
+                <Input type="number" min="0" value={form.manufacturing_cost}
+                  onChange={(e) => update("manufacturing_cost", e.target.value)} placeholder="0" />
+              </div>
+              <div />
+              <div>
+                <Label className="text-xs">Fecha factura</Label>
+                <Input type="date" value={form.invoice_date} onChange={(e) => update("invoice_date", e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Planimetría enviada</Label>
+                <Input type="date" value={form.planimetry_sent_date} onChange={(e) => update("planimetry_sent_date", e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Cotización</Label>
+                <Input type="date" value={form.quotation_date} onChange={(e) => update("quotation_date", e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Inicio producción</Label>
+                <Input type="date" value={form.production_start_date} onChange={(e) => update("production_start_date", e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Entrega prometida proveedor</Label>
+                <Input type="date" value={form.supplier_promised_date} onChange={(e) => update("supplier_promised_date", e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Entrega real proveedor</Label>
+                <Input type="date" value={form.supplier_actual_date} onChange={(e) => update("supplier_actual_date", e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Promesa al cliente</Label>
+                <Input type="date" value={form.client_promised_date} onChange={(e) => update("client_promised_date", e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Entrega real al cliente</Label>
+                <Input type="date" value={form.client_actual_date} onChange={(e) => update("client_actual_date", e.target.value)} />
+              </div>
             </div>
           </section>
 
