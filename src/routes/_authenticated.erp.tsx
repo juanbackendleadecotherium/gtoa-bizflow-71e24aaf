@@ -54,6 +54,7 @@ const NAV: NavItem[] = [
   { label: "Ventas", to: "/erp/orders", icon: ClipboardList },
   { label: "Producción", to: "/erp/production", icon: Factory },
   { label: "Producción Real", to: "/erp/real-production", icon: Truck },
+  { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo },
   { label: "Finanzas", to: "/erp/finance", icon: Wallet, adminOnly: true },
   { label: "Estados", to: "/erp/settings/statuses", icon: Settings, adminOnly: true },
   { label: "Proveedores", to: "/erp/settings/suppliers", icon: Users, adminOnly: true },
