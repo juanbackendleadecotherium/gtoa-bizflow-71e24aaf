@@ -513,7 +513,6 @@ function OrderDetail() {
 
           <ProductionSection orderId={o.id} brandId={o.brand_id} />
 
-          <RealProductionSection orderId={o.id} brandId={o.brand_id} orderTotal={Number(o.total) || 0} />
 
 
 
