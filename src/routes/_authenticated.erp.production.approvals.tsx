@@ -59,9 +59,9 @@ function ApprovalsPage() {
     },
     onSuccess: () => {
       toast.success("Orden aceptada — pasa a seguimiento");
-      qc.invalidateQueries({ queryKey: ["production-orders-pending"] });
-      qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
-      qc.invalidateQueries({ queryKey: ["production-hub-counts"] });
+      qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
     },
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
