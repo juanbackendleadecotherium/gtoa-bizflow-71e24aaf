@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
-import { Loader2, Factory, Search, ArrowLeft, ClipboardList } from "lucide-react";
+import {
+  Loader2, Factory, Search, ArrowLeft, ClipboardList, ExternalLink,
+  User, Phone, Building2, Package, CalendarDays, TrendingUp, AlertTriangle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
@@ -25,9 +28,13 @@ function fmtMoney(n: number | null | undefined) {
 
 function daysDiff(a: string | null, b: string | null): number | null {
   if (!a || !b) return null;
-  const da = new Date(a).getTime();
-  const db = new Date(b).getTime();
-  return Math.round((da - db) / 86400000);
+  return Math.round((new Date(a).getTime() - new Date(b).getTime()) / 86400000);
+}
+
+function firstLine(s: string | null | undefined) {
+  if (!s) return "";
+  const i = s.indexOf("\n");
+  return i === -1 ? s : s.slice(0, i);
 }
 
 function TrackingPage() {
@@ -85,16 +92,20 @@ function TrackingPage() {
       if (error) throw error;
       const rows = (data ?? []) as any[];
 
+      const poIds = rows.map((r) => r.id);
       const supplierIds = Array.from(new Set(rows.map((r) => r.supplier_id).filter(Boolean)));
-      const orderIds = Array.from(new Set(rows.map((r) => r.order_id).filter(Boolean)));
       const sellerIds = Array.from(new Set(rows.map((r) => r.order?.seller_id).filter(Boolean)));
 
       const [suppliersRes, itemsRes, sellersRes] = await Promise.all([
         supplierIds.length
           ? supabase.from("suppliers").select("id, name").in("id", supplierIds)
           : Promise.resolve({ data: [], error: null } as any),
-        orderIds.length
-          ? supabase.from("order_items").select("order_id, description, sort_order").in("order_id", orderIds).order("sort_order", { ascending: true })
+        poIds.length
+          ? supabase
+              .from("order_items")
+              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order")
+              .in("production_order_id", poIds)
+              .order("sort_order", { ascending: true })
           : Promise.resolve({ data: [], error: null } as any),
         sellerIds.length
           ? supabase.from("profiles").select("user_id, display_name, email").in("user_id", sellerIds)
@@ -103,19 +114,24 @@ function TrackingPage() {
 
       const suppliersById = new Map((suppliersRes.data ?? []).map((s: any) => [s.id, s]));
       const sellersById = new Map((sellersRes.data ?? []).map((s: any) => [s.user_id, s]));
-      const itemsByOrder = new Map<string, any[]>();
+      const itemsByPo = new Map<string, any[]>();
       for (const it of (itemsRes.data ?? []) as any[]) {
-        const arr = itemsByOrder.get(it.order_id) ?? [];
+        const arr = itemsByPo.get(it.production_order_id) ?? [];
         arr.push(it);
-        itemsByOrder.set(it.order_id, arr);
+        itemsByPo.set(it.production_order_id, arr);
       }
 
-      return rows.map((r) => ({
-        ...r,
-        supplier: suppliersById.get(r.supplier_id) ?? null,
-        items: itemsByOrder.get(r.order_id) ?? [],
-        seller: r.order?.seller_id ? sellersById.get(r.order.seller_id) ?? null : null,
-      }));
+      return rows.map((r) => {
+        const items = itemsByPo.get(r.id) ?? [];
+        const poSaleTotal = items.reduce((acc: number, it: any) => acc + (Number(it.line_total) || 0), 0);
+        return {
+          ...r,
+          supplier: suppliersById.get(r.supplier_id) ?? null,
+          items,
+          po_sale_total: poSaleTotal,
+          seller: r.order?.seller_id ? sellersById.get(r.order.seller_id) ?? null : null,
+        };
+      });
     },
   });
 
@@ -157,7 +173,7 @@ function TrackingPage() {
           <div>
             <h1 className="font-display text-2xl font-semibold">Seguimiento de producción</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Hoja estilo Drive — fechas y novedades editables en línea
+              Cada orden muestra solo los productos enviados a producción
               {selectedBrand ? ` · ${selectedBrand.name}` : ""}.
             </p>
           </div>
@@ -211,171 +227,198 @@ function TrackingPage() {
           <p className="text-xs text-muted-foreground mt-1">Acepta una orden desde "Aprobar órdenes" para que aparezca aquí.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-surface overflow-x-auto">
-          <table className="w-full text-[11px] table-fixed">
-            <colgroup>
-              <col style={{ width: 90 }} />
-              <col style={{ width: 150 }} />
-              <col />
-              <col style={{ width: 110 }} />
-              <col style={{ width: 90 }} />
-              <col style={{ width: 90 }} />
-              <col style={{ width: 90 }} />
-              <col style={{ width: 90 }} />
-              <col style={{ width: 100 }} />
-              <col style={{ width: 100 }} />
-              <col style={{ width: 100 }} />
-              <col style={{ width: 110 }} />
-            </colgroup>
-            <thead className="bg-muted/40 text-muted-foreground">
-              <tr className="text-[10px] uppercase tracking-wider">
-                <Th>FAC<br/><span className="text-muted-foreground/70 normal-case font-normal">Vendedor</span></Th>
-                <Th>Cliente<br/><span className="text-muted-foreground/70 normal-case font-normal">Contacto</span></Th>
-                <Th>Producto<br/><span className="text-muted-foreground/70 normal-case font-normal">Observación</span></Th>
-                <Th>Proveedor</Th>
-                <Th>F. Factura</Th>
-                <Th>Planimetría</Th>
-                <Th>Cotización</Th>
-                <Th>SLA Producción</Th>
-                <Th>Ent. Prov.<br/><span className="text-muted-foreground/70 normal-case font-normal">Real Prov.</span></Th>
-                <Th>Promesa Cli.<br/><span className="text-muted-foreground/70 normal-case font-normal">Real Cli.</span></Th>
-                <Th>Desviación<br/><span className="text-muted-foreground/70 normal-case font-normal">Novedad</span></Th>
-                <Th className="text-right">Venta / Costo<br/><span className="text-muted-foreground/70 normal-case font-normal">Margen</span></Th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r: any) => {
-                const total = Number(r.order?.total) || 0;
-                const margin = r.margin_pct == null ? null : Number(r.margin_pct);
-                const marginColor =
-                  margin == null ? "text-muted-foreground"
-                  : margin >= 45 ? "text-emerald-600 dark:text-emerald-400"
-                  : margin >= 30 ? "text-amber-600 dark:text-amber-400"
-                  : "text-rose-600 dark:text-rose-400";
-
-                const desv = daysDiff(r.client_actual_date, r.client_promised_date);
-                const desvColor =
-                  desv == null ? "text-muted-foreground"
-                  : desv <= 0 ? "text-emerald-600 dark:text-emerald-400"
-                  : desv <= 3 ? "text-amber-600 dark:text-amber-400"
-                  : "text-rose-600 dark:text-rose-400";
-                const desvLabel = desv == null ? "—" : `${desv > 0 ? "+" : ""}${desv}d`;
-
-                const productos = (r.items ?? []).map((it: any) => it.description).filter(Boolean);
-                const productoMain = productos[0] ?? "—";
-                const productoExtra = productos.length > 1 ? ` +${productos.length - 1}` : "";
-
-                const contacto = r.order?.customer_phone || r.order?.customer_email || "—";
-                const vendedor = r.seller?.display_name || r.seller?.email || "—";
-
-                return (
-                  <tr key={r.id} className="border-b border-border hover:bg-muted/20 transition-colors align-top">
-                    {/* FAC + Vendedor */}
-                    <td className="px-2 py-1.5">
-                      <Link to="/erp/production/$id" params={{ id: r.id }} className="text-primary hover:underline font-mono text-[11px] block truncate">
-                        {r.order?.invoice_number ?? r.code}
-                      </Link>
-                      <div className="text-[10px] text-muted-foreground truncate" title={vendedor}>{vendedor}</div>
-                    </td>
-
-                    {/* Cliente + Contacto */}
-                    <td className="px-2 py-1.5">
-                      <div className="truncate font-medium" title={r.order?.customer_name}>{r.order?.customer_name ?? "—"}</div>
-                      <div className="text-[10px] text-muted-foreground truncate" title={contacto}>{contacto}</div>
-                    </td>
-
-                    {/* Producto + Observación */}
-                    <td className="px-2 py-1.5">
-                      <div className="line-clamp-2 break-words leading-snug" title={productos.join(" · ")}>
-                        {productoMain}{productoExtra && <span className="text-muted-foreground">{productoExtra}</span>}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground line-clamp-2 break-words leading-snug" title={r.notes ?? ""}>
-                        {r.notes || "—"}
-                      </div>
-                    </td>
-
-                    {/* Proveedor */}
-                    <td className="px-2 py-1.5 truncate" title={r.supplier?.name ?? ""}>{r.supplier?.name ?? "—"}</td>
-
-                    {/* Fechas individuales */}
-                    <td className="px-1 py-1"><EditableDate value={r.invoice_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { invoice_date: v } })} /></td>
-                    <td className="px-1 py-1"><EditableDate value={r.planimetry_sent_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { planimetry_sent_date: v } })} /></td>
-                    <td className="px-1 py-1"><EditableDate value={r.quotation_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { quotation_date: v } })} /></td>
-                    <td className="px-1 py-1"><EditableDate value={r.production_start_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { production_start_date: v } })} /></td>
-
-                    {/* Ent Prov / Real Prov apilados */}
-                    <td className="px-1 py-1 space-y-1">
-                      <EditableDate value={r.supplier_promised_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { supplier_promised_date: v } })} />
-                      <EditableDate value={r.supplier_actual_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { supplier_actual_date: v } })} />
-                    </td>
-
-                    {/* Promesa Cli / Real Cli apilados */}
-                    <td className="px-1 py-1 space-y-1">
-                      <EditableDate value={r.client_promised_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { client_promised_date: v } })} />
-                      <EditableDate value={r.client_actual_date} onSave={(v) => updateField.mutate({ id: r.id, patch: { client_actual_date: v } })} />
-                    </td>
-
-                    {/* Desviación + Novedad apilados */}
-                    <td className="px-1 py-1 space-y-1">
-                      <div className={`text-[11px] font-semibold text-center ${desvColor}`}>{desvLabel}</div>
-                      <EditableNovedad value={r.novedad} onSave={(v) => updateField.mutate({ id: r.id, patch: { novedad: v } })} />
-                    </td>
-
-                    {/* Venta / Costo / Margen */}
-                    <td className="px-2 py-1.5 text-right">
-                      <div className="font-medium tabular-nums">{fmtMoney(total)}</div>
-                      <div className="text-[10px] text-muted-foreground tabular-nums">{fmtMoney(r.manufacturing_cost)}</div>
-                      <div className={`text-[11px] font-semibold tabular-nums ${marginColor}`}>
-                        {margin == null ? "—" : `${margin.toFixed(0)}%`}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="grid gap-4">
+          {filtered.map((r: any) => (
+            <TrackingCard
+              key={r.id}
+              row={r}
+              onPatch={(patch) => updateField.mutate({ id: r.id, patch })}
+            />
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function TrackingCard({ row, onPatch }: { row: any; onPatch: (patch: Record<string, any>) => void }) {
+  const r = row;
+  const saleTotal = Number(r.po_sale_total) || 0;
+  const invoiceTotal = Number(r.order?.total) || 0;
+  const cost = r.manufacturing_cost == null ? null : Number(r.manufacturing_cost);
+  const liveMargin = cost != null && saleTotal > 0 ? ((saleTotal - cost) / saleTotal) * 100 : null;
+  const margin = liveMargin ?? (r.margin_pct == null ? null : Number(r.margin_pct));
+
+  const marginCls =
+    margin == null ? "bg-muted text-muted-foreground border-border"
+    : margin >= 45 ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+    : margin >= 30 ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+    : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30";
+
+  const desv = daysDiff(r.client_actual_date, r.client_promised_date);
+  const desvCls =
+    desv == null ? "text-muted-foreground"
+    : desv <= 0 ? "text-emerald-700 dark:text-emerald-300"
+    : desv <= 3 ? "text-amber-700 dark:text-amber-300"
+    : "text-rose-700 dark:text-rose-300";
+
+  const novedad = novedadMeta(r.novedad);
+  const contacto = r.order?.customer_phone || r.order?.customer_email || "—";
+  const vendedor = r.seller?.display_name || r.seller?.email || "—";
+  const isPartial = (r.items?.length ?? 0) > 0 && invoiceTotal > 0 && saleTotal > 0 && Math.abs(invoiceTotal - saleTotal) > 1;
+
   return (
-    <th className={`px-2 py-2 text-left font-medium border-b border-border leading-tight ${className}`}>
-      {children}
-    </th>
+    <article className="rounded-2xl border border-border bg-surface overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+      {/* Header */}
+      <header className="px-5 py-4 border-b border-border bg-gradient-to-br from-muted/40 to-transparent">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link
+                to="/erp/production/$id"
+                params={{ id: r.id }}
+                className="text-base font-semibold text-primary hover:underline inline-flex items-center gap-1"
+              >
+                {r.order?.invoice_number ? `Fact. ${r.order.invoice_number}` : r.code}
+                <ExternalLink className="h-3 w-3 opacity-70" />
+              </Link>
+              <span className="font-mono text-[11px] text-muted-foreground">{r.code}</span>
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${novedad.color}`}>
+                {novedad.label}
+              </span>
+            </div>
+            <div className="mt-2 flex gap-x-4 gap-y-1 flex-wrap text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5"><User className="h-3 w-3" /><span className="text-foreground font-medium">{r.order?.customer_name ?? "—"}</span></span>
+              <span className="inline-flex items-center gap-1.5"><Phone className="h-3 w-3" />{contacto}</span>
+              <span className="inline-flex items-center gap-1.5"><Building2 className="h-3 w-3" />Vendedor: <span className="text-foreground">{vendedor}</span></span>
+            </div>
+          </div>
+
+          <div className="text-right shrink-0">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Venta de esta OP</p>
+            <p className="text-xl font-bold tabular-nums">{fmtMoney(saleTotal)}</p>
+            {isPartial && (
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Factura total: <span className="tabular-nums">{fmtMoney(invoiceTotal)}</span>
+              </p>
+            )}
+            <div className="mt-1.5 flex items-center justify-end gap-2">
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${marginCls}`}>
+                <TrendingUp className="h-3 w-3" />
+                {margin == null ? "Sin costo" : `${margin.toFixed(1)}%`}
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Body */}
+      <div className="grid md:grid-cols-[1.2fr_1fr] divide-y md:divide-y-0 md:divide-x divide-border">
+        {/* Productos */}
+        <div className="p-5">
+          <div className="flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Package className="h-3.5 w-3.5" /> Productos en producción
+          </div>
+          {(r.items?.length ?? 0) === 0 ? (
+            <p className="text-xs text-muted-foreground italic">Sin productos vinculados a esta orden.</p>
+          ) : (
+            <ul className="space-y-2">
+              {r.items.map((it: any) => (
+                <li key={it.id} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-tight truncate" title={it.description}>{firstLine(it.description) || "Producto"}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">×{Number(it.quantity)} · {fmtMoney(Number(it.unit_price))} c/u</p>
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="mt-4 pt-3 border-t border-border grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Proveedor</p>
+              <p className="font-medium truncate" title={r.supplier?.name ?? ""}>{r.supplier?.name ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Costo de fabricación</p>
+              <p className="font-medium tabular-nums">{fmtMoney(cost)}</p>
+            </div>
+          </div>
+
+          {r.notes && (
+            <p className="mt-3 text-[11px] text-muted-foreground italic line-clamp-2">{r.notes}</p>
+          )}
+        </div>
+
+        {/* Fechas + Novedad */}
+        <div className="p-5 space-y-4 bg-muted/10">
+          <div>
+            <div className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" /> Hitos de producción
+            </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              <DateField label="Factura" value={r.invoice_date} onSave={(v) => onPatch({ invoice_date: v })} />
+              <DateField label="Planimetría" value={r.planimetry_sent_date} onSave={(v) => onPatch({ planimetry_sent_date: v })} />
+              <DateField label="Cotización" value={r.quotation_date} onSave={(v) => onPatch({ quotation_date: v })} />
+              <DateField label="Inicio prod." value={r.production_start_date} onSave={(v) => onPatch({ production_start_date: v })} />
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Compromiso proveedor</div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              <DateField label="Prometida" value={r.supplier_promised_date} onSave={(v) => onPatch({ supplier_promised_date: v })} />
+              <DateField label="Real" value={r.supplier_actual_date} onSave={(v) => onPatch({ supplier_actual_date: v })} />
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Entrega al cliente</div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              <DateField label="Prometida" value={r.client_promised_date} onSave={(v) => onPatch({ client_promised_date: v })} />
+              <DateField label="Real" value={r.client_actual_date} onSave={(v) => onPatch({ client_actual_date: v })} />
+            </div>
+            <div className={`mt-2 inline-flex items-center gap-1 text-[11px] font-semibold ${desvCls}`}>
+              {desv != null && desv > 0 && <AlertTriangle className="h-3 w-3" />}
+              Desviación: {desv == null ? "—" : `${desv > 0 ? "+" : ""}${desv} día${Math.abs(desv) === 1 ? "" : "s"}`}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium block mb-1">Novedad</label>
+            <select
+              value={r.novedad ?? "pendiente"}
+              onChange={(e) => onPatch({ novedad: e.target.value })}
+              className={`appearance-none border rounded-md px-2 py-1 text-xs font-medium cursor-pointer outline-none focus:ring-2 focus:ring-primary/40 w-full ${novedad.color}`}
+            >
+              {NOVEDADES.map((n) => (
+                <option key={n.value} value={n.value} className="bg-background text-foreground">{n.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }
 
-function EditableDate({ value, onSave }: { value: string | null; onSave: (v: string | null) => void }) {
+function DateField({ label, value, onSave }: { label: string; value: string | null; onSave: (v: string | null) => void }) {
   const [v, setV] = useState(value ?? "");
   useEffect(() => { setV(value ?? ""); }, [value]);
   return (
-    <input
-      type="date"
-      value={v}
-      onChange={(e) => setV(e.target.value)}
-      onBlur={() => {
-        const next = v || null;
-        if (next !== (value ?? null)) onSave(next);
-      }}
-      className="bg-transparent border border-transparent hover:border-border focus:border-primary focus:bg-background rounded px-1 py-0.5 text-[10px] w-full outline-none transition-colors"
-    />
-  );
-}
-
-function EditableNovedad({ value, onSave }: { value: string | null; onSave: (v: string) => void }) {
-  const meta = novedadMeta(value);
-  return (
-    <select
-      value={value ?? "pendiente"}
-      onChange={(e) => onSave(e.target.value)}
-      className={`appearance-none border rounded-full px-1.5 py-0.5 text-[10px] font-medium cursor-pointer outline-none focus:ring-2 focus:ring-primary/40 w-full text-center ${meta.color}`}
-    >
-      {NOVEDADES.map((n) => (
-        <option key={n.value} value={n.value} className="bg-background text-foreground">{n.label}</option>
-      ))}
-    </select>
+    <label className="block">
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</span>
+      <input
+        type="date"
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => {
+          const next = v || null;
+          if (next !== (value ?? null)) onSave(next);
+        }}
+        className="mt-0.5 w-full bg-background border border-border hover:border-primary/50 focus:border-primary rounded-md px-2 py-1 text-xs outline-none transition-colors"
+      />
+    </label>
   );
 }
