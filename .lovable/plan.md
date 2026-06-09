@@ -1,38 +1,59 @@
-## Problema
+## Objetivo
 
-Hoy, en el diálogo "Enviar a producción", todos los productos de la venta son seleccionables — incluso los que ya fueron enviados a una orden de producción activa. Eso permite que un vendedor cree una segunda orden (p. ej. para ebanistería) e incluya por error la cama y el sofá que ya están en Montenegro Atelier, duplicando el trabajo y rompiendo el seguimiento.
+Que la orden de producción muestre el **valor de venta** de cada producto y de la orden completa, y que cuando producción ingrese el costo de fabricación, el sistema marque con colores si el margen cumple el mínimo (45% por defecto).
 
-## Comportamiento deseado
+## Estado actual
 
-Por cada venta:
+- Cada `production_orders` ya tiene `manufacturing_cost` y un `margin_pct` calculado a partir del **total de la venta completa** (trigger `compute_production_margin`).
+- `brand_production_settings.min_margin_pct` ya guarda el mínimo por marca (45%).
+- La pantalla de detalle (`/erp/production/$id`) ya muestra un margen general con semáforo (verde ≥45, amarillo 30–44, rojo <30), pero **no por producto**.
+- En la cola de aprobaciones ya aparece el total, pero pequeño.
 
-1. Un producto solo puede pertenecer a **una** orden de producción activa a la vez.
-2. Si ya está enviado a una orden activa:
-   - No puede incluirse al **crear una orden nueva** (queda deshabilitado).
-   - Solo puede aparecer marcable cuando el destino es **esa misma orden** (regenerar planimetría con cambios).
-3. Los productos que quedan sin enviar siguen disponibles para crear una **nueva orden** con otro proveedor (mesa de centro → ebanistería).
-4. Excepción: si la orden a la que estaba ligado quedó en estado `rechazada` o fue eliminada, el producto se libera y vuelve a estar disponible para una orden nueva.
+Falta: cuando una orden lleva **varios productos** (ej. cama + sofá), Mateo necesita ver el desglose individual y poder negociar cada uno por separado.
 
-## Cambios
+## Cambios propuestos
 
-### Frontend — `src/features/production/send-to-production-button.tsx`
+### 1. Base de datos
+Agregar a `order_items`:
+- `manufacturing_cost numeric` (lo que cobra el proveedor por ese ítem)
+- `margin_pct numeric` (calculado automáticamente con trigger: `((line_total − manufacturing_cost) / line_total) × 100`)
+- `supplier_id uuid` (opcional, proveedor asignado a ese ítem específico)
+- `cost_notes text` (notas de negociación)
 
-- Calcular, por cada `order_item`, si está "bloqueado" para el destino actual:
-  - `lockedForNew` = tiene `production_order_id` y esa orden existe y no está `rechazada`.
-  - Al destino "Crear orden nueva": los bloqueados se muestran deshabilitados, con badge del código de la orden actual y leyenda "Ya en {CÓDIGO}", y el checkbox no responde.
-  - Al destino = una orden existente X: solo los items cuyo `production_order_id` es `X` (o `null`, para añadir productos sueltos) son seleccionables; los que pertenecen a **otra** orden activa quedan deshabilitados con la leyenda "Pertenece a {OTRO CÓDIGO}".
-- `selectUnsent` ya hace lo correcto; ajustar `selectAll` para que solo seleccione los habilitados según el destino.
-- Al cambiar `selectedTarget`, recomputar `selectedItems` quitando los que quedaron deshabilitados.
-- Si al abrir el diálogo **todos** los items ya están en órdenes activas y el usuario elige "Crear orden nueva", deshabilitar el botón Confirmar con tooltip "Todos los productos ya están en una orden de producción activa".
+Trigger nuevo `compute_order_item_margin` que recalcule `margin_pct` al cambiar `manufacturing_cost`, `quantity` o `unit_price`.
 
-### Backend — migración (defensa en profundidad)
+### 2. Pantalla detalle de producción (`/erp/production/$id`)
+Nueva sección **"Productos y márgenes"** entre "Detalles" y "Seguimiento (Drive)":
 
-Trigger `BEFORE UPDATE` en `public.order_items` que rechace cambiar `production_order_id` de un valor no nulo a otro valor no nulo cuando la orden actual no está `rechazada`. Mensaje: "Este producto ya pertenece a una orden de producción activa. Libérelo primero rechazando o eliminando la orden anterior." Esto blinda la regla aunque alguien llame al RPC directo desde otro cliente.
+Tabla con una fila por producto vinculado a la orden:
 
-## Lo que NO cambia
+```text
+Producto          Cant.  Venta        Costo prov.   Margen     Proveedor
+Cama king         1      $5.000.000   [ input ]     ●  44.0%   [select]
+Sofá 3 puestos    1      $5.000.000   [ input ]     ●  52.0%   [select]
+─────────────────────────────────────────────────────────────────────────
+Totales                  $10.000.000  $5.500.000    ●  45.0%
+```
 
-- Estructura de `production_orders`, `seller_tasks`, `production_planimetries`.
-- Flujo de rechazo y de tareas del vendedor (sigue funcionando: al rechazar, los items se "liberan" porque la orden queda `rechazada`).
-- La vista de seguimiento de producción.
+Colores del margen (usando el `min_margin_pct` de la marca, por defecto 45):
+- **Verde** (`emerald`): margen ≥ mínimo (cumple)
+- **Amarillo** (`amber`): entre mínimo−15 y mínimo (cerca, renegociar)
+- **Rojo** (`rose`): menos de mínimo−15 (crítico, requiere renegociar)
+- **Gris**: sin costo aún
 
-¿Avanzo con este enfoque?
+Cada fila tiene su propio input de costo y selector de proveedor, con guardado individual (botón "Guardar" por fila o autosave on blur).
+
+El campo "Costo fabricación" general de la sección Drive se mantiene como suma calculada de los ítems (read-only), o se conserva para compatibilidad — a decidir según el flujo que prefieras.
+
+### 3. Cola de aprobaciones (`/erp/production/approvals`)
+- Mostrar el total de la venta más grande y visible (no como texto pequeño).
+- Agregar lista resumida de productos con su valor: `Cama king · $5.000.000 · Sofá · $5.000.000`.
+
+### 4. Indicador visual reutilizable
+Crear `src/features/production/margin-pill.tsx` (componente pequeño tipo badge con punto de color + porcentaje) y usarlo en ambos sitios para mantener la misma semántica de colores.
+
+## Preguntas antes de implementar
+
+1. **Umbrales de color**: ¿confirmas verde ≥45%, amarillo 30–44%, rojo <30%? ¿O prefieres otras franjas (ej. amarillo 35–44, rojo <35)?
+2. **Proveedor por ítem**: ¿quieres permitir un proveedor distinto por producto (cama → ebanistería, sofá → Montenegro Atelier), o un solo proveedor para toda la orden?
+3. **Costo general vs. por ítem**: cuando uses el desglose por ítem, ¿el `manufacturing_cost` del encabezado se calcula automáticamente como la suma, o se elimina del formulario para evitar duplicidad?
