@@ -499,41 +499,53 @@ export type Database = {
       }
       order_items: {
         Row: {
+          cost_notes: string | null
           created_at: string
           description: string
           id: string
           images: Json
           line_total: number
+          manufacturing_cost: number | null
+          margin_pct: number | null
           order_id: string
           production_order_id: string | null
           quantity: number
           sort_order: number
+          supplier_id: string | null
           unit_price: number
           updated_at: string
         }
         Insert: {
+          cost_notes?: string | null
           created_at?: string
           description: string
           id?: string
           images?: Json
           line_total?: number
+          manufacturing_cost?: number | null
+          margin_pct?: number | null
           order_id: string
           production_order_id?: string | null
           quantity?: number
           sort_order?: number
+          supplier_id?: string | null
           unit_price?: number
           updated_at?: string
         }
         Update: {
+          cost_notes?: string | null
           created_at?: string
           description?: string
           id?: string
           images?: Json
           line_total?: number
+          manufacturing_cost?: number | null
+          margin_pct?: number | null
           order_id?: string
           production_order_id?: string | null
           quantity?: number
           sort_order?: number
+          supplier_id?: string | null
           unit_price?: number
           updated_at?: string
         }
@@ -557,6 +569,13 @@ export type Database = {
             columns: ["production_order_id"]
             isOneToOne: false
             referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
