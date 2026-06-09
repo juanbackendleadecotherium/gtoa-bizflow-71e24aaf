@@ -176,6 +176,23 @@ function ProductionDetail() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const accept = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("production_orders")
+        .update({ status: "en_proceso", novedad: "produccion" }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Orden aceptada — pasa a seguimiento");
+      qc.invalidateQueries({ queryKey: ["production-order", id] });
+      qc.invalidateQueries({ queryKey: ["production-audit", id] });
+      qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
   const regen = useMutation({
     mutationFn: async () => {
       if (!prod.data?.order_id) throw new Error("Esta orden no está vinculada a una venta");
