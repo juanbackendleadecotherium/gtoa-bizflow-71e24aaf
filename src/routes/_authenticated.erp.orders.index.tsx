@@ -42,7 +42,7 @@ function OrdersPage() {
     queryFn: async () => {
       let q = supabase
         .from("orders")
-        .select("id, order_number, invoice_number, total, advance_amount, created_at, status_id, customer_name, customer_phone, customer_doc_number, status:order_statuses(name,color), invoices(id)")
+        .select("id, order_number, invoice_number, total, advance_amount, created_at, status_id, customer_name, customer_phone, customer_doc_number, status:order_statuses(name,color), invoices(id), items:order_items(description, quantity, sort_order)")
         .eq("brand_id", selectedBrandId!)
         .order("created_at", { ascending: false });
       if (statusFilter !== "all") q = q.eq("status_id", statusFilter);
@@ -58,6 +58,19 @@ function OrdersPage() {
       return data ?? [];
     },
   });
+
+  const summarizeItems = (items: Array<{ description: string | null; quantity: number; sort_order: number | null }> | null | undefined) => {
+    if (!items || items.length === 0) return "Sin productos";
+    const sorted = [...items].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    const firstWords = (desc: string | null) => {
+      const w = (desc || "—").trim().split(/\s+/);
+      return w.slice(0, 3).join(" ") + (w.length > 3 ? "…" : "");
+    };
+    const totalQty = sorted.reduce((s, i) => s + Number(i.quantity || 0), 0);
+    if (sorted.length === 1) return `${firstWords(sorted[0].description)} · ${totalQty} und`;
+    return `${firstWords(sorted[0].description)} +${sorted.length - 1} más · ${totalQty} und`;
+  };
+
 
   if (!selectedBrandId) {
     return <p className="text-sm text-muted-foreground">Selecciona una marca para ver sus ventas.</p>;
