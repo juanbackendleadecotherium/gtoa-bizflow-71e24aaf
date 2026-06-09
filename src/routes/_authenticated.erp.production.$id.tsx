@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, Save, Trash2, History, ExternalLink, ShieldAlert, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, History, ExternalLink, ShieldAlert, RefreshCw, Check } from "lucide-react";
 import { generatePlanimetryForOrder } from "@/features/production/send-to-production-button";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
@@ -176,6 +176,23 @@ function ProductionDetail() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const accept = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("production_orders")
+        .update({ status: "en_proceso", novedad: "produccion" }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Orden aceptada — pasa a seguimiento");
+      qc.invalidateQueries({ queryKey: ["production-order", id] });
+      qc.invalidateQueries({ queryKey: ["production-audit", id] });
+      qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
   const regen = useMutation({
     mutationFn: async () => {
       if (!prod.data?.order_id) throw new Error("Esta orden no está vinculada a una venta");
@@ -240,7 +257,18 @@ function ProductionDetail() {
           )}
         </div>
         <div className="flex gap-2 flex-wrap">
-          {p.status !== "rechazada" && (
+          {p.status === "pendiente" && (
+            <Button variant="outline" size="sm" onClick={() => setRejOpen(true)} className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10">
+              <ShieldAlert className="h-4 w-4" /> Rechazar
+            </Button>
+          )}
+          {p.status === "pendiente" && (
+            <Button size="sm" onClick={() => accept.mutate()} disabled={accept.isPending} className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+              {accept.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              Aceptar orden
+            </Button>
+          )}
+          {p.status !== "pendiente" && p.status !== "rechazada" && (
             <Button variant="outline" size="sm" onClick={() => setRejOpen(true)} className="gap-1 text-amber-700 dark:text-amber-300">
               <ShieldAlert className="h-4 w-4" /> Rechazar
             </Button>
@@ -255,6 +283,7 @@ function ProductionDetail() {
             Guardar cambios
           </Button>
         </div>
+
       </div>
 
       <ReasonDialog
