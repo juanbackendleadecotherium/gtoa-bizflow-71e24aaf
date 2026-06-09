@@ -149,7 +149,17 @@ export function ImageUploader({
   const showPicker = multiple || all.length === 0;
 
   return (
-    <div className="space-y-2">
+    <div
+      ref={dropZoneRef}
+      tabIndex={-1}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={cn(
+        "space-y-2 rounded-lg outline-none transition-colors",
+        isDragging && "ring-2 ring-accent/60 ring-offset-2 ring-offset-background bg-accent/[0.04]",
+      )}
+    >
       <input
         ref={inputRef}
         type="file"
@@ -234,23 +244,39 @@ export function ImageUploader({
       )}
 
       {all.length === 0 && (
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={() => inputRef.current?.click()}
           disabled={processing}
-          className="gap-2 w-full justify-center border-dashed h-20"
+          className={cn(
+            "w-full rounded-lg border border-dashed border-border bg-background/40 hover:border-accent/60 hover:bg-accent/[0.04] transition-colors px-4 py-5 flex flex-col items-center justify-center gap-1.5 text-muted-foreground",
+            isDragging && "border-accent bg-accent/[0.06] text-foreground",
+          )}
         >
           {processing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <>
-              <ImagePlus className="h-4 w-4" />
-              {label}
+              <ImagePlus className="h-5 w-5" />
+              <span className="text-sm font-medium">
+                {isDragging ? "Suelta para subir" : label}
+              </span>
+              <span className="text-[10px] flex items-center gap-1">
+                <ClipboardPaste className="h-3 w-3" />
+                Arrastra, pega (Ctrl/Cmd+V) o haz clic
+              </span>
             </>
           )}
-        </Button>
+        </button>
+      )}
+
+      {all.length > 0 && (
+        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <ClipboardPaste className="h-3 w-3" />
+          {justPasted
+            ? "Imagen pegada"
+            : "Puedes arrastrar más imágenes aquí o pegarlas con Ctrl/Cmd+V"}
+        </p>
       )}
 
       {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
