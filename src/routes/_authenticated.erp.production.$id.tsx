@@ -16,6 +16,7 @@ import { NOVEDADES } from "@/features/production/novedad-meta";
 import { ProductionStatusBadge } from "@/features/production/status-badge";
 import { PlanimetryUploader, type Planimetry } from "@/features/production/planimetry-uploader";
 import { ReasonDialog } from "@/features/production/reason-dialog";
+import { ItemMarginsSection } from "@/features/production/item-margins-section";
 
 export const Route = createFileRoute("/_authenticated/erp/production/$id")({
   component: ProductionDetail,
@@ -319,6 +320,14 @@ function ProductionDetail() {
               <Textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} placeholder="Especificaciones, materiales, observaciones…" />
             </div>
           </section>
+
+          {p.order_id && (
+            <ItemMarginsSection
+              productionOrderId={p.id}
+              orderId={p.order_id}
+              brandId={p.brand_id}
+            />
+          )}
 
           <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
