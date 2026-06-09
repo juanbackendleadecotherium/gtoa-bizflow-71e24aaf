@@ -406,6 +406,7 @@ function ProductionDetail() {
               </div>
             </div>
           </section>
+          )}
 
           <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
