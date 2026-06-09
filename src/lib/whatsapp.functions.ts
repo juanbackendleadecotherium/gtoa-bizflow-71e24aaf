@@ -158,7 +158,7 @@ export const parseWhatsAppOrder = createServerFn({ method: "POST" })
       const { text } = await generateText({
         model,
         temperature: 0,
-        maxOutputTokens: 2200,
+        maxOutputTokens: 4000,
         system:
           "Extrae pedidos de WhatsApp en español de Colombia para un ERP de muebles a la medida. " +
           "Responde únicamente un objeto JSON válido, sin markdown, sin comentarios y sin texto adicional. " +
@@ -174,12 +174,23 @@ export const parseWhatsAppOrder = createServerFn({ method: "POST" })
           "invoice_number: si el vendedor menciona un número de factura/remisión, cópialo tal cual. " +
           "needs_summary: una frase breve (máx 200 caracteres) que explique qué necesita el cliente. " +
           "references: medidas, materiales, colores, acabados o enlaces que mencione el cliente. " +
-          "urgency: si menciona urgencia o fechas clave, resume en una frase.",
+          "urgency: si menciona urgencia o fechas clave, resume en una frase.\n\n" +
+          "REGLAS CRÍTICAS para items[].description (se imprime en la planimetría de producción):\n" +
+          "- Debe tener DOS partes separadas por una línea en blanco (use el carácter \\n, doble salto entre título y cuerpo):\n" +
+          "  1) PRIMERA LÍNEA = TÍTULO corto y claro del producto (ej: 'Comedor para 6 puestos', 'Mueble para TV', 'Closet modular', 'Mesa auxiliar redonda'). Solo el nombre, sin medidas ni materiales.\n" +
+          "  2) CUERPO = especificaciones detalladas, UNA POR LÍNEA, con etiqueta en MAYÚSCULAS seguida de dos puntos. Incluye TODO lo que mencione el cliente: medidas (largo x ancho x alto o diámetro), material, acabado, color, tela, herrajes, compartimentos, número de puestos/puertas, estructura, etc.\n" +
+          "- Ejemplo del cuerpo:\n" +
+          "  MEDIDAS: 1.80 x 0.90 m\n" +
+          "  MATERIAL: madera cedro\n" +
+          "  ACABADO: mate\n" +
+          "  INCLUYE: 6 sillas tapizadas en tela gris\n" +
+          "- NO resumas ni omitas detalles presentes en el texto. Cada medida, color, material o acabado mencionado debe aparecer en la descripción.\n" +
+          "- Si un producto no trae detalles, deja solo el título sin cuerpo.",
         prompt:
-          "Devuelve EXACTAMENTE esta estructura JSON: " +
+          "Devuelve EXACTAMENTE esta estructura JSON (los \\n dentro de description son literales): " +
           '{"customer":{"display_name":"","company":"","person_type":"","contact_type":"cliente","doc_type":"","doc_number":"","phone":"","email":"","department":"","city":"","address":"","needs_summary":"","references":""},' +
           '"order":{"invoice_number":"","sale_date":"","estimated_delivery_date":"","payment_method":"","advance_amount":0},' +
-          '"items":[{"description":"","quantity":1,"unit_price":0}],' +
+          '"items":[{"description":"Título del producto\\n\\nMEDIDAS: ...\\nMATERIAL: ...\\nACABADO: ...","quantity":1,"unit_price":0}],' +
           '"notes":"","urgency":""}' +
           `\n\nConversación:\n${data.text}`,
       });
