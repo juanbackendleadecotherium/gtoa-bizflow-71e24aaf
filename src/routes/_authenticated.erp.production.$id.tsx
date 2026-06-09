@@ -16,6 +16,7 @@ import { NOVEDADES } from "@/features/production/novedad-meta";
 import { ProductionStatusBadge } from "@/features/production/status-badge";
 import { PlanimetryUploader, type Planimetry } from "@/features/production/planimetry-uploader";
 import { ReasonDialog } from "@/features/production/reason-dialog";
+import { ItemMarginsSection } from "@/features/production/item-margins-section";
 
 export const Route = createFileRoute("/_authenticated/erp/production/$id")({
   component: ProductionDetail,
