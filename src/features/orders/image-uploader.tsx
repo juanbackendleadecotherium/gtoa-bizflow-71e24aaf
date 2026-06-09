@@ -41,9 +41,10 @@ export function ImageUploader({
   hint?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const [processing, setProcessing] = useState(false);
-
-  // Limpia object URLs al desmontar
+  const [isDragging, setIsDragging] = useState(false);
+  const [justPasted, setJustPasted] = useState(false);
   useEffect(() => {
     return () => {
       pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
