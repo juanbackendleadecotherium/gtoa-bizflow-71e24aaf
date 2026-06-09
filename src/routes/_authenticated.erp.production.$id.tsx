@@ -329,6 +329,7 @@ function ProductionDetail() {
             />
           )}
 
+          {p.status !== "pendiente" && (
           <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h2 className="text-sm font-medium text-muted-foreground">Seguimiento (Drive)</h2>
