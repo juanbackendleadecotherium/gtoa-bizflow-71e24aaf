@@ -471,11 +471,23 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
                 {allItems.map((it) => {
                   const checked = selectedItems.has(it.id);
                   const sentCode = it.production_order_id ? codeById.get(it.production_order_id) : null;
+                  const lock = getItemLock(it);
                   return (
                     <li key={it.id}>
                       <Label htmlFor={`item-${it.id}`}
-                        className="flex items-center gap-3 rounded-lg border border-border p-2.5 cursor-pointer hover:border-primary/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5 overflow-hidden">
-                        <Checkbox id={`item-${it.id}`} checked={checked} onCheckedChange={() => toggleItem(it.id)} className="shrink-0" />
+                        title={lock.disabled ? lock.reason : undefined}
+                        className={`flex items-center gap-3 rounded-lg border border-border p-2.5 transition-colors overflow-hidden ${
+                          lock.disabled
+                            ? "opacity-60 cursor-not-allowed bg-muted/30"
+                            : "cursor-pointer hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                        }`}>
+                        <Checkbox
+                          id={`item-${it.id}`}
+                          checked={checked}
+                          disabled={lock.disabled}
+                          onCheckedChange={() => toggleItem(it.id)}
+                          className="shrink-0"
+                        />
                         {it.images[0] ? (
                           <img src={it.images[0]} alt="" className="h-10 w-10 rounded object-cover border border-border shrink-0" />
                         ) : (
@@ -491,9 +503,13 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
                               return words.length > 3 ? `${short}…` : short;
                             })()}
                           </p>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-[11px] text-muted-foreground shrink-0">Cant: {it.quantity}</span>
-                            {sentCode ? (
+                            {lock.disabled ? (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 font-medium">
+                                {lock.reason}
+                              </span>
+                            ) : sentCode ? (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono truncate">
                                 {sentCode}
                               </span>
@@ -510,7 +526,13 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
                 })}
               </ul>
             )}
+            {selectedTarget === "new" && freeItemsCount === 0 && allItems.length > 0 && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                Todos los productos ya están en una orden de producción activa. Para crear otra orden, primero libera alguno rechazando la orden actual.
+              </p>
+            )}
           </div>
+
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={busy}>
