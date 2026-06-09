@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const orderItemSchema = z.object({
   id: z.string().optional(),
-  description: z.string().min(1, "Requerido").max(300),
+  description: z.string().min(1, "Requerido").max(4000),
   quantity: z.coerce.number().min(0.01, "Cantidad > 0"),
   unit_price: z.coerce.number().min(0, ">= 0"),
   sort_order: z.number().default(0),
