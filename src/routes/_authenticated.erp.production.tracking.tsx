@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import {
   Loader2, Factory, Search, ArrowLeft, ClipboardList, ExternalLink,
-  User, Phone, Building2, Package, CalendarDays, TrendingUp, AlertTriangle,
+  Package, CalendarDays, AlertTriangle, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { useBrand } from "@/features/brands/brand-context";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NOVEDADES, novedadMeta } from "@/features/production/novedad-meta";
+import { MoneyInput } from "@/features/orders/money-input";
 
 export const Route = createFileRoute("/_authenticated/erp/production/tracking")({
   head: () => ({ meta: [{ title: "Seguimiento de producción — ERP" }] }),
@@ -25,16 +26,32 @@ function fmtMoney(n: number | null | undefined) {
   if (n == null) return "—";
   return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 }
-
+function fmtMoneyShort(n: number | null | undefined) {
+  if (n == null) return "—";
+  if (n >= 1_000_000) return `$ ${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M`;
+  if (n >= 1_000) return `$ ${Math.round(n / 1000)}k`;
+  return fmtMoney(n);
+}
+function fmtDateShort(s: string | null) {
+  if (!s) return "—";
+  const d = new Date(s + "T00:00:00");
+  return d.toLocaleDateString("es-CO", { day: "2-digit", month: "short" });
+}
 function daysDiff(a: string | null, b: string | null): number | null {
   if (!a || !b) return null;
   return Math.round((new Date(a).getTime() - new Date(b).getTime()) / 86400000);
 }
-
 function firstLine(s: string | null | undefined) {
   if (!s) return "";
   const i = s.indexOf("\n");
   return i === -1 ? s : s.slice(0, i);
+}
+
+function marginCls(margin: number | null) {
+  if (margin == null) return { pill: "bg-muted text-muted-foreground border-border", bar: "bg-muted-foreground/30" };
+  if (margin >= 45) return { pill: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30", bar: "bg-emerald-500" };
+  if (margin >= 30) return { pill: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30", bar: "bg-amber-500" };
+  return { pill: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30", bar: "bg-rose-500" };
 }
 
 function TrackingPage() {
@@ -43,6 +60,7 @@ function TrackingPage() {
   const [novedadFilter, setNovedadFilter] = useState<string>("all");
   const [year, setYear] = useState<number>(CURRENT_YEAR);
   const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<string | null>(null);
   const selectedBrand = brands.find((b) => b.id === selectedBrandId);
 
   useEffect(() => {
@@ -61,6 +79,19 @@ function TrackingPage() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [selectedBrandId, qc]);
+
+  const suppliersQ = useQuery({
+    queryKey: ["suppliers-list", selectedBrandId],
+    enabled: !!selectedBrandId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("suppliers").select("id, name")
+        .eq("brand_id", selectedBrandId!).eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const q = useQuery({
     queryKey: ["production-orders-drive", selectedBrandId, novedadFilter, year],
@@ -160,8 +191,17 @@ function TrackingPage() {
     );
   }, [q.data, search]);
 
+  const novedadCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of q.data ?? []) counts.set(r.novedad ?? "pendiente", (counts.get(r.novedad ?? "pendiente") ?? 0) + 1);
+    return counts;
+  }, [q.data]);
+
+  const totalCount = q.data?.length ?? 0;
+  const suppliers = suppliersQ.data ?? [];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <Link to="/erp/production" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2">
           <ArrowLeft className="h-3 w-3" /> Volver a Producción
@@ -173,7 +213,7 @@ function TrackingPage() {
           <div>
             <h1 className="font-display text-2xl font-semibold">Seguimiento de producción</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Cada orden muestra solo los productos enviados a producción
+              Vista densa estilo planilla. Click una fila para ver y editar todos los hitos
               {selectedBrand ? ` · ${selectedBrand.name}` : ""}.
             </p>
           </div>
@@ -197,26 +237,54 @@ function TrackingPage() {
         </div>
       )}
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar FAC, cliente, proveedor, vendedor…" className="pl-9" />
+            placeholder="Buscar FAC, cliente, proveedor, vendedor…" className="pl-9 h-9" />
         </div>
         <Select value={novedadFilter} onValueChange={setNovedadFilter}>
-          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas las novedades</SelectItem>
             {NOVEDADES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={String(year)} onValueChange={(v) => setYear(parseInt(v, 10))}>
-          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
             {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
+
+      {/* Chips por novedad */}
+      {(q.data?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setNovedadFilter("all")}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+              novedadFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border hover:border-primary/40"
+            }`}
+          >
+            Todas · {totalCount}
+          </button>
+          {NOVEDADES.map((n) => {
+            const c = novedadCounts.get(n.value) ?? 0;
+            if (c === 0 && novedadFilter !== n.value) return null;
+            const active = novedadFilter === n.value;
+            return (
+              <button
+                key={n.value}
+                onClick={() => setNovedadFilter(active ? "all" : n.value)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${active ? n.color : "bg-background border-border hover:border-primary/40 text-muted-foreground"}`}
+              >
+                {n.label} · {c}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {q.isLoading ? (
         <div className="py-12 text-center"><Loader2 className="h-5 w-5 animate-spin inline text-muted-foreground" /></div>
@@ -227,34 +295,253 @@ function TrackingPage() {
           <p className="text-xs text-muted-foreground mt-1">Acepta una orden desde "Aprobar órdenes" para que aparezca aquí.</p>
         </div>
       ) : (
-        <div className="grid gap-4">
-          {filtered.map((r: any) => (
-            <TrackingCard
-              key={r.id}
-              row={r}
-              onPatch={(patch) => updateField.mutate({ id: r.id, patch })}
-            />
-          ))}
-        </div>
+        <>
+          <p className="text-[11px] text-muted-foreground">
+            Mostrando <span className="font-semibold text-foreground">{filtered.length}</span> de {totalCount} órdenes
+          </p>
+          {/* Encabezado de columnas */}
+          <div className="hidden xl:grid grid-cols-[1px_180px_120px_1fr_1.2fr_140px_120px_120px_90px_110px_32px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground font-semibold border-b border-border">
+            <span />
+            <span>Factura / OP</span>
+            <span>Novedad</span>
+            <span>Cliente / vend.</span>
+            <span>Productos</span>
+            <span>Proveedor</span>
+            <span className="text-right">Costo</span>
+            <span className="text-right">Venta</span>
+            <span className="text-center">Margen</span>
+            <span>Entrega</span>
+            <span />
+          </div>
+
+          <div className="rounded-xl border border-border overflow-hidden divide-y divide-border bg-background">
+            {filtered.map((r: any) => (
+              <TrackingRow
+                key={r.id}
+                row={r}
+                suppliers={suppliers}
+                expanded={expanded === r.id}
+                onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
+                onPatch={(patch) => updateField.mutate({ id: r.id, patch })}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
 }
 
-function TrackingCard({ row, onPatch }: { row: any; onPatch: (patch: Record<string, any>) => void }) {
+function TrackingRow({
+  row, suppliers, expanded, onToggle, onPatch,
+}: {
+  row: any;
+  suppliers: { id: string; name: string }[];
+  expanded: boolean;
+  onToggle: () => void;
+  onPatch: (patch: Record<string, any>) => void;
+}) {
   const r = row;
   const saleTotal = Number(r.po_sale_total) || 0;
   const invoiceTotal = Number(r.order?.total) || 0;
   const cost = r.manufacturing_cost == null ? null : Number(r.manufacturing_cost);
   const liveMargin = cost != null && saleTotal > 0 ? ((saleTotal - cost) / saleTotal) * 100 : null;
   const margin = liveMargin ?? (r.margin_pct == null ? null : Number(r.margin_pct));
+  const cls = marginCls(margin);
 
-  const marginCls =
-    margin == null ? "bg-muted text-muted-foreground border-border"
-    : margin >= 45 ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-    : margin >= 30 ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
-    : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30";
+  const desv = daysDiff(r.client_actual_date, r.client_promised_date);
+  const desvDot =
+    desv == null ? "bg-muted-foreground/40"
+    : desv <= 0 ? "bg-emerald-500"
+    : desv <= 3 ? "bg-amber-500"
+    : "bg-rose-500";
 
+  const novedad = novedadMeta(r.novedad);
+  const items = r.items ?? [];
+  const firstItem = items[0];
+  const extra = items.length - 1;
+  const vendedor = r.seller?.display_name || r.seller?.email || "—";
+  const isPartial = items.length > 0 && invoiceTotal > 0 && saleTotal > 0 && Math.abs(invoiceTotal - saleTotal) > 1;
+
+  return (
+    <div className={`relative ${expanded ? "bg-muted/20" : "hover:bg-muted/30"} transition-colors`}>
+      {/* Barra de acento por margen */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${cls.bar}`} />
+
+      {/* Fila resumen */}
+      <button
+        onClick={onToggle}
+        className="w-full text-left px-3 py-2.5 pl-4 grid grid-cols-[180px_120px_1fr_1.2fr_140px_120px_120px_90px_110px_32px] gap-2 items-center"
+        style={{ minHeight: 56 }}
+      >
+        {/* Factura / OP */}
+        <div className="min-w-0">
+          <Link
+            to="/erp/production/$id"
+            params={{ id: r.id }}
+            onClick={(e) => e.stopPropagation()}
+            className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1 truncate"
+          >
+            {r.order?.invoice_number ? `Fact. ${r.order.invoice_number}` : r.code}
+            <ExternalLink className="h-3 w-3 opacity-60 shrink-0" />
+          </Link>
+          <p className="font-mono text-[10px] text-muted-foreground truncate">{r.code}</p>
+        </div>
+
+        {/* Novedad inline select */}
+        <div onClick={(e) => e.stopPropagation()}>
+          <select
+            value={r.novedad ?? "pendiente"}
+            onChange={(e) => onPatch({ novedad: e.target.value })}
+            className={`appearance-none border rounded-full px-2 py-0.5 text-[11px] font-medium cursor-pointer outline-none focus:ring-2 focus:ring-primary/40 w-full ${novedad.color}`}
+          >
+            {NOVEDADES.map((n) => (
+              <option key={n.value} value={n.value} className="bg-background text-foreground">{n.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Cliente / vendedor */}
+        <div className="min-w-0 text-xs">
+          <p className="font-medium truncate text-foreground">{r.order?.customer_name ?? "—"}</p>
+          <p className="text-muted-foreground truncate text-[11px]">Vend. {vendedor}</p>
+        </div>
+
+        {/* Productos */}
+        <div className="min-w-0 text-xs" title={items.map((it: any) => `• ${firstLine(it.description)} ×${it.quantity}`).join("\n")}>
+          {firstItem ? (
+            <>
+              <p className="truncate font-medium">{firstLine(firstItem.description) || "Producto"}</p>
+              <p className="text-[11px] text-muted-foreground">
+                ×{Number(firstItem.quantity)} · {fmtMoneyShort(Number(firstItem.unit_price))} c/u
+                {extra > 0 && <span className="ml-1 text-primary font-medium">+{extra} más</span>}
+              </p>
+            </>
+          ) : (
+            <span className="text-muted-foreground italic">Sin productos</span>
+          )}
+        </div>
+
+        {/* Proveedor inline */}
+        <div onClick={(e) => e.stopPropagation()}>
+          <InlineSupplier
+            value={r.supplier_id ?? ""}
+            suppliers={suppliers}
+            onSave={(v) => onPatch({ supplier_id: v || null })}
+          />
+        </div>
+
+        {/* Costo inline */}
+        <div onClick={(e) => e.stopPropagation()} className="text-right">
+          <InlineMoney
+            value={cost ?? 0}
+            hasValue={cost != null}
+            onSave={(n, hasValue) => onPatch({ manufacturing_cost: hasValue ? n : null })}
+          />
+        </div>
+
+        {/* Venta */}
+        <div className="text-right">
+          <p className="font-bold tabular-nums text-sm">{fmtMoneyShort(saleTotal)}</p>
+          {isPartial && (
+            <p className="text-[10px] text-muted-foreground tabular-nums" title={`Factura total: ${fmtMoney(invoiceTotal)}`}>
+              de {fmtMoneyShort(invoiceTotal)}
+            </p>
+          )}
+        </div>
+
+        {/* Margen pill */}
+        <div className="text-center">
+          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums ${cls.pill}`}>
+            {margin == null ? "—" : `${margin.toFixed(0)}%`}
+          </span>
+        </div>
+
+        {/* Entrega + desviación */}
+        <div className="text-xs">
+          <p className="tabular-nums truncate">{fmtDateShort(r.client_promised_date)}</p>
+          <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+            <span className={`h-1.5 w-1.5 rounded-full ${desvDot}`} />
+            {desv == null ? "—" : `${desv > 0 ? "+" : ""}${desv}d`}
+          </p>
+        </div>
+
+        {/* Caret */}
+        <div className="flex justify-end text-muted-foreground">
+          <ChevronRight className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : ""}`} />
+        </div>
+      </button>
+
+      {/* Panel expandido */}
+      {expanded && (
+        <ExpandedPanel row={r} onPatch={onPatch} />
+      )}
+    </div>
+  );
+}
+
+function InlineSupplier({
+  value, suppliers, onSave,
+}: { value: string; suppliers: { id: string; name: string }[]; onSave: (v: string) => void }) {
+  const current = suppliers.find((s) => s.id === value);
+  return (
+    <Select value={value || "__none__"} onValueChange={(v) => onSave(v === "__none__" ? "" : v)}>
+      <SelectTrigger className="h-7 text-xs px-2 border-dashed bg-transparent hover:bg-background hover:border-solid">
+        <span className="truncate">{current?.name ?? <span className="text-muted-foreground">— Asignar</span>}</span>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__">Sin proveedor</SelectItem>
+        {suppliers.map((s) => (
+          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function InlineMoney({
+  value, hasValue, onSave,
+}: { value: number; hasValue: boolean; onSave: (n: number, hasValue: boolean) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => { setDraft(value); }, [value]);
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => { setDraft(value); setEditing(true); }}
+        className="w-full text-right text-sm tabular-nums px-1 py-0.5 rounded hover:bg-background border border-transparent hover:border-dashed hover:border-border"
+        title="Click para editar"
+      >
+        {hasValue ? fmtMoneyShort(value) : <span className="text-muted-foreground text-xs italic">— Costo</span>}
+      </button>
+    );
+  }
+
+  const commit = () => {
+    setEditing(false);
+    if (draft !== value || !hasValue) onSave(draft, draft > 0);
+  };
+  const cancel = () => { setDraft(value); setEditing(false); };
+
+  return (
+    <MoneyInput
+      autoFocus
+      value={draft}
+      onValueChange={setDraft}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+        if (e.key === "Escape") cancel();
+      }}
+      onBlur={commit}
+      className="h-7 text-xs text-right tabular-nums px-1.5"
+    />
+  );
+}
+
+function ExpandedPanel({ row, onPatch }: { row: any; onPatch: (patch: Record<string, any>) => void }) {
+  const r = row;
   const desv = daysDiff(r.client_actual_date, r.client_promised_date);
   const desvCls =
     desv == null ? "text-muted-foreground"
@@ -262,144 +549,69 @@ function TrackingCard({ row, onPatch }: { row: any; onPatch: (patch: Record<stri
     : desv <= 3 ? "text-amber-700 dark:text-amber-300"
     : "text-rose-700 dark:text-rose-300";
 
-  const novedad = novedadMeta(r.novedad);
-  const contacto = r.order?.customer_phone || r.order?.customer_email || "—";
-  const vendedor = r.seller?.display_name || r.seller?.email || "—";
-  const isPartial = (r.items?.length ?? 0) > 0 && invoiceTotal > 0 && saleTotal > 0 && Math.abs(invoiceTotal - saleTotal) > 1;
-
   return (
-    <article className="rounded-2xl border border-border bg-surface overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-      {/* Header */}
-      <header className="px-5 py-4 border-b border-border bg-gradient-to-br from-muted/40 to-transparent">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Link
-                to="/erp/production/$id"
-                params={{ id: r.id }}
-                className="text-base font-semibold text-primary hover:underline inline-flex items-center gap-1"
-              >
-                {r.order?.invoice_number ? `Fact. ${r.order.invoice_number}` : r.code}
-                <ExternalLink className="h-3 w-3 opacity-70" />
-              </Link>
-              <span className="font-mono text-[11px] text-muted-foreground">{r.code}</span>
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${novedad.color}`}>
-                {novedad.label}
-              </span>
-            </div>
-            <div className="mt-2 flex gap-x-4 gap-y-1 flex-wrap text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><User className="h-3 w-3" /><span className="text-foreground font-medium">{r.order?.customer_name ?? "—"}</span></span>
-              <span className="inline-flex items-center gap-1.5"><Phone className="h-3 w-3" />{contacto}</span>
-              <span className="inline-flex items-center gap-1.5"><Building2 className="h-3 w-3" />Vendedor: <span className="text-foreground">{vendedor}</span></span>
-            </div>
-          </div>
+    <div className="border-t border-border bg-background/60 p-4 pl-5 grid md:grid-cols-[1.2fr_1fr] gap-5">
+      {/* Productos detallados */}
+      <div>
+        <div className="flex items-center gap-2 mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <Package className="h-3.5 w-3.5" /> Productos en producción
+        </div>
+        {(r.items?.length ?? 0) === 0 ? (
+          <p className="text-xs text-muted-foreground italic">Sin productos vinculados.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {r.items.map((it: any) => (
+              <li key={it.id} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium leading-tight">{firstLine(it.description) || "Producto"}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">×{Number(it.quantity)} · {fmtMoney(Number(it.unit_price))} c/u</p>
+                </div>
+                <span className="text-xs font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {r.notes && (
+          <p className="mt-3 text-[11px] text-muted-foreground italic">{r.notes}</p>
+        )}
+      </div>
 
-          <div className="text-right shrink-0">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Venta de esta OP</p>
-            <p className="text-xl font-bold tabular-nums">{fmtMoney(saleTotal)}</p>
-            {isPartial && (
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                Factura total: <span className="tabular-nums">{fmtMoney(invoiceTotal)}</span>
-              </p>
-            )}
-            <div className="mt-1.5 flex items-center justify-end gap-2">
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${marginCls}`}>
-                <TrendingUp className="h-3 w-3" />
-                {margin == null ? "Sin costo" : `${margin.toFixed(1)}%`}
-              </span>
-            </div>
+      {/* Hitos */}
+      <div className="space-y-3">
+        <div>
+          <div className="flex items-center gap-2 mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5" /> Hitos de producción
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <DateField label="Factura" value={r.invoice_date} onSave={(v) => onPatch({ invoice_date: v })} />
+            <DateField label="Planimetría" value={r.planimetry_sent_date} onSave={(v) => onPatch({ planimetry_sent_date: v })} />
+            <DateField label="Cotización" value={r.quotation_date} onSave={(v) => onPatch({ quotation_date: v })} />
+            <DateField label="Inicio prod." value={r.production_start_date} onSave={(v) => onPatch({ production_start_date: v })} />
           </div>
         </div>
-      </header>
 
-      {/* Body */}
-      <div className="grid md:grid-cols-[1.2fr_1fr] divide-y md:divide-y-0 md:divide-x divide-border">
-        {/* Productos */}
-        <div className="p-5">
-          <div className="flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Package className="h-3.5 w-3.5" /> Productos en producción
-          </div>
-          {(r.items?.length ?? 0) === 0 ? (
-            <p className="text-xs text-muted-foreground italic">Sin productos vinculados a esta orden.</p>
-          ) : (
-            <ul className="space-y-2">
-              {r.items.map((it: any) => (
-                <li key={it.id} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-tight truncate" title={it.description}>{firstLine(it.description) || "Producto"}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">×{Number(it.quantity)} · {fmtMoney(Number(it.unit_price))} c/u</p>
-                  </div>
-                  <span className="text-sm font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="mt-4 pt-3 border-t border-border grid grid-cols-2 gap-3 text-xs">
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Proveedor</p>
-              <p className="font-medium truncate" title={r.supplier?.name ?? ""}>{r.supplier?.name ?? "—"}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Costo de fabricación</p>
-              <p className="font-medium tabular-nums">{fmtMoney(cost)}</p>
-            </div>
-          </div>
-
-          {r.notes && (
-            <p className="mt-3 text-[11px] text-muted-foreground italic line-clamp-2">{r.notes}</p>
-          )}
-        </div>
-
-        {/* Fechas + Novedad */}
-        <div className="p-5 space-y-4 bg-muted/10">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <CalendarDays className="h-3.5 w-3.5" /> Hitos de producción
-            </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-              <DateField label="Factura" value={r.invoice_date} onSave={(v) => onPatch({ invoice_date: v })} />
-              <DateField label="Planimetría" value={r.planimetry_sent_date} onSave={(v) => onPatch({ planimetry_sent_date: v })} />
-              <DateField label="Cotización" value={r.quotation_date} onSave={(v) => onPatch({ quotation_date: v })} />
-              <DateField label="Inicio prod." value={r.production_start_date} onSave={(v) => onPatch({ production_start_date: v })} />
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Compromiso proveedor</div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Compromiso proveedor</div>
+            <div className="space-y-2">
               <DateField label="Prometida" value={r.supplier_promised_date} onSave={(v) => onPatch({ supplier_promised_date: v })} />
               <DateField label="Real" value={r.supplier_actual_date} onSave={(v) => onPatch({ supplier_actual_date: v })} />
             </div>
           </div>
-
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Entrega al cliente</div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Entrega al cliente</div>
+            <div className="space-y-2">
               <DateField label="Prometida" value={r.client_promised_date} onSave={(v) => onPatch({ client_promised_date: v })} />
               <DateField label="Real" value={r.client_actual_date} onSave={(v) => onPatch({ client_actual_date: v })} />
             </div>
-            <div className={`mt-2 inline-flex items-center gap-1 text-[11px] font-semibold ${desvCls}`}>
+            <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${desvCls}`}>
               {desv != null && desv > 0 && <AlertTriangle className="h-3 w-3" />}
-              Desviación: {desv == null ? "—" : `${desv > 0 ? "+" : ""}${desv} día${Math.abs(desv) === 1 ? "" : "s"}`}
+              {desv == null ? "Sin entrega" : `Desviación: ${desv > 0 ? "+" : ""}${desv}d`}
             </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium block mb-1">Novedad</label>
-            <select
-              value={r.novedad ?? "pendiente"}
-              onChange={(e) => onPatch({ novedad: e.target.value })}
-              className={`appearance-none border rounded-md px-2 py-1 text-xs font-medium cursor-pointer outline-none focus:ring-2 focus:ring-primary/40 w-full ${novedad.color}`}
-            >
-              {NOVEDADES.map((n) => (
-                <option key={n.value} value={n.value} className="bg-background text-foreground">{n.label}</option>
-              ))}
-            </select>
           </div>
         </div>
       </div>
-    </article>
+    </div>
   );
 }
 
