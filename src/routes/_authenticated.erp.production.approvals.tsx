@@ -41,7 +41,8 @@ function ApprovalsPage() {
         .from("production_orders")
         .select(`
           id, code, status, created_at, notes,
-          order:orders!order_id(id, order_number, invoice_number, customer_name, total, seller_id)
+          order:orders!order_id(id, order_number, invoice_number, customer_name, total, seller_id),
+          items:order_items!production_order_id(id, description, line_total, sort_order)
         `)
         .eq("brand_id", selectedBrandId!)
         .eq("status", "pendiente")
