@@ -504,10 +504,8 @@ function InlineMoney({
 }: { value: number; hasValue: boolean; onSave: (n: number, hasValue: boolean) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setDraft(value); }, [value]);
-  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
 
   if (!editing) {
     return (
@@ -528,19 +526,17 @@ function InlineMoney({
   const cancel = () => { setDraft(value); setEditing(false); };
 
   return (
-    <div className="flex items-center gap-1">
-      <MoneyInput
-        ref={inputRef as any}
-        value={draft}
-        onValueChange={setDraft}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") cancel();
-        }}
-        onBlur={commit}
-        className="h-7 text-xs text-right tabular-nums px-1.5"
-      />
-    </div>
+    <MoneyInput
+      autoFocus
+      value={draft}
+      onValueChange={setDraft}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+        if (e.key === "Escape") cancel();
+      }}
+      onBlur={commit}
+      className="h-7 text-xs text-right tabular-nums px-1.5"
+    />
   );
 }
 
