@@ -1,5 +1,5 @@
-import { useRef, useState, useEffect } from "react";
-import { ImagePlus, X, Loader2, FileImage } from "lucide-react";
+import { useRef, useState, useEffect, useCallback } from "react";
+import { ImagePlus, X, Loader2, FileImage, ClipboardPaste } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image-upload";
