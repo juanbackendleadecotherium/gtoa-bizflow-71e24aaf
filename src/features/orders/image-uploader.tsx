@@ -1,5 +1,5 @@
-import { useRef, useState, useEffect } from "react";
-import { ImagePlus, X, Loader2, FileImage } from "lucide-react";
+import { useRef, useState, useEffect, useCallback } from "react";
+import { ImagePlus, X, Loader2, FileImage, ClipboardPaste } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image-upload";
@@ -41,9 +41,10 @@ export function ImageUploader({
   hint?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const [processing, setProcessing] = useState(false);
-
-  // Limpia object URLs al desmontar
+  const [isDragging, setIsDragging] = useState(false);
+  const [justPasted, setJustPasted] = useState(false);
   useEffect(() => {
     return () => {
       pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -51,35 +52,87 @@ export function ImageUploader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const ingestFiles = useCallback(
+    async (files: File[]) => {
+      const images = files.filter((f) => f.type.startsWith("image/"));
+      if (images.length === 0) return;
+      setProcessing(true);
+      try {
+        const newPending: PendingImage[] = [];
+        for (const file of images) {
+          const blob = await compressImage(file);
+          const baseName = (file.name || "imagen").replace(/\.[^.]+$/, "");
+          const compressed = new File(
+            [blob],
+            baseName + (blob.type === "image/webp" ? ".webp" : ".jpg"),
+            { type: blob.type },
+          );
+          newPending.push({
+            id: makeId(),
+            file: compressed,
+            previewUrl: URL.createObjectURL(compressed),
+            originalKb: Math.round(file.size / 1024),
+            compressedKb: Math.round(compressed.size / 1024),
+          });
+        }
+        const next = multiple ? [...pending, ...newPending] : newPending.slice(0, 1);
+        if (!multiple) pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+        onChangePending(next);
+      } finally {
+        setProcessing(false);
+      }
+    },
+    [multiple, pending, onChangePending],
+  );
+
   const handlePick = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    setProcessing(true);
-    try {
-      const newPending: PendingImage[] = [];
-      for (const file of Array.from(files)) {
-        if (!file.type.startsWith("image/")) continue;
-        const blob = await compressImage(file);
-        const compressed = new File(
-          [blob],
-          file.name.replace(/\.[^.]+$/, "") + (blob.type === "image/webp" ? ".webp" : ".jpg"),
-          { type: blob.type },
-        );
-        newPending.push({
-          id: makeId(),
-          file: compressed,
-          previewUrl: URL.createObjectURL(compressed),
-          originalKb: Math.round(file.size / 1024),
-          compressedKb: Math.round(compressed.size / 1024),
-        });
+    await ingestFiles(Array.from(files));
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  // Pegar imagen desde el portapapeles (Ctrl/Cmd+V) cuando el área tiene foco/hover
+  useEffect(() => {
+    const onPaste = async (e: ClipboardEvent) => {
+      const node = dropZoneRef.current;
+      if (!node) return;
+      const active = document.activeElement;
+      const focusedInside = active && node.contains(active);
+      const hovered = node.matches(":hover");
+      if (!focusedInside && !hovered) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files: File[] = [];
+      for (const it of Array.from(items)) {
+        if (it.kind === "file") {
+          const f = it.getAsFile();
+          if (f && f.type.startsWith("image/")) files.push(f);
+        }
       }
-      const next = multiple ? [...pending, ...newPending] : newPending.slice(0, 1);
-      // Si single y ya había uno, libera el viejo
-      if (!multiple) pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
-      onChangePending(next);
-    } finally {
-      setProcessing(false);
-      if (inputRef.current) inputRef.current.value = "";
+      if (files.length === 0) return;
+      e.preventDefault();
+      await ingestFiles(files);
+      setJustPasted(true);
+      window.setTimeout(() => setJustPasted(false), 1200);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [ingestFiles]);
+
+  const onDragOver = (e: React.DragEvent) => {
+    if (Array.from(e.dataTransfer.types).includes("Files")) {
+      e.preventDefault();
+      setIsDragging(true);
     }
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget === e.target) setIsDragging(false);
+  };
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) await ingestFiles(files);
   };
 
   const removePending = (id: string) => {
@@ -96,7 +149,17 @@ export function ImageUploader({
   const showPicker = multiple || all.length === 0;
 
   return (
-    <div className="space-y-2">
+    <div
+      ref={dropZoneRef}
+      tabIndex={-1}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={cn(
+        "space-y-2 rounded-lg outline-none transition-colors",
+        isDragging && "ring-2 ring-accent/60 ring-offset-2 ring-offset-background bg-accent/[0.04]",
+      )}
+    >
       <input
         ref={inputRef}
         type="file"
@@ -181,23 +244,39 @@ export function ImageUploader({
       )}
 
       {all.length === 0 && (
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={() => inputRef.current?.click()}
           disabled={processing}
-          className="gap-2 w-full justify-center border-dashed h-20"
+          className={cn(
+            "w-full rounded-lg border border-dashed border-border bg-background/40 hover:border-accent/60 hover:bg-accent/[0.04] transition-colors px-4 py-5 flex flex-col items-center justify-center gap-1.5 text-muted-foreground",
+            isDragging && "border-accent bg-accent/[0.06] text-foreground",
+          )}
         >
           {processing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <>
-              <ImagePlus className="h-4 w-4" />
-              {label}
+              <ImagePlus className="h-5 w-5" />
+              <span className="text-sm font-medium">
+                {isDragging ? "Suelta para subir" : label}
+              </span>
+              <span className="text-[10px] flex items-center gap-1">
+                <ClipboardPaste className="h-3 w-3" />
+                Arrastra, pega (Ctrl/Cmd+V) o haz clic
+              </span>
             </>
           )}
-        </Button>
+        </button>
+      )}
+
+      {all.length > 0 && (
+        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <ClipboardPaste className="h-3 w-3" />
+          {justPasted
+            ? "Imagen pegada"
+            : "Puedes arrastrar más imágenes aquí o pegarlas con Ctrl/Cmd+V"}
+        </p>
       )}
 
       {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
