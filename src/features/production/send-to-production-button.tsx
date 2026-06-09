@@ -227,19 +227,45 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
     },
   });
 
-  // Reset selection when dialog opens: default to items not yet sent
-  useEffect(() => {
-    if (dialogOpen && items.data) {
-      const unsent = items.data.filter((i) => !i.production_order_id).map((i) => i.id);
-      setSelectedItems(new Set(unsent.length > 0 ? unsent : items.data.map((i) => i.id)));
-    }
-  }, [dialogOpen, items.data]);
-
   const codeById = useMemo(() => {
     const m = new Map<string, string>();
     (list.data ?? []).forEach((p) => m.set(p.id, p.code));
     return m;
   }, [list.data]);
+
+  const ownerById = useMemo(() => {
+    const m = new Map<string, ProdRow>();
+    (list.data ?? []).forEach((p) => m.set(p.id, p));
+    return m;
+  }, [list.data]);
+
+  // An item is "locked" for the current destination when it already belongs to
+  // a non-rejected production order that's different from the chosen target.
+  const getItemLock = (it: ItemRow): { disabled: boolean; reason?: string } => {
+    if (!it.production_order_id) return { disabled: false };
+    const owner = ownerById.get(it.production_order_id);
+    if (!owner || owner.status === "rechazada") return { disabled: false };
+    if (selectedTarget === owner.id) return { disabled: false };
+    if (selectedTarget === "new") return { disabled: true, reason: `Ya en ${owner.code}` };
+    return { disabled: true, reason: `Pertenece a ${owner.code}` };
+  };
+
+  // Re-seed selection when dialog opens or destination changes.
+  useEffect(() => {
+    if (!dialogOpen || !items.data) return;
+    if (selectedTarget === "new") {
+      const unsent = items.data
+        .filter((i) => !getItemLock(i).disabled && !i.production_order_id)
+        .map((i) => i.id);
+      setSelectedItems(new Set(unsent));
+    } else {
+      const owned = items.data
+        .filter((i) => i.production_order_id === selectedTarget)
+        .map((i) => i.id);
+      setSelectedItems(new Set(owned));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen, items.data, selectedTarget, list.data]);
 
   const createNew = useMutation({
     mutationFn: async (selectedItemIds: string[]) => {
@@ -294,15 +320,11 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
   const busy = createNew.isPending || regenerate.isPending;
   const existing = list.data ?? [];
   const allItems = items.data ?? [];
+  const freeItemsCount = allItems.filter((i) => !getItemLock(i).disabled).length;
 
   const handleSendClick = () => {
-    // Always open dialog (so user can pick items) — even with no prior orders
-    if (existing.length === 0) {
-      setSelectedTarget("new");
-    } else {
-      const firstActive = existing.find((p) => p.status !== "rechazada" && p.status !== "listo");
-      setSelectedTarget(firstActive?.id ?? existing[0].id);
-    }
+    // Default to "new" — locked items stay disabled, unsent items get pre-checked.
+    setSelectedTarget("new");
     setDialogOpen(true);
   };
 
@@ -318,6 +340,8 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
   };
 
   const toggleItem = (id: string) => {
+    const it = allItems.find((x) => x.id === id);
+    if (it && getItemLock(it).disabled) return;
     setSelectedItems((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -325,7 +349,8 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
     });
   };
 
-  const selectAll = () => setSelectedItems(new Set(allItems.map((i) => i.id)));
+  const selectAll = () =>
+    setSelectedItems(new Set(allItems.filter((i) => !getItemLock(i).disabled).map((i) => i.id)));
   const selectNone = () => setSelectedItems(new Set());
   const selectUnsent = () =>
     setSelectedItems(new Set(allItems.filter((i) => !i.production_order_id).map((i) => i.id)));
