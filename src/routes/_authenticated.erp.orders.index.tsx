@@ -120,8 +120,8 @@ function OrdersPage() {
             <table className="hidden md:table w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="text-left px-4 py-3">Número</th>
-                  <th className="text-left px-4 py-3">Cliente</th>
+                  <th className="text-left px-4 py-3">Factura</th>
+                  <th className="text-left px-4 py-3">Producto</th>
                   <th className="text-left px-4 py-3">Estado</th>
                   <th className="text-right px-4 py-3">Total</th>
                   <th className="text-left px-4 py-3">Fecha</th>
@@ -132,16 +132,13 @@ function OrdersPage() {
                   <tr key={o.id} className="border-t border-border hover:bg-muted/30">
                     <td className="px-4 py-3">
                       <Link to="/erp/orders/$id" params={{ id: o.id }} className="font-medium hover:text-accent">
-                        {o.order_number}
+                        {o.invoice_number ? `Fact. ${o.invoice_number}` : o.order_number}
                       </Link>
                       {o.invoice_number && (
-                        <p className="text-[11px] text-muted-foreground">Fact. {o.invoice_number}</p>
+                        <p className="text-[11px] text-muted-foreground font-mono">{o.order_number}</p>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <p className="text-foreground">{o.customer_name ?? "—"}</p>
-                      {o.customer_phone && <p className="text-[11px] text-muted-foreground">{o.customer_phone}</p>}
-                    </td>
+                    <td className="px-4 py-3 text-foreground">{summarizeItems(o.items)}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center gap-1.5">
                         {o.status ? <StatusBadge name={o.status.name} color={o.status.color} /> : "—"}
@@ -166,10 +163,12 @@ function OrdersPage() {
                   className="flex flex-col gap-1 px-4 py-3 hover:bg-muted/30"
                 >
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="font-medium">{o.order_number}</span>
+                    <span className="font-medium">
+                      {o.invoice_number ? `Fact. ${o.invoice_number}` : o.order_number}
+                    </span>
                     {o.status && <StatusBadge name={o.status.name} color={o.status.color} />}
                   </div>
-                  <p className="text-sm">{o.customer_name ?? "—"}</p>
+                  <p className="text-sm">{summarizeItems(o.items)}</p>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
                     {o.invoices?.length > 0 && <InvoicedBadge />}
@@ -181,6 +180,7 @@ function OrdersPage() {
                 </Link>
               ))}
             </div>
+
           </>
         )}
       </div>
