@@ -1,16 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Loader2, Factory, Search, ArrowLeft, ClipboardList, ExternalLink,
-  Package, CalendarDays, AlertTriangle, ChevronRight, Check, X,
+  Package, CalendarDays, AlertTriangle, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { NOVEDADES, novedadMeta } from "@/features/production/novedad-meta";
 import { MoneyInput } from "@/features/orders/money-input";
 
