@@ -168,7 +168,22 @@ function ApprovalsPage() {
                     {r.code}
                     {r.order?.order_number && <> · {r.order.order_number}</>}
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{fmtMoney(r.order?.total)}</p>
+                  <p className="text-lg font-bold tabular-nums mt-1">{fmtMoney(r.order?.total)}</p>
+                  {Array.isArray(r.items) && r.items.length > 0 && (
+                    <ul className="mt-1.5 space-y-0.5">
+                      {[...r.items]
+                        .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                        .map((it: any) => {
+                          const title = (it.description ?? "").split("\n")[0] || "Producto";
+                          return (
+                            <li key={it.id} className="text-[11px] text-muted-foreground flex items-baseline gap-2">
+                              <span className="truncate max-w-[26ch]">{title}</span>
+                              <span className="text-foreground/80 font-medium tabular-nums">{fmtMoney(it.line_total)}</span>
+                            </li>
+                          );
+                        })}
+                    </ul>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
