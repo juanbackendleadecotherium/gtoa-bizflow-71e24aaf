@@ -156,21 +156,20 @@ function ApprovalsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Link to="/erp/production/$id" params={{ id: r.id }}
-                      className="text-sm font-semibold font-mono text-primary hover:underline">
-                      {r.code}
+                      className="text-base font-semibold text-primary hover:underline">
+                      {r.order?.invoice_number ? `Fact. ${r.order.invoice_number}` : (r.order?.order_number ?? r.code)}
                     </Link>
                     <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
                       <Clock className="h-3 w-3" /> {timeAgo(r.created_at)}
                     </span>
                   </div>
-                  <p className="text-sm mt-1 truncate">
-                    <span className="text-muted-foreground">Venta</span>{" "}
-                    <span className="font-medium">{r.order?.order_number ?? "—"}</span>
-                    <span className="text-muted-foreground"> · </span>
-                    <span>{r.order?.customer_name ?? "—"}</span>
+                  <p className="text-[11px] text-muted-foreground font-mono mt-0.5 truncate">
+                    {r.code}
+                    {r.order?.order_number && <> · {r.order.order_number}</>}
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">{fmtMoney(r.order?.total)}</p>
                 </div>
+
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => setRejectTarget({ id: r.id, code: r.code })}
                     className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10">
