@@ -52,35 +52,87 @@ export function ImageUploader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const ingestFiles = useCallback(
+    async (files: File[]) => {
+      const images = files.filter((f) => f.type.startsWith("image/"));
+      if (images.length === 0) return;
+      setProcessing(true);
+      try {
+        const newPending: PendingImage[] = [];
+        for (const file of images) {
+          const blob = await compressImage(file);
+          const baseName = (file.name || "imagen").replace(/\.[^.]+$/, "");
+          const compressed = new File(
+            [blob],
+            baseName + (blob.type === "image/webp" ? ".webp" : ".jpg"),
+            { type: blob.type },
+          );
+          newPending.push({
+            id: makeId(),
+            file: compressed,
+            previewUrl: URL.createObjectURL(compressed),
+            originalKb: Math.round(file.size / 1024),
+            compressedKb: Math.round(compressed.size / 1024),
+          });
+        }
+        const next = multiple ? [...pending, ...newPending] : newPending.slice(0, 1);
+        if (!multiple) pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+        onChangePending(next);
+      } finally {
+        setProcessing(false);
+      }
+    },
+    [multiple, pending, onChangePending],
+  );
+
   const handlePick = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    setProcessing(true);
-    try {
-      const newPending: PendingImage[] = [];
-      for (const file of Array.from(files)) {
-        if (!file.type.startsWith("image/")) continue;
-        const blob = await compressImage(file);
-        const compressed = new File(
-          [blob],
-          file.name.replace(/\.[^.]+$/, "") + (blob.type === "image/webp" ? ".webp" : ".jpg"),
-          { type: blob.type },
-        );
-        newPending.push({
-          id: makeId(),
-          file: compressed,
-          previewUrl: URL.createObjectURL(compressed),
-          originalKb: Math.round(file.size / 1024),
-          compressedKb: Math.round(compressed.size / 1024),
-        });
+    await ingestFiles(Array.from(files));
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  // Pegar imagen desde el portapapeles (Ctrl/Cmd+V) cuando el área tiene foco/hover
+  useEffect(() => {
+    const onPaste = async (e: ClipboardEvent) => {
+      const node = dropZoneRef.current;
+      if (!node) return;
+      const active = document.activeElement;
+      const focusedInside = active && node.contains(active);
+      const hovered = node.matches(":hover");
+      if (!focusedInside && !hovered) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files: File[] = [];
+      for (const it of Array.from(items)) {
+        if (it.kind === "file") {
+          const f = it.getAsFile();
+          if (f && f.type.startsWith("image/")) files.push(f);
+        }
       }
-      const next = multiple ? [...pending, ...newPending] : newPending.slice(0, 1);
-      // Si single y ya había uno, libera el viejo
-      if (!multiple) pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
-      onChangePending(next);
-    } finally {
-      setProcessing(false);
-      if (inputRef.current) inputRef.current.value = "";
+      if (files.length === 0) return;
+      e.preventDefault();
+      await ingestFiles(files);
+      setJustPasted(true);
+      window.setTimeout(() => setJustPasted(false), 1200);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [ingestFiles]);
+
+  const onDragOver = (e: React.DragEvent) => {
+    if (Array.from(e.dataTransfer.types).includes("Files")) {
+      e.preventDefault();
+      setIsDragging(true);
     }
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget === e.target) setIsDragging(false);
+  };
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) await ingestFiles(files);
   };
 
   const removePending = (id: string) => {
