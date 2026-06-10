@@ -82,7 +82,7 @@ const ROW_ALT = "#fbfcfe";
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 0, paddingBottom: 70, paddingHorizontal: 0,
+    paddingTop: 0, paddingBottom: 110, paddingHorizontal: 0,
     fontSize: 9.5, color: INK, fontFamily: "Helvetica",
   },
 
