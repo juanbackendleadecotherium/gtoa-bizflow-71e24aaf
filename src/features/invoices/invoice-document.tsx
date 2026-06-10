@@ -82,7 +82,7 @@ const ROW_ALT = "#fbfcfe";
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 0, paddingBottom: 70, paddingHorizontal: 0,
+    paddingTop: 0, paddingBottom: 110, paddingHorizontal: 0,
     fontSize: 9.5, color: INK, fontFamily: "Helvetica",
   },
 
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   wordsText: { color: INK, fontSize: 10, fontStyle: "italic" },
 
   /* Totals */
-  bottomRow: { flexDirection: "row", paddingHorizontal: 40, marginTop: 16, gap: 16 },
+  bottomRow: { flexDirection: "row", paddingHorizontal: 40, marginTop: 16, marginBottom: 24, gap: 16 },
   notesCol: { flex: 1.1 },
   totalsCol: { flex: 1 },
   notesTitle: { fontSize: 7.5, color: MUTED, fontWeight: 700, letterSpacing: 1.4, marginBottom: 6, textTransform: "uppercase" },
@@ -325,7 +325,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         </View>
 
         {/* Notes + Totals */}
-        <View style={styles.bottomRow}>
+        <View style={styles.bottomRow} wrap={false}>
           <View style={styles.notesCol}>
             {data.notes ? (
               <>
