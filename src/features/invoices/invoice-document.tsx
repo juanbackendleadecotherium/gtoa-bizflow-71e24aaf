@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   wordsText: { color: INK, fontSize: 10, fontStyle: "italic" },
 
   /* Totals */
-  bottomRow: { flexDirection: "row", paddingHorizontal: 40, marginTop: 16, gap: 16 },
+  bottomRow: { flexDirection: "row", paddingHorizontal: 40, marginTop: 16, marginBottom: 24, gap: 16 },
   notesCol: { flex: 1.1 },
   totalsCol: { flex: 1 },
   notesTitle: { fontSize: 7.5, color: MUTED, fontWeight: 700, letterSpacing: 1.4, marginBottom: 6, textTransform: "uppercase" },
