@@ -62,11 +62,14 @@ function FloatingField({
   invalid?: boolean;
 }) {
   const filled = value.length > 0;
+  const isPassword = type === "password";
+  const [show, setShow] = useState(false);
+  const effectiveType = isPassword ? (show ? "text" : "password") : type;
   return (
     <div className="relative">
       <input
         id={id}
-        type={type}
+        type={effectiveType}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
@@ -75,6 +78,7 @@ function FloatingField({
         className={cn(
           "peer w-full h-12 rounded-xl bg-white/5 border border-white/10",
           "px-11 pt-4 pb-1 text-white placeholder-transparent",
+          isPassword && "pr-11",
           "focus:outline-none focus:border-amber-400/60 focus:bg-white/[0.07]",
           "transition-colors",
           invalid && "border-red-400/60",
@@ -96,6 +100,17 @@ function FloatingField({
       <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/40 peer-focus:text-amber-300">
         {icon}
       </span>
+      {isPassword && (
+        <button
+          type="button"
+          onClick={() => setShow((s) => !s)}
+          tabIndex={-1}
+          aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-amber-300 transition-colors p-1"
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      )}
     </div>
   );
 }
