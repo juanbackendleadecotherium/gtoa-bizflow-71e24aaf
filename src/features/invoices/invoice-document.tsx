@@ -325,7 +325,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         </View>
 
         {/* Notes + Totals */}
-        <View style={styles.bottomRow}>
+        <View style={styles.bottomRow} wrap={false}>
           <View style={styles.notesCol}>
             {data.notes ? (
               <>
