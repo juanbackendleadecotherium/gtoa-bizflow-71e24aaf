@@ -51,7 +51,7 @@ export function DeleteOrderDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" /> Eliminar venta
+            <AlertTriangle className="h-5 w-5" /> Anular venta
           </DialogTitle>
           <DialogDescription>
             Esta acción no se puede deshacer. Quedará registrada en el historial de
@@ -91,7 +91,7 @@ export function DeleteOrderDialog({
             onClick={() => mut.mutate()}
             disabled={!valid || mut.isPending}
           >
-            {mut.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Eliminando…</> : "Eliminar venta"}
+            {mut.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Anulando…</> : "Anular venta"}
           </Button>
         </DialogFooter>
       </DialogContent>
