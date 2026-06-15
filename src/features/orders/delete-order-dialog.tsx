@@ -34,7 +34,7 @@ export function DeleteOrderDialog({
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Venta eliminada y registrada en auditoría");
+      toast.success("Venta anulada y registrada en auditoría");
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["order-deletions"] });
       setReason("");

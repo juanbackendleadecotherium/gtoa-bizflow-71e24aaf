@@ -43,10 +43,10 @@ function DeletionsPage() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h2 className="font-display text-xl font-semibold flex items-center gap-2">
-            <Trash2 className="h-5 w-5 text-destructive" /> Ventas eliminadas
+            <Trash2 className="h-5 w-5 text-destructive" /> Ventas anuladas
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Auditoría inmutable de cada eliminación con la razón registrada por el vendedor.
+            Auditoría inmutable de cada anulación con la razón registrada por el vendedor.
           </p>
         </div>
         <div className="relative w-full sm:w-72">
@@ -59,7 +59,7 @@ function DeletionsPage() {
         <div className="grid place-items-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-          Sin eliminaciones registradas para esta marca.
+          Sin anulaciones registradas para esta marca.
         </div>
       ) : (
         <div className="space-y-3">
@@ -83,7 +83,7 @@ function DeletionsPage() {
               </div>
               {r.deleted_by_email && (
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  Eliminado por <span className="font-medium text-foreground/80">{r.deleted_by_email}</span>
+                  Anulado por <span className="font-medium text-foreground/80">{r.deleted_by_email}</span>
                 </p>
               )}
             </div>
