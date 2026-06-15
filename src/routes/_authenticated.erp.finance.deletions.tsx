@@ -83,7 +83,7 @@ function DeletionsPage() {
               </div>
               {r.deleted_by_email && (
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  Eliminado por <span className="font-medium text-foreground/80">{r.deleted_by_email}</span>
+                  Anulado por <span className="font-medium text-foreground/80">{r.deleted_by_email}</span>
                 </p>
               )}
             </div>
