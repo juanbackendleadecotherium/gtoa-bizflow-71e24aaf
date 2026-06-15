@@ -59,7 +59,7 @@ function DeletionsPage() {
         <div className="grid place-items-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-          Sin eliminaciones registradas para esta marca.
+          Sin anulaciones registradas para esta marca.
         </div>
       ) : (
         <div className="space-y-3">
