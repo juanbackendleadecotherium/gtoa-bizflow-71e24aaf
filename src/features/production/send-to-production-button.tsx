@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Factory, Loader2, ExternalLink, Plus, RefreshCw, Package } from "lucide-react";
+import { Factory, Loader2, ExternalLink, Plus, Package } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProductionStatusBadge } from "./status-badge";
@@ -450,44 +450,12 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
             </DialogDescription>
           </DialogHeader>
 
-          {/* Destination */}
           {existing.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Destino</p>
-              <RadioGroup value={selectedTarget} onValueChange={setSelectedTarget} className="space-y-2">
-                {existing.map((p) => (
-                  <Label key={p.id} htmlFor={`target-${p.id}`}
-                    className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:border-primary/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                    <RadioGroupItem value={p.id} id={`target-${p.id}`} className="mt-0.5" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="font-mono text-sm font-medium">{p.code}</span>
-                        <ProductionStatusBadge status={p.status} />
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        Actualizar esta orden con nueva versión de planimetría
-                        {p.workshop ? ` · ${p.workshop}` : ""}
-                      </p>
-                    </div>
-                  </Label>
-                ))}
-                <Label htmlFor="target-new"
-                  className="flex items-start gap-3 rounded-lg border border-dashed border-border p-3 cursor-pointer hover:border-primary/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                  <RadioGroupItem value="new" id="target-new" className="mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm font-medium">Crear orden nueva</span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      Útil si esta parte de la venta va a un taller distinto.
-                    </p>
-                  </div>
-                </Label>
-              </RadioGroup>
-            </div>
+            <p className="text-[11px] text-muted-foreground rounded-lg border border-border bg-muted/30 p-2.5">
+              Se creará una <span className="font-medium text-foreground">nueva orden de producción</span> con los productos que elijas. Las órdenes ya enviadas no se pueden modificar — si necesitas cambiar algo en una orden existente, recházala primero desde su detalle.
+            </p>
           )}
+
 
           {/* Items */}
           <div className="space-y-2">
