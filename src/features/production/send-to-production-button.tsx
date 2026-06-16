@@ -143,55 +143,99 @@ export async function generatePlanimetryForOrder(opts: {
   selectedItemIds: string[];
   noteOverride?: string;
 }) {
-  const planData = await buildPlanData(opts.orderId, opts.brandId, opts.productionCode, opts.selectedItemIds);
+  // Build the FULL plan once (it carries customer/brand/seller meta), then
+  // emit one independent PDF per selected item so each supplier can receive
+  // its own document without manual editing.
+  const fullPlan = await buildPlanData(opts.orderId, opts.brandId, opts.productionCode, opts.selectedItemIds);
 
+  // Production deadline = customer delivery − 3 business days (CO).
+  // We persist it on each order_item so the tracking board shows the same date.
+  const productionDue = subtractBusinessDays(fullPlan.estimated_delivery_date ?? null, 3);
+  // What the supplier sees on the PDF is the production deadline, not the
+  // customer's delivery date.
+  const supplierFacingDate = productionDue ?? fullPlan.estimated_delivery_date ?? null;
+
+  const { pdf } = await import("@react-pdf/renderer");
+  const { PlanimetryDocument } = await import("./planimetry-document");
+
+  // Resolve per-item next version (independent counter per item).
   const { data: existing } = await supabase
     .from("production_planimetries")
-    .select("version")
-    .eq("production_order_id", opts.productionOrderId)
-    .order("version", { ascending: false })
-    .limit(1);
-  const nextVersion = (existing?.[0]?.version ?? 0) + 1;
+    .select("order_item_id, version")
+    .eq("production_order_id", opts.productionOrderId);
+  const versionByItem = new Map<string, number>();
+  for (const row of (existing ?? []) as { order_item_id: string | null; version: number }[]) {
+    const key = row.order_item_id ?? "__legacy__";
+    versionByItem.set(key, Math.max(versionByItem.get(key) ?? 0, row.version));
+  }
 
-  const [{ pdf }, { PlanimetryDocument }] = await Promise.all([
-    import("@react-pdf/renderer"),
-    import("./planimetry-document"),
-  ]);
-  const blob = await pdf(<PlanimetryDocument data={planData} />).toBlob();
-  const safeName = `Planimetria-${opts.productionCode}-v${nextVersion}.pdf`;
-  const path = `${opts.brandId}/${opts.productionOrderId}/${Date.now()}-${safeName}`;
+  // We need item ids aligned with fullPlan.items (buildPlanData sorts by sort_order).
+  const { data: itemRows, error: itemErr } = await supabase
+    .from("order_items")
+    .select("id, description, sort_order")
+    .in("id", opts.selectedItemIds)
+    .order("sort_order", { ascending: true });
+  if (itemErr) throw itemErr;
+  const orderedItemIds = (itemRows ?? []).map((r: any) => r.id as string);
 
-  const { error: upErr } = await supabase.storage
-    .from("production-planimetries")
-    .upload(path, blob, { contentType: "application/pdf", upsert: false });
-  if (upErr) throw upErr;
+  let lastVersion = 0;
 
-  const { data: signed } = await supabase.storage
-    .from("production-planimetries").createSignedUrl(path, 60 * 60 * 24 * 7);
+  for (let i = 0; i < orderedItemIds.length; i += 1) {
+    const itemId = orderedItemIds[i];
+    const planItem = fullPlan.items[i];
+    if (!planItem) continue;
 
-  const { error: insErr } = await supabase.from("production_planimetries").insert({
-    production_order_id: opts.productionOrderId,
-    brand_id: opts.brandId,
-    file_url: signed?.signedUrl ?? "",
-    file_path: path,
-    file_name: safeName,
-    file_size: blob.size,
-    mime_type: "application/pdf",
-    version: nextVersion,
-    notes: opts.noteOverride ?? (nextVersion === 1
-      ? `Generada automáticamente desde la venta (${opts.selectedItemIds.length} producto${opts.selectedItemIds.length === 1 ? "" : "s"})`
-      : `Regenerada tras edición de la venta (v${nextVersion}, ${opts.selectedItemIds.length} producto${opts.selectedItemIds.length === 1 ? "" : "s"})`),
-  });
-  if (insErr) throw insErr;
+    const planForItem: PlanimetryDocumentData = {
+      ...fullPlan,
+      estimated_delivery_date: supplierFacingDate,
+      items: [planItem],
+    };
 
-  // Link items to this production order
+    const nextVersion = (versionByItem.get(itemId) ?? 0) + 1;
+    lastVersion = Math.max(lastVersion, nextVersion);
+
+    const blob = await pdf(<PlanimetryDocument data={planForItem} />).toBlob();
+    const slugDesc = (planItem.description || "producto").split(/\s+/).slice(0, 3).join("-")
+      .replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
+    const safeName = `Planimetria-${opts.productionCode}-${slugDesc}-v${nextVersion}.pdf`;
+    const path = `${opts.brandId}/${opts.productionOrderId}/${Date.now()}-${i}-${safeName}`;
+
+    const { error: upErr } = await supabase.storage
+      .from("production-planimetries")
+      .upload(path, blob, { contentType: "application/pdf", upsert: false });
+    if (upErr) throw upErr;
+
+    const { data: signed } = await supabase.storage
+      .from("production-planimetries").createSignedUrl(path, 60 * 60 * 24 * 7);
+
+    const { error: insErr } = await supabase.from("production_planimetries").insert({
+      production_order_id: opts.productionOrderId,
+      brand_id: opts.brandId,
+      order_item_id: itemId,
+      file_url: signed?.signedUrl ?? "",
+      file_path: path,
+      file_name: safeName,
+      file_size: blob.size,
+      mime_type: "application/pdf",
+      version: nextVersion,
+      notes: opts.noteOverride ?? (nextVersion === 1
+        ? `Generada automáticamente (1 producto)`
+        : `Regenerada (v${nextVersion}, 1 producto)`),
+    });
+    if (insErr) throw insErr;
+  }
+
+  // Link items to this production order + snapshot the production due date.
   const { error: linkErr } = await supabase
     .from("order_items")
-    .update({ production_order_id: opts.productionOrderId })
+    .update({
+      production_order_id: opts.productionOrderId,
+      production_due_date: productionDue,
+    })
     .in("id", opts.selectedItemIds);
   if (linkErr) throw linkErr;
 
-  return nextVersion;
+  return lastVersion;
 }
 
 export function ProductionSection({ orderId, brandId }: { orderId: string; brandId: string }) {
