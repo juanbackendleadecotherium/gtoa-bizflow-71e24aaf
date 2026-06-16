@@ -125,11 +125,13 @@ function OrdersPage() {
                   <th className="text-left px-4 py-3">Producto</th>
                   <th className="text-left px-4 py-3">Estado</th>
                   <th className="text-right px-4 py-3">Total</th>
-                  <th className="text-left px-4 py-3">Fecha</th>
+                  <th className="text-left px-4 py-3">Entrega</th>
                 </tr>
               </thead>
               <tbody>
-                {ordersQuery.data!.map((o: any) => (
+                {ordersQuery.data!.map((o: any) => {
+                  const { urgency, label: urgencyLabel } = getDeliveryUrgency(o.estimated_delivery_date);
+                  return (
                   <tr key={o.id} className="border-t border-border hover:bg-muted/30">
                     <td className="px-4 py-3">
                       <Link to="/erp/orders/$id" params={{ id: o.id }} className="font-medium hover:text-accent">
@@ -148,9 +150,17 @@ function OrdersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatMoney(o.total)}</td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(o.created_at).toLocaleDateString("es-CO")}</td>
+                    <td className="px-4 py-3">
+                      <div className={`inline-flex flex-col items-start gap-0.5 rounded-md px-2 py-1 text-xs font-medium ${urgencyChipClasses(urgency)}`}>
+                        <span className="tabular-nums">{formatDeliveryDate(o.estimated_delivery_date)}</span>
+                        {urgency !== "none" && urgency !== "normal" && (
+                          <span className="text-[10px] font-normal opacity-90">{urgencyLabel}</span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
 
