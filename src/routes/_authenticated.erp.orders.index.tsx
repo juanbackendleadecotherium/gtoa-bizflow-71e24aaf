@@ -166,12 +166,14 @@ function OrdersPage() {
 
             {/* Mobile */}
             <div className="md:hidden divide-y divide-border">
-              {ordersQuery.data!.map((o: any) => (
+              {ordersQuery.data!.map((o: any) => {
+                const { urgency, label: urgencyLabel } = getDeliveryUrgency(o.estimated_delivery_date);
+                return (
                 <Link
                   key={o.id}
                   to="/erp/orders/$id"
                   params={{ id: o.id }}
-                  className="flex flex-col gap-1 px-4 py-3 hover:bg-muted/30"
+                  className="flex flex-col gap-1.5 px-4 py-3 hover:bg-muted/30"
                 >
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="font-medium">
@@ -184,12 +186,18 @@ function OrdersPage() {
                     <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
                     {o.invoices?.length > 0 && <InvoicedBadge />}
                   </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{new Date(o.created_at).toLocaleDateString("es-CO")}</span>
-                    <span className="tabular-nums font-medium text-foreground">{formatMoney(o.total)}</span>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium ${urgencyChipClasses(urgency)}`}>
+                      <span>{formatDeliveryDate(o.estimated_delivery_date)}</span>
+                      {urgency !== "none" && urgency !== "normal" && (
+                        <span className="opacity-90">· {urgencyLabel}</span>
+                      )}
+                    </span>
+                    <span className="tabular-nums font-medium text-foreground text-sm">{formatMoney(o.total)}</span>
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
 
           </>
