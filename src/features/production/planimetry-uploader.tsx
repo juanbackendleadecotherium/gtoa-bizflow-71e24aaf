@@ -16,7 +16,15 @@ export type Planimetry = {
   notes: string | null;
   uploaded_at: string;
   uploaded_by_email: string | null;
+  order_item_id?: string | null;
+  order_item?: { id: string; description: string | null } | null;
 };
+
+function itemTitle(p: Planimetry): string {
+  const desc = p.order_item?.description ?? "";
+  const first = desc.split(/\n/)[0]?.trim();
+  return first || "Sin producto vinculado";
+}
 
 export function PlanimetryUploader({
   productionOrderId,
