@@ -271,12 +271,22 @@ function OrderDetail() {
             {o.order_number}{o.invoice_number ? ` · Fact. ${o.invoice_number}` : ""}
           </p>
           <h1 className="font-display text-2xl font-semibold break-words">{o.customer_name ?? "Sin cliente"}</h1>
-          <div className="mt-2 inline-flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-base font-semibold text-primary">
-            <Calendar className="h-4 w-4" />
-            {o.estimated_delivery_date
-              ? new Date(o.estimated_delivery_date + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })
-              : "Sin fecha de entrega"}
-          </div>
+          {(() => {
+            const { urgency, label: urgencyLabel } = getDeliveryUrgency(o.estimated_delivery_date);
+            return (
+              <div className={`mt-2 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-base font-semibold ${urgencyChipClasses(urgency)}`}>
+                <Calendar className="h-4 w-4" />
+                <span>
+                  {o.estimated_delivery_date
+                    ? formatDeliveryDate(o.estimated_delivery_date, { long: true })
+                    : "Sin fecha de entrega"}
+                </span>
+                {urgency !== "none" && urgency !== "normal" && (
+                  <span className="text-xs font-medium opacity-90">· {urgencyLabel}</span>
+                )}
+              </div>
+            );
+          })()}
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {status && <StatusBadge name={status.name} color={status.color} />}
