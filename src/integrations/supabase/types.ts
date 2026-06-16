@@ -508,10 +508,14 @@ export type Database = {
           manufacturing_cost: number | null
           margin_pct: number | null
           order_id: string
+          production_due_date: string | null
           production_order_id: string | null
+          production_started_at: string | null
           quantity: number
           sort_order: number
+          supplier_actual_date: string | null
           supplier_id: string | null
+          supplier_promised_date: string | null
           unit_price: number
           updated_at: string
         }
@@ -525,10 +529,14 @@ export type Database = {
           manufacturing_cost?: number | null
           margin_pct?: number | null
           order_id: string
+          production_due_date?: string | null
           production_order_id?: string | null
+          production_started_at?: string | null
           quantity?: number
           sort_order?: number
+          supplier_actual_date?: string | null
           supplier_id?: string | null
+          supplier_promised_date?: string | null
           unit_price?: number
           updated_at?: string
         }
@@ -542,10 +550,14 @@ export type Database = {
           manufacturing_cost?: number | null
           margin_pct?: number | null
           order_id?: string
+          production_due_date?: string | null
           production_order_id?: string | null
+          production_started_at?: string | null
           quantity?: number
           sort_order?: number
+          supplier_actual_date?: string | null
           supplier_id?: string | null
+          supplier_promised_date?: string | null
           unit_price?: number
           updated_at?: string
         }
@@ -1099,6 +1111,7 @@ export type Database = {
           id: string
           mime_type: string | null
           notes: string | null
+          order_item_id: string | null
           production_order_id: string
           uploaded_at: string
           uploaded_by: string | null
@@ -1114,6 +1127,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           notes?: string | null
+          order_item_id?: string | null
           production_order_id: string
           uploaded_at?: string
           uploaded_by?: string | null
@@ -1129,6 +1143,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           notes?: string | null
+          order_item_id?: string | null
           production_order_id?: string
           uploaded_at?: string
           uploaded_by?: string | null
@@ -1136,6 +1151,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "production_planimetries_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_planimetries_production_order_id_fkey"
             columns: ["production_order_id"]
@@ -1300,10 +1322,12 @@ export type Database = {
           created_at: string
           id: string
           order_id: string | null
+          order_item_id: string | null
           production_order_id: string | null
           reason: string | null
           resolved_at: string | null
           seller_id: string
+          severity: string
           status: string
           title: string
           type: string
@@ -1314,10 +1338,12 @@ export type Database = {
           created_at?: string
           id?: string
           order_id?: string | null
+          order_item_id?: string | null
           production_order_id?: string | null
           reason?: string | null
           resolved_at?: string | null
           seller_id: string
+          severity?: string
           status?: string
           title: string
           type?: string
@@ -1328,16 +1354,26 @@ export type Database = {
           created_at?: string
           id?: string
           order_id?: string | null
+          order_item_id?: string | null
           production_order_id?: string | null
           reason?: string | null
           resolved_at?: string | null
           seller_id?: string
+          severity?: string
           status?: string
           title?: string
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "seller_tasks_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {
@@ -1527,6 +1563,7 @@ export type Database = {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
+      start_real_production: { Args: { p_item_id: string }; Returns: undefined }
       update_order_status: {
         Args: { p_note?: string; p_order_id: string; p_status_id: string }
         Returns: undefined
