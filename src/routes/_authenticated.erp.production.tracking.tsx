@@ -134,7 +134,7 @@ function TrackingPage() {
         poIds.length
           ? supabase
               .from("order_items")
-              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order")
+              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date")
               .in("production_order_id", poIds)
               .order("sort_order", { ascending: true })
           : Promise.resolve({ data: [], error: null } as any),
@@ -542,6 +542,7 @@ function InlineMoney({
 
 function ExpandedPanel({ row, onPatch }: { row: any; onPatch: (patch: Record<string, any>) => void }) {
   const r = row;
+  const qc = useQueryClient();
   const desv = daysDiff(r.client_actual_date, r.client_promised_date);
   const desvCls =
     desv == null ? "text-muted-foreground"
@@ -549,9 +550,31 @@ function ExpandedPanel({ row, onPatch }: { row: any; onPatch: (patch: Record<str
     : desv <= 3 ? "text-amber-700 dark:text-amber-300"
     : "text-rose-700 dark:text-rose-300";
 
+  const patchItem = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Record<string, any> }) => {
+      const { error } = await (supabase.from("order_items") as any).update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["production-orders-drive"] }),
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
+  const startProd = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await supabase.rpc("start_real_production", { p_item_id: itemId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Inicio real registrado y vendedor notificado");
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
   return (
     <div className="border-t border-border bg-background/60 p-4 pl-5 grid md:grid-cols-[1.2fr_1fr] gap-5">
-      {/* Productos detallados */}
+      {/* Productos detallados con fechas y botón de inicio real */}
       <div>
         <div className="flex items-center gap-2 mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           <Package className="h-3.5 w-3.5" /> Productos en producción
@@ -559,14 +582,51 @@ function ExpandedPanel({ row, onPatch }: { row: any; onPatch: (patch: Record<str
         {(r.items?.length ?? 0) === 0 ? (
           <p className="text-xs text-muted-foreground italic">Sin productos vinculados.</p>
         ) : (
-          <ul className="space-y-1.5">
+          <ul className="space-y-2">
             {r.items.map((it: any) => (
-              <li key={it.id} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium leading-tight">{firstLine(it.description) || "Producto"}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">×{Number(it.quantity)} · {fmtMoney(Number(it.unit_price))} c/u</p>
+              <li key={it.id} className="rounded-lg border border-border bg-surface p-3 space-y-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium leading-tight">{firstLine(it.description) || "Producto"}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      ×{Number(it.quantity)} · {fmtMoney(Number(it.unit_price))} c/u
+                      {it.production_due_date && (
+                        <> · <span className="text-foreground">Entrega prod: {fmtDateShort(it.production_due_date)}</span></>
+                      )}
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
                 </div>
-                <span className="text-xs font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
+
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                  <DateField
+                    label="Prom. proveedor"
+                    value={it.supplier_promised_date}
+                    onSave={(v) => patchItem.mutate({ id: it.id, patch: { supplier_promised_date: v } })}
+                  />
+                  <DateField
+                    label="Real proveedor"
+                    value={it.supplier_actual_date}
+                    onSave={(v) => patchItem.mutate({ id: it.id, patch: { supplier_actual_date: v } })}
+                  />
+                  {it.production_started_at ? (
+                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-md px-2 py-1.5 whitespace-nowrap">
+                      📍 Iniciado {new Date(it.production_started_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => startProd.mutate(it.id)}
+                      disabled={startProd.isPending && startProd.variables === it.id}
+                      className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50"
+                      title="Marcar que el proveedor inició la producción real (notifica al vendedor)"
+                    >
+                      {startProd.isPending && startProd.variables === it.id
+                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                        : "🚀"} Inicio real
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -576,11 +636,11 @@ function ExpandedPanel({ row, onPatch }: { row: any; onPatch: (patch: Record<str
         )}
       </div>
 
-      {/* Hitos */}
+      {/* Hitos a nivel de orden */}
       <div className="space-y-3">
         <div>
           <div className="flex items-center gap-2 mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            <CalendarDays className="h-3.5 w-3.5" /> Hitos de producción
+            <CalendarDays className="h-3.5 w-3.5" /> Hitos de la orden
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
             <DateField label="Factura" value={r.invoice_date} onSave={(v) => onPatch({ invoice_date: v })} />
@@ -588,26 +648,20 @@ function ExpandedPanel({ row, onPatch }: { row: any; onPatch: (patch: Record<str
             <DateField label="Cotización" value={r.quotation_date} onSave={(v) => onPatch({ quotation_date: v })} />
             <DateField label="Inicio prod." value={r.production_start_date} onSave={(v) => onPatch({ production_start_date: v })} />
           </div>
+          <p className="text-[10px] text-muted-foreground mt-1.5 italic">
+            Cotización se autocompleta al asignar proveedor. Inicio prod. se sella cuando todos los productos arrancan.
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Compromiso proveedor</div>
-            <div className="space-y-2">
-              <DateField label="Prometida" value={r.supplier_promised_date} onSave={(v) => onPatch({ supplier_promised_date: v })} />
-              <DateField label="Real" value={r.supplier_actual_date} onSave={(v) => onPatch({ supplier_actual_date: v })} />
-            </div>
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Entrega al cliente</div>
+          <div className="space-y-2">
+            <DateField label="Prometida" value={r.client_promised_date} onSave={(v) => onPatch({ client_promised_date: v })} />
+            <DateField label="Real" value={r.client_actual_date} onSave={(v) => onPatch({ client_actual_date: v })} />
           </div>
-          <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Entrega al cliente</div>
-            <div className="space-y-2">
-              <DateField label="Prometida" value={r.client_promised_date} onSave={(v) => onPatch({ client_promised_date: v })} />
-              <DateField label="Real" value={r.client_actual_date} onSave={(v) => onPatch({ client_actual_date: v })} />
-            </div>
-            <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${desvCls}`}>
-              {desv != null && desv > 0 && <AlertTriangle className="h-3 w-3" />}
-              {desv == null ? "Sin entrega" : `Desviación: ${desv > 0 ? "+" : ""}${desv}d`}
-            </div>
+          <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${desvCls}`}>
+            {desv != null && desv > 0 && <AlertTriangle className="h-3 w-3" />}
+            {desv == null ? "Sin entrega" : `Desviación: ${desv > 0 ? "+" : ""}${desv}d`}
           </div>
         </div>
       </div>

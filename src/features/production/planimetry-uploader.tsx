@@ -16,7 +16,15 @@ export type Planimetry = {
   notes: string | null;
   uploaded_at: string;
   uploaded_by_email: string | null;
+  order_item_id?: string | null;
+  order_item?: { id: string; description: string | null } | null;
 };
+
+function itemTitle(p: Planimetry): string {
+  const desc = p.order_item?.description ?? "";
+  const first = desc.split(/\n/)[0]?.trim();
+  return first || "Sin producto vinculado";
+}
 
 export function PlanimetryUploader({
   productionOrderId,
@@ -121,32 +129,53 @@ export function PlanimetryUploader({
       {items.length === 0 ? (
         <p className="text-xs text-muted-foreground py-3 text-center">Sin planimetrías aún.</p>
       ) : (
-        <ul className="space-y-2">
-          {items.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 rounded-lg border border-border p-3 bg-background">
-              <div className="h-10 w-10 rounded-md bg-muted grid place-items-center shrink-0">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{p.file_name}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  v{p.version} · {p.file_size ? `${Math.round(p.file_size / 1024)} KB · ` : ""}
-                  {new Date(p.uploaded_at).toLocaleDateString("es-CO")}
-                  {p.uploaded_by_email && ` · ${p.uploaded_by_email}`}
-                </p>
-                {p.notes && <p className="text-xs text-muted-foreground italic mt-0.5 truncate">{p.notes}</p>}
-              </div>
-              <Button size="icon" variant="ghost" onClick={() => handleDownload(p)}>
-                <Download className="h-4 w-4" />
-              </Button>
-              {canDelete && (
-                <Button size="icon" variant="ghost" onClick={() => handleDelete(p)} className="text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
+        (() => {
+          // Group by order item so multi-product orders show one block per product.
+          const groups = new Map<string, Planimetry[]>();
+          for (const p of items) {
+            const key = p.order_item_id ?? "__legacy__";
+            const arr = groups.get(key) ?? [];
+            arr.push(p);
+            groups.set(key, arr);
+          }
+          return (
+            <div className="space-y-4">
+              {Array.from(groups.entries()).map(([key, list]) => (
+                <div key={key} className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                    {key === "__legacy__" ? "Planimetrías generales" : itemTitle(list[0])}
+                  </p>
+                  <ul className="space-y-2">
+                    {list.map((p) => (
+                      <li key={p.id} className="flex items-center gap-3 rounded-lg border border-border p-3 bg-background">
+                        <div className="h-10 w-10 rounded-md bg-muted grid place-items-center shrink-0">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{p.file_name}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            v{p.version} · {p.file_size ? `${Math.round(p.file_size / 1024)} KB · ` : ""}
+                            {new Date(p.uploaded_at).toLocaleDateString("es-CO")}
+                            {p.uploaded_by_email && ` · ${p.uploaded_by_email}`}
+                          </p>
+                          {p.notes && <p className="text-xs text-muted-foreground italic mt-0.5 truncate">{p.notes}</p>}
+                        </div>
+                        <Button size="icon" variant="ghost" onClick={() => handleDownload(p)}>
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        {canDelete && (
+                          <Button size="icon" variant="ghost" onClick={() => handleDelete(p)} className="text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          );
+        })()
       )}
     </div>
   );

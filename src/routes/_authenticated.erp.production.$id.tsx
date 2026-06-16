@@ -59,7 +59,8 @@ function ProductionDetail() {
     queryKey: ["planimetries", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("production_planimetries")
-        .select("*").eq("production_order_id", id).order("version", { ascending: false });
+        .select("*, order_item:order_items!order_item_id(id, description)")
+        .eq("production_order_id", id).order("version", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Planimetry[];
     },

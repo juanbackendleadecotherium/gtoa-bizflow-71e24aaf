@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle } from "lucide-react";
+import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle, Rocket, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/erp/my-tasks")({
   head: () => ({ meta: [{ title: "Mis tareas — Grupo Getova" }] }),
@@ -17,6 +19,7 @@ type Task = {
   reason: string | null;
   type: string;
   status: string;
+  severity: string | null;
   created_at: string;
   resolved_at: string | null;
   order_id: string | null;
@@ -26,6 +29,7 @@ type Task = {
 
 function MyTasks() {
   const session = useSession();
+  const qc = useQueryClient();
   const userId = session.session?.user.id;
   const [tab, setTab] = useState<"pendiente" | "resuelta">("pendiente");
 
@@ -35,13 +39,29 @@ function MyTasks() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("seller_tasks")
-        .select("id, title, reason, type, status, created_at, resolved_at, order_id, production_order_id, brand_id")
+        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, brand_id")
         .eq("seller_id", userId!)
         .eq("status", tab)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Task[];
     },
+  });
+
+  const markSeen = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("seller_tasks")
+        .update({ status: "resuelta", resolved_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Aviso archivado");
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
   const tasks = q.data ?? [];
@@ -80,42 +100,68 @@ function MyTasks() {
             </div>
           ) : (
             <ul className="space-y-2">
-              {tasks.map((t) => (
-                <li key={t.id} className={`rounded-xl border p-4 ${t.status === "pendiente" ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface"}`}>
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">{t.title}</p>
-                      {t.reason ? (
-                        <div className="mt-2 rounded-md bg-amber-500/10 border border-amber-500/30 p-2.5">
-                          <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-300 mb-1">
-                            Qué debes corregir
-                          </p>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">{t.reason}</p>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-1 italic">Sin detalle.</p>
-                      )}
-                      <p className="text-[11px] text-muted-foreground mt-2">
-                        Creada: {new Date(t.created_at).toLocaleString("es-CO")}
-                        {t.resolved_at && (
-                          <> · Resuelta: {new Date(t.resolved_at).toLocaleString("es-CO")}</>
+              {tasks.map((t) => {
+                const isInfo = t.severity === "info" || t.type === "production_started";
+                const pending = t.status === "pendiente";
+                const wrapCls = isInfo
+                  ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
+                  : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
+                const Icon = isInfo ? Rocket : AlertTriangle;
+                const iconCls = isInfo ? "text-blue-600 dark:text-blue-400" : "text-amber-600 dark:text-amber-400";
+                return (
+                  <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold inline-flex items-center gap-2">
+                          <Icon className={`h-4 w-4 ${iconCls}`} /> {t.title}
+                        </p>
+                        {t.reason ? (
+                          <div className={`mt-2 rounded-md p-2.5 border ${isInfo ? "bg-blue-500/10 border-blue-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
+                            {!isInfo && (
+                              <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-300 mb-1">
+                                Qué debes corregir
+                              </p>
+                            )}
+                            <p className="text-sm text-foreground whitespace-pre-wrap">{t.reason}</p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground mt-1 italic">Sin detalle.</p>
                         )}
-                      </p>
+                        <p className="text-[11px] text-muted-foreground mt-2">
+                          Creada: {new Date(t.created_at).toLocaleString("es-CO")}
+                          {t.resolved_at && (
+                            <> · Resuelta: {new Date(t.resolved_at).toLocaleString("es-CO")}</>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        {t.order_id && (
+                          <Link
+                            to="/erp/orders/$id"
+                            params={{ id: t.order_id }}
+                            className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
+                          >
+                            {isInfo ? "Ver venta" : "Ir a la venta para corregir"} <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        )}
+                        {isInfo && pending && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 h-7 text-xs"
+                            onClick={() => markSeen.mutate(t.id)}
+                            disabled={markSeen.isPending && markSeen.variables === t.id}
+                          >
+                            {markSeen.isPending && markSeen.variables === t.id
+                              ? <Loader2 className="h-3 w-3 animate-spin" />
+                              : <Check className="h-3 w-3" />} Visto
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-2 flex-wrap">
-                      {t.order_id && (
-                        <Link
-                          to="/erp/orders/$id"
-                          params={{ id: t.order_id }}
-                          className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
-                        >
-                          Ir a la venta para corregir <ArrowRight className="h-3 w-3" />
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </TabsContent>
