@@ -13,6 +13,7 @@ import { StatusBadge } from "@/features/orders/status-badge";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { NewCustomerDialog } from "@/features/customers/new-customer-dialog";
 import { PaymentBadge, InvoicedBadge } from "@/features/invoices/invoice-badges";
+import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/features/orders/delivery-urgency";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/")({
   component: OrdersPage,
@@ -42,7 +43,7 @@ function OrdersPage() {
     queryFn: async () => {
       let q = supabase
         .from("orders")
-        .select("id, order_number, invoice_number, total, advance_amount, created_at, status_id, customer_name, customer_phone, customer_doc_number, status:order_statuses(name,color), invoices(id), items:order_items(description, quantity, sort_order)")
+        .select("id, order_number, invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, customer_name, customer_phone, customer_doc_number, status:order_statuses(name,color), invoices(id), items:order_items(description, quantity, sort_order)")
         .eq("brand_id", selectedBrandId!)
         .order("created_at", { ascending: false });
       if (statusFilter !== "all") q = q.eq("status_id", statusFilter);
@@ -124,11 +125,13 @@ function OrdersPage() {
                   <th className="text-left px-4 py-3">Producto</th>
                   <th className="text-left px-4 py-3">Estado</th>
                   <th className="text-right px-4 py-3">Total</th>
-                  <th className="text-left px-4 py-3">Fecha</th>
+                  <th className="text-left px-4 py-3">Entrega</th>
                 </tr>
               </thead>
               <tbody>
-                {ordersQuery.data!.map((o: any) => (
+                {ordersQuery.data!.map((o: any) => {
+                  const { urgency, label: urgencyLabel } = getDeliveryUrgency(o.estimated_delivery_date);
+                  return (
                   <tr key={o.id} className="border-t border-border hover:bg-muted/30">
                     <td className="px-4 py-3">
                       <Link to="/erp/orders/$id" params={{ id: o.id }} className="font-medium hover:text-accent">
@@ -147,20 +150,30 @@ function OrdersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatMoney(o.total)}</td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(o.created_at).toLocaleDateString("es-CO")}</td>
+                    <td className="px-4 py-3">
+                      <div className={`inline-flex flex-col items-start gap-0.5 rounded-md px-2 py-1 text-xs font-medium ${urgencyChipClasses(urgency)}`}>
+                        <span className="tabular-nums">{formatDeliveryDate(o.estimated_delivery_date)}</span>
+                        {urgency !== "none" && urgency !== "normal" && (
+                          <span className="text-[10px] font-normal opacity-90">{urgencyLabel}</span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
 
             {/* Mobile */}
             <div className="md:hidden divide-y divide-border">
-              {ordersQuery.data!.map((o: any) => (
+              {ordersQuery.data!.map((o: any) => {
+                const { urgency, label: urgencyLabel } = getDeliveryUrgency(o.estimated_delivery_date);
+                return (
                 <Link
                   key={o.id}
                   to="/erp/orders/$id"
                   params={{ id: o.id }}
-                  className="flex flex-col gap-1 px-4 py-3 hover:bg-muted/30"
+                  className="flex flex-col gap-1.5 px-4 py-3 hover:bg-muted/30"
                 >
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="font-medium">
@@ -173,12 +186,18 @@ function OrdersPage() {
                     <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
                     {o.invoices?.length > 0 && <InvoicedBadge />}
                   </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{new Date(o.created_at).toLocaleDateString("es-CO")}</span>
-                    <span className="tabular-nums font-medium text-foreground">{formatMoney(o.total)}</span>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium ${urgencyChipClasses(urgency)}`}>
+                      <span>{formatDeliveryDate(o.estimated_delivery_date)}</span>
+                      {urgency !== "none" && urgency !== "normal" && (
+                        <span className="opacity-90">· {urgencyLabel}</span>
+                      )}
+                    </span>
+                    <span className="tabular-nums font-medium text-foreground text-sm">{formatMoney(o.total)}</span>
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
 
           </>
