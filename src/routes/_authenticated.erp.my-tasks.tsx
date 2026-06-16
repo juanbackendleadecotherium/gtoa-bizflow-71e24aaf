@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle } from "lucide-react";
+import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle, Rocket, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/erp/my-tasks")({
   head: () => ({ meta: [{ title: "Mis tareas — Grupo Getova" }] }),
@@ -17,6 +19,7 @@ type Task = {
   reason: string | null;
   type: string;
   status: string;
+  severity: string | null;
   created_at: string;
   resolved_at: string | null;
   order_id: string | null;
@@ -26,6 +29,7 @@ type Task = {
 
 function MyTasks() {
   const session = useSession();
+  const qc = useQueryClient();
   const userId = session.session?.user.id;
   const [tab, setTab] = useState<"pendiente" | "resuelta">("pendiente");
 
@@ -35,13 +39,29 @@ function MyTasks() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("seller_tasks")
-        .select("id, title, reason, type, status, created_at, resolved_at, order_id, production_order_id, brand_id")
+        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, brand_id")
         .eq("seller_id", userId!)
         .eq("status", tab)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Task[];
     },
+  });
+
+  const markSeen = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("seller_tasks")
+        .update({ status: "resuelta", resolved_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Aviso archivado");
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
   const tasks = q.data ?? [];
