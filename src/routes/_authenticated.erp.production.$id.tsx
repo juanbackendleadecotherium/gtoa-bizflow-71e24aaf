@@ -469,30 +469,40 @@ function ProductionDetail() {
             <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-3">
               <History className="h-4 w-4" /> Bitácora
             </h2>
+            {(() => {
+              const rows = (audit.data ?? []) as any[];
+              const created = [...rows].reverse().find((r) => r.action === "create");
+              const rejected = rows.find((r) => r.action === "rejected");
+              if (!created && !rejected) return null;
+              const fmt = (iso: string) => new Date(iso).toLocaleString("es-CO", {
+                day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+              });
+              return (
+                <div className="mb-4 space-y-2">
+                  {created && (
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-wide text-primary font-semibold">Enviada por</p>
+                      <p className="text-sm font-medium truncate">{created.changed_by_email ?? "—"}</p>
+                      <p className="text-[11px] text-muted-foreground">{fmt(created.created_at)}</p>
+                    </div>
+                  )}
+                  {rejected && (
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-wide text-destructive font-semibold">Rechazada por</p>
+                      <p className="text-sm font-medium truncate">{rejected.changed_by_email ?? "—"}</p>
+                      <p className="text-[11px] text-muted-foreground">{fmt(rejected.created_at)}</p>
+                      {rejected.note && (
+                        <p className="text-xs italic mt-1 text-foreground/80">"{rejected.note}"</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             {audit.isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : (audit.data ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">Sin movimientos.</p>
             ) : (
-              <ol className="space-y-3">
-                {(audit.data ?? []).map((a: any) => (
-                  <li key={a.id} className="text-xs border-l-2 border-border pl-3">
-                    <p className="font-medium text-foreground">
-                      {a.action === "create" ? "Orden creada"
-                        : a.action === "rejected" ? "🚫 Rechazada y devuelta al vendedor"
-                        : a.action === "status" ? `Estado: ${a.new_value}`
-                        : a.action === "planimetry_upload" ? `Planimetría subida (${a.new_value?.file_name ?? ""})`
-                        : a.action === "planimetry_delete" ? `Planimetría eliminada (${a.old_value?.file_name ?? ""})`
-                        : a.field ? `${a.field}: ${JSON.stringify(a.new_value)}` : a.action}
-                    </p>
-                    {a.note && <p className="text-foreground/80 mt-1 italic">"{a.note}"</p>}
-                    <p className="text-muted-foreground mt-0.5">
-                      {new Date(a.created_at).toLocaleString("es-CO")}
-                      {a.changed_by_email && ` · ${a.changed_by_email}`}
-                    </p>
-                  </li>
-                ))}
-              </ol>
+              <AuditTimeline rows={(audit.data ?? []) as any} />
             )}
           </section>
         </aside>
