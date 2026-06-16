@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Factory, Loader2, ExternalLink, Plus, RefreshCw, Package } from "lucide-react";
+import { Factory, Loader2, ExternalLink, Plus, Package } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProductionStatusBadge } from "./status-badge";
