@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck, MessageSquare } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck, MessageSquare, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
@@ -270,9 +270,12 @@ function OrderDetail() {
             {o.order_number}{o.invoice_number ? ` · Fact. ${o.invoice_number}` : ""}
           </p>
           <h1 className="font-display text-2xl font-semibold break-words">{o.customer_name ?? "Sin cliente"}</h1>
-          <p className="text-sm text-muted-foreground">
-            Creado {new Date(o.created_at).toLocaleString("es-CO")}
-          </p>
+          <div className="mt-2 inline-flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-base font-semibold text-primary">
+            <Calendar className="h-4 w-4" />
+            {o.estimated_delivery_date
+              ? new Date(o.estimated_delivery_date + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })
+              : "Sin fecha de entrega"}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {status && <StatusBadge name={status.name} color={status.color} />}
