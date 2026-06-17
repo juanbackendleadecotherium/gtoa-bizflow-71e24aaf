@@ -625,6 +625,19 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
                   />
                 </div>
 
+                <div>
+                  <label className="block">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Costo proveedor (COP)</span>
+                    <InlineMoney
+                      value={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : 0}
+                      hasValue={it.manufacturing_cost != null}
+                      onSave={(n, hasValue) =>
+                        patchItem.mutate({ id: it.id, patch: { manufacturing_cost: hasValue ? n : null } })
+                      }
+                    />
+                  </label>
+                </div>
+
                 <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
                   <DateField
                     label="Prom. proveedor"
