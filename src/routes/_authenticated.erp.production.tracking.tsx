@@ -140,7 +140,7 @@ function TrackingPage() {
         poIds.length
           ? supabase
               .from("order_items")
-              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date")
+              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_id, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date, quotation_date")
               .in("production_order_id", poIds)
               .order("sort_order", { ascending: true })
           : Promise.resolve({ data: [], error: null } as any),
@@ -149,7 +149,17 @@ function TrackingPage() {
           : Promise.resolve({ data: [], error: null } as any),
       ]);
 
-      const suppliersById = new Map((suppliersRes.data ?? []).map((s: any) => [s.id, s]));
+      // Also fetch suppliers for items (may include suppliers not on the PO)
+      const itemSupplierIds = Array.from(new Set(
+        ((itemsRes.data ?? []) as any[]).map((it: any) => it.supplier_id).filter(Boolean),
+      ));
+      const allSupplierIds = Array.from(new Set([...supplierIds, ...itemSupplierIds]));
+      let extraSuppliers: any[] = suppliersRes.data ?? [];
+      if (itemSupplierIds.some((id) => !supplierIds.includes(id)) && allSupplierIds.length) {
+        const { data: allSup } = await supabase.from("suppliers").select("id, name").in("id", allSupplierIds);
+        extraSuppliers = allSup ?? extraSuppliers;
+      }
+      const suppliersById = new Map(extraSuppliers.map((s: any) => [s.id, s]));
       const sellersById = new Map((sellersRes.data ?? []).map((s: any) => [s.user_id, s]));
       const itemsByPo = new Map<string, any[]>();
       for (const it of (itemsRes.data ?? []) as any[]) {
