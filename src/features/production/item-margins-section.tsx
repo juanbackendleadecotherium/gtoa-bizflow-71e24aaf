@@ -233,12 +233,13 @@ function ItemCard({
         .update({
           manufacturing_cost: hasCost ? cost : null,
           supplier_id: supplierId || null,
+          quotation_date: quotationDate || null,
         })
         .eq("id", item.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Costo guardado");
+      toast.success("Guardado");
       onSaved();
       setDirty(false);
     },
