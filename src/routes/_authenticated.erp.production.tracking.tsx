@@ -358,7 +358,12 @@ function TrackingRow({
   const r = row;
   const saleTotal = Number(r.po_sale_total) || 0;
   const invoiceTotal = Number(r.order?.total) || 0;
-  const cost = r.manufacturing_cost == null ? null : Number(r.manufacturing_cost);
+  const itemsList: any[] = r.items ?? [];
+  const itemsWithCost = itemsList.filter((it) => it.manufacturing_cost != null);
+  const aggCost = itemsList.length > 0 && itemsWithCost.length === itemsList.length
+    ? itemsList.reduce((acc, it) => acc + Number(it.manufacturing_cost), 0)
+    : null;
+  const cost = aggCost ?? (r.manufacturing_cost == null ? null : Number(r.manufacturing_cost));
   const liveMargin = cost != null && saleTotal > 0 ? ((saleTotal - cost) / saleTotal) * 100 : null;
   const margin = liveMargin ?? (r.margin_pct == null ? null : Number(r.margin_pct));
   const cls = marginCls(margin);
