@@ -650,20 +650,27 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
                     onSave={(v) => patchItem.mutate({ id: it.id, patch: { supplier_actual_date: v } })}
                   />
                   {it.production_started_at ? (
-                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-md px-2 py-1.5 whitespace-nowrap">
-                      📍 Iniciado {new Date(it.production_started_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
-                    </span>
+                    <DateField
+                      label="Inicio prod."
+                      value={it.production_started_at ? String(it.production_started_at).slice(0, 10) : null}
+                      onSave={(v) =>
+                        patchItem.mutate({
+                          id: it.id,
+                          patch: { production_started_at: v ? new Date(v + "T12:00:00").toISOString() : null },
+                        })
+                      }
+                    />
                   ) : (
                     <button
                       type="button"
                       onClick={() => startProd.mutate(it.id)}
                       disabled={startProd.isPending && startProd.variables === it.id}
-                      className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50"
-                      title="Marcar que el proveedor inició la producción real (notifica al vendedor)"
+                      className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50 self-end"
+                      title="Marcar inicio real de producción hoy (notifica al vendedor)"
                     >
                       {startProd.isPending && startProd.variables === it.id
                         ? <Loader2 className="h-3 w-3 animate-spin" />
-                        : "🚀"} Inicio real
+                        : "🚀"} Inicio hoy
                     </button>
                   )}
                 </div>
