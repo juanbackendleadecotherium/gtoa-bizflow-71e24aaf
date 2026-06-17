@@ -390,7 +390,7 @@ function TrackingRow({
       {/* Fila resumen */}
       <button
         onClick={onToggle}
-        className="w-full text-left px-3 py-2.5 pl-4 grid grid-cols-[180px_120px_1fr_1.2fr_140px_120px_120px_90px_110px_32px] gap-2 items-center"
+        className="w-full text-left px-3 py-2.5 pl-4 grid grid-cols-[180px_120px_1fr_1.4fr_120px_90px_110px_32px] gap-2 items-center"
         style={{ minHeight: 56 }}
       >
         {/* Factura / OP */}
