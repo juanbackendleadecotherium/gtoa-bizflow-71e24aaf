@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Save, Package, TrendingUp, Building2 } from "lucide-react";
+import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/features/orders/money-input";
 import { MarginPill, marginTone } from "./margin-pill";
 
@@ -19,6 +20,7 @@ type Item = {
   margin_pct: number | null;
   supplier_id: string | null;
   cost_notes: string | null;
+  quotation_date: string | null;
 };
 
 function fmtMoney(n: number | null | undefined) {
