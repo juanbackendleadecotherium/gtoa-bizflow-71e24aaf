@@ -614,6 +614,29 @@ function ExpandedPanel({ row, onPatch }: { row: any; onPatch: (patch: Record<str
                   <span className="text-xs font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
                 </div>
 
+                <div className="grid sm:grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Proveedor</span>
+                    <select
+                      value={it.supplier_id ?? ""}
+                      onChange={(e) =>
+                        patchItem.mutate({ id: it.id, patch: { supplier_id: e.target.value || null } })
+                      }
+                      className="mt-0.5 w-full bg-background border border-border hover:border-primary/50 focus:border-primary rounded-md px-2 py-1 text-xs outline-none transition-colors"
+                    >
+                      <option value="">— Sin proveedor</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <DateField
+                    label="Cotización"
+                    value={it.quotation_date}
+                    onSave={(v) => patchItem.mutate({ id: it.id, patch: { quotation_date: v } })}
+                  />
+                </div>
+
                 <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
                   <DateField
                     label="Prom. proveedor"
