@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Save, Package, TrendingUp, Building2 } from "lucide-react";
+import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/features/orders/money-input";
 import { MarginPill, marginTone } from "./margin-pill";
 
@@ -19,6 +20,7 @@ type Item = {
   margin_pct: number | null;
   supplier_id: string | null;
   cost_notes: string | null;
+  quotation_date: string | null;
 };
 
 function fmtMoney(n: number | null | undefined) {
@@ -77,7 +79,7 @@ export function ItemMarginsSection({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, margin_pct, supplier_id, cost_notes, sort_order")
+        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date")
         .eq("production_order_id", productionOrderId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -196,14 +198,16 @@ function ItemCard({
   const [cost, setCost] = useState<number>(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
   const [hasCost, setHasCost] = useState<boolean>(item.manufacturing_cost != null);
   const [supplierId, setSupplierId] = useState(item.supplier_id ?? "");
+  const [quotationDate, setQuotationDate] = useState(item.quotation_date ?? "");
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     setCost(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
     setHasCost(item.manufacturing_cost != null);
     setSupplierId(item.supplier_id ?? "");
+    setQuotationDate(item.quotation_date ?? "");
     setDirty(false);
-  }, [item.id, item.manufacturing_cost, item.supplier_id]);
+  }, [item.id, item.manufacturing_cost, item.supplier_id, item.quotation_date]);
 
   const line = Number(item.line_total) || 0;
   const livePct = useMemo(() => {
@@ -229,12 +233,13 @@ function ItemCard({
         .update({
           manufacturing_cost: hasCost ? cost : null,
           supplier_id: supplierId || null,
+          quotation_date: quotationDate || null,
         })
         .eq("id", item.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Costo guardado");
+      toast.success("Guardado");
       onSaved();
       setDirty(false);
     },
@@ -311,6 +316,23 @@ function ItemCard({
             <MarginPill pct={livePct} min={min} />
           </div>
         </div>
+
+        {/* Per-item quotation date — supports cotizar cada producto en días distintos */}
+        <div>
+          <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mb-1.5">
+            <CalendarDays className="h-3 w-3" /> Fecha de cotización (este producto)
+          </Label>
+          <Input
+            type="date"
+            value={quotationDate}
+            onChange={(e) => {
+              setQuotationDate(e.target.value);
+              setDirty(true);
+            }}
+            className="h-9 max-w-[220px]"
+          />
+        </div>
+
 
         {/* Save button */}
         {dirty && (

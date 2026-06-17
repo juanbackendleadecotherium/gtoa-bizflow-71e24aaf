@@ -65,16 +65,22 @@ function TrackingPage() {
 
   useEffect(() => {
     if (!selectedBrandId) return;
+    const refresh = () => {
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
+    };
     const channel = supabase
       .channel(`production-tracking-${selectedBrandId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "production_orders", filter: `brand_id=eq.${selectedBrandId}` },
-        () => {
-          qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
-          qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
-          qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
-        },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "order_items" },
+        refresh,
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -134,7 +140,7 @@ function TrackingPage() {
         poIds.length
           ? supabase
               .from("order_items")
-              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date")
+              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_id, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date, quotation_date")
               .in("production_order_id", poIds)
               .order("sort_order", { ascending: true })
           : Promise.resolve({ data: [], error: null } as any),
@@ -143,12 +149,22 @@ function TrackingPage() {
           : Promise.resolve({ data: [], error: null } as any),
       ]);
 
-      const suppliersById = new Map((suppliersRes.data ?? []).map((s: any) => [s.id, s]));
+      // Also fetch suppliers for items (may include suppliers not on the PO)
+      const itemSupplierIds = Array.from(new Set(
+        ((itemsRes.data ?? []) as any[]).map((it: any) => it.supplier_id).filter(Boolean),
+      ));
+      const allSupplierIds = Array.from(new Set([...supplierIds, ...itemSupplierIds]));
+      let extraSuppliers: any[] = suppliersRes.data ?? [];
+      if (itemSupplierIds.some((id) => !supplierIds.includes(id)) && allSupplierIds.length) {
+        const { data: allSup } = await supabase.from("suppliers").select("id, name").in("id", allSupplierIds);
+        extraSuppliers = allSup ?? extraSuppliers;
+      }
+      const suppliersById = new Map(extraSuppliers.map((s: any) => [s.id, s]));
       const sellersById = new Map((sellersRes.data ?? []).map((s: any) => [s.user_id, s]));
       const itemsByPo = new Map<string, any[]>();
       for (const it of (itemsRes.data ?? []) as any[]) {
         const arr = itemsByPo.get(it.production_order_id) ?? [];
-        arr.push(it);
+        arr.push({ ...it, supplier: it.supplier_id ? suppliersById.get(it.supplier_id) ?? null : null });
         itemsByPo.set(it.production_order_id, arr);
       }
 
@@ -474,7 +490,7 @@ function TrackingRow({
 
       {/* Panel expandido */}
       {expanded && (
-        <ExpandedPanel row={r} onPatch={onPatch} />
+        <ExpandedPanel row={r} suppliers={suppliers} onPatch={onPatch} />
       )}
     </div>
   );
@@ -540,7 +556,7 @@ function InlineMoney({
   );
 }
 
-function ExpandedPanel({ row, onPatch }: { row: any; onPatch: (patch: Record<string, any>) => void }) {
+function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id: string; name: string }[]; onPatch: (patch: Record<string, any>) => void }) {
   const r = row;
   const qc = useQueryClient();
   const desv = daysDiff(r.client_actual_date, r.client_promised_date);
@@ -596,6 +612,29 @@ function ExpandedPanel({ row, onPatch }: { row: any; onPatch: (patch: Record<str
                     </p>
                   </div>
                   <span className="text-xs font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Proveedor</span>
+                    <select
+                      value={it.supplier_id ?? ""}
+                      onChange={(e) =>
+                        patchItem.mutate({ id: it.id, patch: { supplier_id: e.target.value || null } })
+                      }
+                      className="mt-0.5 w-full bg-background border border-border hover:border-primary/50 focus:border-primary rounded-md px-2 py-1 text-xs outline-none transition-colors"
+                    >
+                      <option value="">— Sin proveedor</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <DateField
+                    label="Cotización"
+                    value={it.quotation_date}
+                    onSave={(v) => patchItem.mutate({ id: it.id, patch: { quotation_date: v } })}
+                  />
                 </div>
 
                 <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
