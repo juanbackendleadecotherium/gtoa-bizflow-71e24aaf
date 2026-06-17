@@ -317,6 +317,23 @@ function ItemCard({
           </div>
         </div>
 
+        {/* Per-item quotation date — supports cotizar cada producto en días distintos */}
+        <div>
+          <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mb-1.5">
+            <CalendarDays className="h-3 w-3" /> Fecha de cotización (este producto)
+          </Label>
+          <Input
+            type="date"
+            value={quotationDate}
+            onChange={(e) => {
+              setQuotationDate(e.target.value);
+              setDirty(true);
+            }}
+            className="h-9 max-w-[220px]"
+          />
+        </div>
+
+
         {/* Save button */}
         {dirty && (
           <div className="flex justify-end pt-1">
