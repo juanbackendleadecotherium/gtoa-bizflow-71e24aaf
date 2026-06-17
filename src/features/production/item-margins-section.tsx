@@ -198,14 +198,16 @@ function ItemCard({
   const [cost, setCost] = useState<number>(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
   const [hasCost, setHasCost] = useState<boolean>(item.manufacturing_cost != null);
   const [supplierId, setSupplierId] = useState(item.supplier_id ?? "");
+  const [quotationDate, setQuotationDate] = useState(item.quotation_date ?? "");
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     setCost(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
     setHasCost(item.manufacturing_cost != null);
     setSupplierId(item.supplier_id ?? "");
+    setQuotationDate(item.quotation_date ?? "");
     setDirty(false);
-  }, [item.id, item.manufacturing_cost, item.supplier_id]);
+  }, [item.id, item.manufacturing_cost, item.supplier_id, item.quotation_date]);
 
   const line = Number(item.line_total) || 0;
   const livePct = useMemo(() => {
