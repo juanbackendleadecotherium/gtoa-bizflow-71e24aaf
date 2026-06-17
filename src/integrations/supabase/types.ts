@@ -512,6 +512,7 @@ export type Database = {
           production_order_id: string | null
           production_started_at: string | null
           quantity: number
+          quotation_date: string | null
           sort_order: number
           supplier_actual_date: string | null
           supplier_id: string | null
@@ -533,6 +534,7 @@ export type Database = {
           production_order_id?: string | null
           production_started_at?: string | null
           quantity?: number
+          quotation_date?: string | null
           sort_order?: number
           supplier_actual_date?: string | null
           supplier_id?: string | null
@@ -554,6 +556,7 @@ export type Database = {
           production_order_id?: string | null
           production_started_at?: string | null
           quantity?: number
+          quotation_date?: string | null
           sort_order?: number
           supplier_actual_date?: string | null
           supplier_id?: string | null
