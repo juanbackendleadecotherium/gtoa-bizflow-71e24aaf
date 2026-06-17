@@ -556,7 +556,7 @@ function InlineMoney({
   );
 }
 
-function ExpandedPanel({ row, onPatch }: { row: any; onPatch: (patch: Record<string, any>) => void }) {
+function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id: string; name: string }[]; onPatch: (patch: Record<string, any>) => void }) {
   const r = row;
   const qc = useQueryClient();
   const desv = daysDiff(r.client_actual_date, r.client_promised_date);
