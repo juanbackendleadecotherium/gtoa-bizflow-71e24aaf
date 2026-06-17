@@ -164,7 +164,7 @@ function TrackingPage() {
       const itemsByPo = new Map<string, any[]>();
       for (const it of (itemsRes.data ?? []) as any[]) {
         const arr = itemsByPo.get(it.production_order_id) ?? [];
-        arr.push(it);
+        arr.push({ ...it, supplier: it.supplier_id ? suppliersById.get(it.supplier_id) ?? null : null });
         itemsByPo.set(it.production_order_id, arr);
       }
 
