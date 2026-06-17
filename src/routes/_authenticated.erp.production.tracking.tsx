@@ -140,7 +140,7 @@ function TrackingPage() {
         poIds.length
           ? supabase
               .from("order_items")
-              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_id, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date, quotation_date")
+              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_id, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date, quotation_date, manufacturing_cost")
               .in("production_order_id", poIds)
               .order("sort_order", { ascending: true })
           : Promise.resolve({ data: [], error: null } as any),
@@ -316,14 +316,12 @@ function TrackingPage() {
             Mostrando <span className="font-semibold text-foreground">{filtered.length}</span> de {totalCount} órdenes
           </p>
           {/* Encabezado de columnas */}
-          <div className="hidden xl:grid grid-cols-[1px_180px_120px_1fr_1.2fr_140px_120px_120px_90px_110px_32px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground font-semibold border-b border-border">
+          <div className="hidden xl:grid grid-cols-[1px_180px_120px_1fr_1.4fr_120px_90px_110px_32px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground font-semibold border-b border-border">
             <span />
             <span>Factura / OP</span>
             <span>Novedad</span>
             <span>Cliente / vend.</span>
             <span>Productos</span>
-            <span>Proveedor</span>
-            <span className="text-right">Costo</span>
             <span className="text-right">Venta</span>
             <span className="text-center">Margen</span>
             <span>Entrega</span>
@@ -360,7 +358,12 @@ function TrackingRow({
   const r = row;
   const saleTotal = Number(r.po_sale_total) || 0;
   const invoiceTotal = Number(r.order?.total) || 0;
-  const cost = r.manufacturing_cost == null ? null : Number(r.manufacturing_cost);
+  const itemsList: any[] = r.items ?? [];
+  const itemsWithCost = itemsList.filter((it) => it.manufacturing_cost != null);
+  const aggCost = itemsList.length > 0 && itemsWithCost.length === itemsList.length
+    ? itemsList.reduce((acc, it) => acc + Number(it.manufacturing_cost), 0)
+    : null;
+  const cost = aggCost ?? (r.manufacturing_cost == null ? null : Number(r.manufacturing_cost));
   const liveMargin = cost != null && saleTotal > 0 ? ((saleTotal - cost) / saleTotal) * 100 : null;
   const margin = liveMargin ?? (r.margin_pct == null ? null : Number(r.margin_pct));
   const cls = marginCls(margin);
@@ -387,7 +390,7 @@ function TrackingRow({
       {/* Fila resumen */}
       <button
         onClick={onToggle}
-        className="w-full text-left px-3 py-2.5 pl-4 grid grid-cols-[180px_120px_1fr_1.2fr_140px_120px_120px_90px_110px_32px] gap-2 items-center"
+        className="w-full text-left px-3 py-2.5 pl-4 grid grid-cols-[180px_120px_1fr_1.4fr_120px_90px_110px_32px] gap-2 items-center"
         style={{ minHeight: 56 }}
       >
         {/* Factura / OP */}
@@ -438,23 +441,8 @@ function TrackingRow({
           )}
         </div>
 
-        {/* Proveedor inline */}
-        <div onClick={(e) => e.stopPropagation()}>
-          <InlineSupplier
-            value={r.supplier_id ?? ""}
-            suppliers={suppliers}
-            onSave={(v) => onPatch({ supplier_id: v || null })}
-          />
-        </div>
 
-        {/* Costo inline */}
-        <div onClick={(e) => e.stopPropagation()} className="text-right">
-          <InlineMoney
-            value={cost ?? 0}
-            hasValue={cost != null}
-            onSave={(n, hasValue) => onPatch({ manufacturing_cost: hasValue ? n : null })}
-          />
-        </div>
+
 
         {/* Venta */}
         <div className="text-right">
@@ -635,6 +623,19 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
                     value={it.quotation_date}
                     onSave={(v) => patchItem.mutate({ id: it.id, patch: { quotation_date: v } })}
                   />
+                </div>
+
+                <div>
+                  <label className="block">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Costo proveedor (COP)</span>
+                    <InlineMoney
+                      value={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : 0}
+                      hasValue={it.manufacturing_cost != null}
+                      onSave={(n, hasValue) =>
+                        patchItem.mutate({ id: it.id, patch: { manufacturing_cost: hasValue ? n : null } })
+                      }
+                    />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
