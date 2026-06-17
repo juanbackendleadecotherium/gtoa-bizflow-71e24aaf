@@ -441,23 +441,8 @@ function TrackingRow({
           )}
         </div>
 
-        {/* Proveedor inline */}
-        <div onClick={(e) => e.stopPropagation()}>
-          <InlineSupplier
-            value={r.supplier_id ?? ""}
-            suppliers={suppliers}
-            onSave={(v) => onPatch({ supplier_id: v || null })}
-          />
-        </div>
 
-        {/* Costo inline */}
-        <div onClick={(e) => e.stopPropagation()} className="text-right">
-          <InlineMoney
-            value={cost ?? 0}
-            hasValue={cost != null}
-            onSave={(n, hasValue) => onPatch({ manufacturing_cost: hasValue ? n : null })}
-          />
-        </div>
+
 
         {/* Venta */}
         <div className="text-right">
