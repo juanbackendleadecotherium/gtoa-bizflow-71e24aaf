@@ -65,16 +65,22 @@ function TrackingPage() {
 
   useEffect(() => {
     if (!selectedBrandId) return;
+    const refresh = () => {
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
+    };
     const channel = supabase
       .channel(`production-tracking-${selectedBrandId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "production_orders", filter: `brand_id=eq.${selectedBrandId}` },
-        () => {
-          qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
-          qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
-          qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
-        },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "order_items" },
+        refresh,
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
