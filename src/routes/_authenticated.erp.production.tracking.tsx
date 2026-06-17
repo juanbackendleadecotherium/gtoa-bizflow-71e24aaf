@@ -316,14 +316,12 @@ function TrackingPage() {
             Mostrando <span className="font-semibold text-foreground">{filtered.length}</span> de {totalCount} órdenes
           </p>
           {/* Encabezado de columnas */}
-          <div className="hidden xl:grid grid-cols-[1px_180px_120px_1fr_1.2fr_140px_120px_120px_90px_110px_32px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground font-semibold border-b border-border">
+          <div className="hidden xl:grid grid-cols-[1px_180px_120px_1fr_1.4fr_120px_90px_110px_32px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground font-semibold border-b border-border">
             <span />
             <span>Factura / OP</span>
             <span>Novedad</span>
             <span>Cliente / vend.</span>
             <span>Productos</span>
-            <span>Proveedor</span>
-            <span className="text-right">Costo</span>
             <span className="text-right">Venta</span>
             <span className="text-center">Margen</span>
             <span>Entrega</span>
