@@ -5,6 +5,8 @@ export type PlanimetryItem = {
   description: string;
   quantity: number;
   images: string[];
+  planimetryImages?: string[];
+  planimetryPdfNames?: string[];
 };
 
 export type PlanimetryDocumentData = {
