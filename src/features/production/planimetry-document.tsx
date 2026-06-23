@@ -5,6 +5,8 @@ export type PlanimetryItem = {
   description: string;
   quantity: number;
   images: string[];
+  planimetryImages?: string[];
+  planimetryPdfNames?: string[];
 };
 
 export type PlanimetryDocumentData = {
@@ -199,6 +201,39 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
+  // === PLANIMETRY (seller-uploaded technical drawings) ======================
+  planiSection: {
+    marginBottom: 14,
+    paddingTop: 10,
+    borderTopWidth: 0.6,
+    borderTopColor: LINE,
+    borderTopStyle: "solid",
+  },
+  planiGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
+  planiCellFull: { width: "100%", paddingHorizontal: 5, paddingBottom: 10 },
+  planiCellHalf: { width: "50%", paddingHorizontal: 5, paddingBottom: 10 },
+  planiImageFrame: {
+    borderWidth: 0.6,
+    borderColor: INK,
+    borderStyle: "solid",
+    padding: 4,
+  },
+  planiImageLarge: { width: "100%", height: 360, objectFit: "contain" },
+  planiImageMedium: { width: "100%", height: 220, objectFit: "contain" },
+  planiCaption: {
+    fontSize: 7.5,
+    color: MUTED,
+    marginTop: 4,
+    textAlign: "center",
+    letterSpacing: 0.4,
+  },
+  planiPdfNote: {
+    marginTop: 4,
+    fontSize: 8.5,
+    color: SUB,
+    fontStyle: "italic",
+  },
+
   // === NOTES ================================================================
   notesSection: {
     marginBottom: 10,
@@ -370,6 +405,42 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                     </View>
                   ))}
                 </View>
+              </View>
+            ) : null}
+
+            {/* PLANIMETRY — seller-uploaded technical drawings (image files) */}
+            {(it.planimetryImages?.length ?? 0) > 0 || (it.planimetryPdfNames?.length ?? 0) > 0 ? (
+              <View style={styles.planiSection} break>
+                <Text style={styles.sectionLabel}>Planimetría del producto</Text>
+                {it.planimetryImages && it.planimetryImages.length > 0 ? (
+                  <View style={styles.planiGrid}>
+                    {it.planimetryImages.map((url, i) => {
+                      const single = it.planimetryImages!.length === 1;
+                      return (
+                        <View
+                          key={i}
+                          style={single ? styles.planiCellFull : styles.planiCellHalf}
+                          wrap={false}
+                        >
+                          <View style={styles.planiImageFrame}>
+                            <Image
+                              src={url}
+                              style={single ? styles.planiImageLarge : styles.planiImageMedium}
+                            />
+                          </View>
+                          <Text style={styles.planiCaption}>
+                            PLANIMETRÍA {it.planimetryImages!.length > 1 ? i + 1 : ""}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : null}
+                {it.planimetryPdfNames && it.planimetryPdfNames.length > 0 ? (
+                  <Text style={styles.planiPdfNote}>
+                    Planimetría adjunta en PDF: {it.planimetryPdfNames.join(", ")}
+                  </Text>
+                ) : null}
               </View>
             ) : null}
 

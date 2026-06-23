@@ -76,7 +76,7 @@ async function buildPlanData(
     supabase.from("orders").select(`
       order_number, invoice_number, sale_date, estimated_delivery_date, notes,
       customer_name, customer_phone, customer_city, created_by,
-      items:order_items(id, description, quantity, images, sort_order)
+      items:order_items(id, description, quantity, images, sort_order, planimetry_files)
     `).eq("id", orderId).maybeSingle(),
     supabase.from("brands").select("name, slug, legal_name, logo_url, primary_color").eq("id", brandId).maybeSingle(),
     supabase.auth.getUser(),
@@ -106,13 +106,25 @@ async function buildPlanData(
     filteredItems.map(async (it: any) => {
       const rawImages: string[] = Array.isArray(it.images) ? it.images : [];
       const resolved = await Promise.all(rawImages.map(async (u) => (await urlToDataUri(u)) ?? u));
+
+      const rawPlani: Array<{ url: string; name: string; mime: string }> =
+        Array.isArray(it.planimetry_files) ? it.planimetry_files : [];
+      const planiImages = rawPlani.filter((f) => /^image\//i.test(f?.mime ?? ""));
+      const planiPdfs = rawPlani.filter((f) => /pdf$/i.test(f?.mime ?? ""));
+      const resolvedPlani = await Promise.all(
+        planiImages.map(async (f) => (await urlToDataUri(f.url)) ?? f.url),
+      );
+
       return {
         description: it.description ?? "",
         quantity: Number(it.quantity ?? 1),
         images: resolved.filter((u): u is string => !!u),
+        planimetryImages: resolvedPlani.filter((u): u is string => !!u),
+        planimetryPdfNames: planiPdfs.map((f) => f.name),
       };
     }),
   );
+
 
   return {
     production_code: productionCode,
