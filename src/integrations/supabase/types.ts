@@ -1329,6 +1329,7 @@ export type Database = {
           id: string
           order_id: string | null
           order_item_id: string | null
+          planimetry_due_at: string | null
           production_order_id: string | null
           reason: string | null
           resolved_at: string | null
@@ -1345,6 +1346,7 @@ export type Database = {
           id?: string
           order_id?: string | null
           order_item_id?: string | null
+          planimetry_due_at?: string | null
           production_order_id?: string | null
           reason?: string | null
           resolved_at?: string | null
@@ -1361,6 +1363,7 @@ export type Database = {
           id?: string
           order_id?: string | null
           order_item_id?: string | null
+          planimetry_due_at?: string | null
           production_order_id?: string | null
           reason?: string | null
           resolved_at?: string | null
@@ -1542,6 +1545,10 @@ export type Database = {
       }
     }
     Functions: {
+      add_business_days: {
+        Args: { _from: string; _n: number }
+        Returns: string
+      }
       can_write_brand: {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean

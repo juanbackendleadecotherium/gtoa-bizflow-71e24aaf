@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ClipboardList, Settings, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
+import { OverduePlanimetriesAdminAlert } from "@/features/seller-tasks/overdue-planimetries-admin-alert";
 
 export const Route = createFileRoute("/_authenticated/erp/")({
   component: ErpDashboard,
@@ -45,6 +46,11 @@ function ErpDashboard() {
           Toda la operación gira alrededor de las ventas de la marca activa.
         </p>
       </div>
+
+      <div className="mb-6">
+        <OverduePlanimetriesAdminAlert />
+      </div>
+
 
       <div className="grid sm:grid-cols-2 gap-4 mb-8">
         <Stat label="Ventas" value={statsQuery.data?.orders ?? "—"} />
