@@ -28,19 +28,21 @@ export type PlanimetryDocumentData = {
   items: PlanimetryItem[];
 };
 
-// Palette — neutral warm grays with single accent (matches reference)
-const INK = "#1a1a1a";
-const SUB = "#3d3d3d";
-const MUTED = "#6b6b6b";
-const CARD = "#c9c7c2";
-const PAPER = "#c9c7c2";
-const LINE = "#9a9893";
-const ACCENT_DEFAULT = "#e8542a";
+// Palette — print-friendly: white paper, black ink, single restrained accent.
+// Color fills are intentionally avoided so toner is spent on the reference
+// images, not on background panels.
+const INK = "#111111";
+const SUB = "#333333";
+const MUTED = "#777777";
+const PAPER = "#ffffff";
+const LINE = "#cfcfcf";
+const RULE = "#1a1a1a";
+const ACCENT_DEFAULT = "#b3321a"; // used only as a thin accent on the delivery date
 
 // Page margins — generous so wrapped content never touches the edge
-const PAGE_MARGIN_X = 22;
-const PAGE_MARGIN_TOP = 18;
-const PAGE_MARGIN_BOTTOM = 70;
+const PAGE_MARGIN_X = 28;
+const PAGE_MARGIN_TOP = 22;
+const PAGE_MARGIN_BOTTOM = 64;
 
 const styles = StyleSheet.create({
   page: {
@@ -53,55 +55,74 @@ const styles = StyleSheet.create({
     backgroundColor: PAPER,
   },
 
-  // === HEADER CARD ===========================================================
-  headerCard: {
-    backgroundColor: CARD,
-    borderRadius: 16,
-    padding: 14,
+  // === HEADER — top rule + clean type, no colored panel =====================
+  headerTopRule: {
+    height: 2,
+    backgroundColor: RULE,
+    marginBottom: 8,
+  },
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 10,
+    paddingBottom: 10,
+    marginBottom: 12,
+    borderBottomWidth: 0.6,
+    borderBottomColor: LINE,
+    borderBottomStyle: "solid",
   },
   headerLeft: { flex: 1, paddingRight: 12 },
+  headerEyebrow: {
+    fontSize: 7.5,
+    letterSpacing: 2,
+    color: MUTED,
+    marginBottom: 2,
+  },
   headerTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 700,
-    fontStyle: "italic",
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
     color: INK,
     marginBottom: 8,
   },
-  headerMetaRow: { flexDirection: "row", marginBottom: 3 },
-  headerMetaLabel: { fontSize: 10, fontStyle: "italic", color: INK, width: 72 },
-  headerMetaValue: { fontSize: 10, fontWeight: 700, color: INK },
+  headerMetaRow: { flexDirection: "row", marginBottom: 2 },
+  headerMetaLabel: { fontSize: 9.5, color: MUTED, width: 64 },
+  headerMetaValue: { fontSize: 9.5, fontWeight: 700, color: INK },
 
   headerRight: { alignItems: "flex-end", minWidth: 130 },
-  factLabel: { fontSize: 10, fontStyle: "italic", color: INK },
-  factNumber: { fontSize: 32, fontWeight: 700, color: INK, lineHeight: 1, marginTop: 2 },
+  factLabel: { fontSize: 8, letterSpacing: 1.8, color: MUTED },
+  factNumber: { fontSize: 30, fontWeight: 700, color: INK, lineHeight: 1, marginTop: 2 },
   prodCode: { fontSize: 7.5, color: MUTED, marginTop: 4, letterSpacing: 0.8 },
 
-  // === MAIN TWO-COLUMN BLOCK =================================================
-  mainRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
+  // === SECTION HEADINGS (used across cards) =================================
+  sectionLabel: {
+    fontSize: 8,
+    fontWeight: 700,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    color: SUB,
+    marginBottom: 6,
+  },
+
+  // === MAIN TWO-COLUMN BLOCK ================================================
+  mainRow: { flexDirection: "row", gap: 14, marginBottom: 14 },
   mainLeft: { width: "44%" },
   mainRight: { width: "56%", flexDirection: "column" },
 
-  // Left column card containing hero image + product name
-  heroCard: {
-    backgroundColor: CARD,
-    borderRadius: 14,
-    padding: 10,
+  heroFrame: {
+    borderWidth: 0.6,
+    borderColor: LINE,
+    borderStyle: "solid",
+    padding: 6,
   },
   heroImage: {
     width: "100%",
-    height: 220,
+    height: 230,
     objectFit: "cover",
-    borderRadius: 10,
   },
   heroNoImage: {
     width: "100%",
-    height: 220,
-    borderRadius: 10,
+    height: 230,
     borderWidth: 1,
     borderStyle: "dashed",
     borderColor: LINE,
@@ -115,115 +136,98 @@ const styles = StyleSheet.create({
     color: INK,
     marginTop: 8,
   },
-  heroProductCaption: { fontSize: 9, fontStyle: "italic", color: SUB, marginTop: 1 },
+  heroProductCaption: { fontSize: 8.5, color: MUTED, marginTop: 1, letterSpacing: 0.4 },
 
-  // Right column card — specs / delivery
-  specsCard: {
-    backgroundColor: CARD,
-    borderRadius: 14,
-    padding: 12,
-    flex: 1,
-  },
+  // Right column — specs / delivery
   specsTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 0.6,
+    borderBottomColor: LINE,
+    borderBottomStyle: "solid",
   },
   qtyBadge: {
-    backgroundColor: "#1a1a1a",
-    color: "#ffffff",
+    borderWidth: 0.8,
+    borderColor: INK,
+    borderStyle: "solid",
+    color: INK,
     fontSize: 8.5,
     fontWeight: 700,
-    letterSpacing: 1,
-    paddingHorizontal: 9,
+    letterSpacing: 1.2,
+    paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 9,
   },
   deliveryBlock: { alignItems: "flex-end" },
-  deliveryLabel: { fontSize: 10, fontWeight: 700, fontStyle: "italic", color: INK },
-  deliveryValue: { fontSize: 13, fontWeight: 700, fontStyle: "italic", marginTop: 1 },
+  deliveryLabel: { fontSize: 8, letterSpacing: 1.6, color: MUTED, textTransform: "uppercase" },
+  deliveryValue: { fontSize: 13, fontWeight: 700, marginTop: 2 },
 
-  specsLabel: {
-    fontSize: 9,
-    fontWeight: 700,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    color: SUB,
-    marginBottom: 5,
-    marginTop: 2,
-  },
-  specsBody: { fontSize: 10, color: INK, lineHeight: 1.5 },
+  specsBody: { fontSize: 10, color: INK, lineHeight: 1.55 },
 
-  // === REFERENCES GRID — small thumbnails side by side =======================
-  refCard: {
-    backgroundColor: CARD,
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
+  // === REFERENCES GRID — small thumbnails side by side ======================
+  refSection: {
+    marginBottom: 14,
+    paddingTop: 10,
+    borderTopWidth: 0.6,
+    borderTopColor: LINE,
+    borderTopStyle: "solid",
   },
-  refTitle: {
-    fontSize: 9,
-    fontWeight: 700,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    color: SUB,
-    marginBottom: 8,
-  },
-  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
+  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
   refCell: {
     width: "33.333%",
-    paddingHorizontal: 4,
-    paddingBottom: 8,
-    alignItems: "center",
+    paddingHorizontal: 5,
+    paddingBottom: 10,
+  },
+  refImageFrame: {
+    borderWidth: 0.6,
+    borderColor: LINE,
+    borderStyle: "solid",
+    padding: 4,
   },
   refImage: {
     width: "100%",
     height: 130,
     objectFit: "cover",
-    borderRadius: 8,
   },
   refCaption: {
     fontSize: 7.5,
     color: MUTED,
-    marginTop: 3,
+    marginTop: 4,
     textAlign: "center",
-    fontStyle: "italic",
+    letterSpacing: 0.4,
   },
 
-  // === NOTES =================================================================
-  notesCard: {
-    backgroundColor: CARD,
-    borderRadius: 14,
-    padding: 12,
+  // === NOTES ================================================================
+  notesSection: {
     marginBottom: 10,
-  },
-  notesLabel: {
-    fontSize: 9,
-    fontWeight: 700,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    color: SUB,
-    marginBottom: 5,
+    paddingTop: 10,
+    borderTopWidth: 0.6,
+    borderTopColor: LINE,
+    borderTopStyle: "solid",
   },
   notesBody: { fontSize: 10, color: INK, lineHeight: 1.5 },
 
-  // === FOOTER ================================================================
+  // === FOOTER ===============================================================
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: PAGE_MARGIN_X,
-    paddingTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 0.6,
+    borderTopColor: LINE,
+    borderTopStyle: "solid",
     position: "absolute",
     bottom: 18,
     left: 0,
     right: 0,
     backgroundColor: PAPER,
   },
-  logoBox: { width: 80, height: 30, justifyContent: "center" },
-  logo: { maxWidth: 80, maxHeight: 30, objectFit: "contain" },
-  footerBrand: { fontSize: 8.5, fontWeight: 700, letterSpacing: 1.2, color: INK },
+  logoBox: { width: 72, height: 26, justifyContent: "center" },
+  logo: { maxWidth: 72, maxHeight: 26, objectFit: "contain" },
+  footerBrand: { fontSize: 8, fontWeight: 700, letterSpacing: 1.4, color: INK },
   footerText: { fontSize: 8, color: MUTED },
 });
 
@@ -268,29 +272,31 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
 
         return (
           <Page key={idx} size="LETTER" style={styles.page}>
-            {/* HEADER CARD */}
-            <View style={styles.headerCard}>
+            {/* HEADER — top rule + clean meta */}
+            <View style={styles.headerTopRule} fixed />
+            <View style={styles.headerRow}>
               <View style={styles.headerLeft}>
-                <Text style={styles.headerTitle}>FICHA TÉCNICA DE PRODUCCIÓN</Text>
+                <Text style={styles.headerEyebrow}>DOCUMENTO DE PRODUCCIÓN</Text>
+                <Text style={styles.headerTitle}>FICHA TÉCNICA</Text>
                 <View style={styles.headerMetaRow}>
-                  <Text style={styles.headerMetaLabel}>Cliente:</Text>
+                  <Text style={styles.headerMetaLabel}>Cliente</Text>
                   <Text style={styles.headerMetaValue}>{data.customer_name}</Text>
                 </View>
                 <View style={styles.headerMetaRow}>
-                  <Text style={styles.headerMetaLabel}>Fecha:</Text>
+                  <Text style={styles.headerMetaLabel}>Fecha</Text>
                   <Text style={styles.headerMetaValue}>
                     {fmtDate(data.sale_date ?? new Date().toISOString())}
                   </Text>
                 </View>
                 {data.seller_name ? (
                   <View style={styles.headerMetaRow}>
-                    <Text style={styles.headerMetaLabel}>Comercial:</Text>
+                    <Text style={styles.headerMetaLabel}>Comercial</Text>
                     <Text style={styles.headerMetaValue}>{data.seller_name}</Text>
                   </View>
                 ) : null}
                 {data.customer_city ? (
                   <View style={styles.headerMetaRow}>
-                    <Text style={styles.headerMetaLabel}>Ciudad:</Text>
+                    <Text style={styles.headerMetaLabel}>Ciudad</Text>
                     <Text style={styles.headerMetaValue}>{data.customer_city}</Text>
                   </View>
                 ) : null}
@@ -298,7 +304,7 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
 
               <View style={styles.headerRight}>
                 <Text style={styles.factLabel}>
-                  {data.invoice_number ? "Nro Fact:" : "Pedido:"}
+                  {data.invoice_number ? "NRO FACT" : "PEDIDO"}
                 </Text>
                 <Text style={styles.factNumber}>{factNumber}</Text>
                 <Text style={styles.prodCode}>{data.production_code}</Text>
@@ -310,10 +316,10 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
               </View>
             </View>
 
-            {/* MAIN ROW — hero image LEFT, specs RIGHT (like reference) */}
+            {/* MAIN ROW — hero image LEFT, specs RIGHT */}
             <View style={styles.mainRow} wrap={false}>
               <View style={styles.mainLeft}>
-                <View style={styles.heroCard}>
+                <View style={styles.heroFrame}>
                   {hero ? (
                     <Image src={hero} style={styles.heroImage} />
                   ) : (
@@ -321,46 +327,46 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                       <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
                     </View>
                   )}
-                  <Text style={styles.heroProductName}>{title}</Text>
-                  <Text style={styles.heroProductCaption}>Imagen de referencia</Text>
                 </View>
+                <Text style={styles.heroProductName}>{title}</Text>
+                <Text style={styles.heroProductCaption}>IMAGEN DE REFERENCIA</Text>
               </View>
 
               <View style={styles.mainRight}>
-                <View style={styles.specsCard}>
-                  <View style={styles.specsTopRow}>
-                    <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
-                    {deliveryLong ? (
-                      <View style={styles.deliveryBlock}>
-                        <Text style={styles.deliveryLabel}>Fecha de entrega:</Text>
-                        <Text style={[styles.deliveryValue, { color: accent }]}>
-                          {deliveryLong}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-
-                  <Text style={styles.specsLabel}>Especificaciones</Text>
-                  {body ? (
-                    <Text style={styles.specsBody}>{body}</Text>
-                  ) : (
-                    <Text style={[styles.specsBody, { color: MUTED, fontStyle: "italic" }]}>
-                      Sin especificaciones adicionales.
-                    </Text>
-                  )}
+                <View style={styles.specsTopRow}>
+                  <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
+                  {deliveryLong ? (
+                    <View style={styles.deliveryBlock}>
+                      <Text style={styles.deliveryLabel}>Fecha de entrega</Text>
+                      <Text style={[styles.deliveryValue, { color: accent }]}>
+                        {deliveryLong}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
+
+                <Text style={styles.sectionLabel}>Especificaciones</Text>
+                {body ? (
+                  <Text style={styles.specsBody}>{body}</Text>
+                ) : (
+                  <Text style={[styles.specsBody, { color: MUTED, fontStyle: "italic" }]}>
+                    Sin especificaciones adicionales.
+                  </Text>
+                )}
               </View>
             </View>
 
-            {/* REFERENCES — small thumbnails side by side in a 3-column grid */}
+            {/* REFERENCES — small thumbnails side by side */}
             {rest.length > 0 ? (
-              <View style={styles.refCard}>
-                <Text style={styles.refTitle}>Referencias adicionales</Text>
+              <View style={styles.refSection}>
+                <Text style={styles.sectionLabel}>Referencias adicionales</Text>
                 <View style={styles.refGrid}>
                   {rest.map((url, i) => (
                     <View key={i} style={styles.refCell} wrap={false}>
-                      <Image src={url} style={styles.refImage} />
-                      <Text style={styles.refCaption}>Referencia {i + 2}</Text>
+                      <View style={styles.refImageFrame}>
+                        <Image src={url} style={styles.refImage} />
+                      </View>
+                      <Text style={styles.refCaption}>REFERENCIA {i + 2}</Text>
                     </View>
                   ))}
                 </View>
@@ -369,11 +375,12 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
 
             {/* NOTES — only last item */}
             {data.notes && idx === data.items.length - 1 ? (
-              <View style={styles.notesCard} wrap={false}>
-                <Text style={styles.notesLabel}>Notas de la venta</Text>
+              <View style={styles.notesSection} wrap={false}>
+                <Text style={styles.sectionLabel}>Notas de la venta</Text>
                 <Text style={styles.notesBody}>{data.notes}</Text>
               </View>
             ) : null}
+
 
             {/* FOOTER */}
             <View style={styles.footer} fixed>
