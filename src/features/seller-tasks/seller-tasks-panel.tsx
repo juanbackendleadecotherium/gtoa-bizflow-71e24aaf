@@ -25,7 +25,7 @@ export function OrderSellerTasksBadge({ orderId }: { orderId: string }) {
         .select("id, title, reason, production_order_id, created_at, type")
         .eq("order_id", orderId)
         .eq("status", "pendiente")
-        .eq("type", "fix_order")
+        .eq("type", "fix_planimetry")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Task[];
