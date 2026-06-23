@@ -41,7 +41,7 @@ function MyTasks() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("seller_tasks")
-        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, brand_id")
+        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, brand_id, planimetry_due_at")
         .eq("seller_id", userId!)
         .eq("status", tab)
         .order("created_at", { ascending: false });
