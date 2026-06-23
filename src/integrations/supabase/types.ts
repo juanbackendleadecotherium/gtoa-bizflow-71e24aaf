@@ -508,6 +508,7 @@ export type Database = {
           manufacturing_cost: number | null
           margin_pct: number | null
           order_id: string
+          planimetry_files: Json
           production_due_date: string | null
           production_order_id: string | null
           production_started_at: string | null
@@ -530,6 +531,7 @@ export type Database = {
           manufacturing_cost?: number | null
           margin_pct?: number | null
           order_id: string
+          planimetry_files?: Json
           production_due_date?: string | null
           production_order_id?: string | null
           production_started_at?: string | null
@@ -552,6 +554,7 @@ export type Database = {
           manufacturing_cost?: number | null
           margin_pct?: number | null
           order_id?: string
+          planimetry_files?: Json
           production_due_date?: string | null
           production_order_id?: string | null
           production_started_at?: string | null
@@ -1560,6 +1563,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      order_item_has_planimetry: {
+        Args: { _item_id: string }
         Returns: boolean
       }
       reject_production_with_reason: {
