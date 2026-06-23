@@ -260,7 +260,7 @@ export const listItemsInWarehouse = createServerFn({ method: "POST" })
     if (data.zoneId) q = q.eq("current_zone_id", data.zoneId);
     const { data: locs, error } = await q;
     if (error) throw error;
-    const ids = (locs ?? []).map((l: any) => l.item_id);
+    const ids = (locs ?? []).map((l: any) => l.item_id).filter((x: any): x is string => !!x);
     if (ids.length === 0) return [];
     const { data: items, error: iErr } = await supabase
       .from("order_items")
