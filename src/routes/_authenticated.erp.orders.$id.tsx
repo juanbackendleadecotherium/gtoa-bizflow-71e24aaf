@@ -360,6 +360,30 @@ function OrderDetail() {
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
+          {(() => {
+            const missing = items.filter(
+              (it: any) => !it.production_order_id && (!Array.isArray(it.planimetry_files) || it.planimetry_files.length === 0),
+            ).length;
+            if (missing === 0 || editing) return null;
+            return (
+              <div className="rounded-xl border-2 border-amber-500/60 bg-amber-500/10 p-4 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    Faltan {missing} planimetría{missing === 1 ? "" : "s"} para enviar todo a producción
+                  </p>
+                  <p className="text-xs text-amber-800/90 dark:text-amber-200/80 mt-0.5">
+                    Edita la venta y sube la planimetría (imagen o PDF) de cada producto pendiente.
+                    Los productos que ya la tengan sí podrán enviarse a producción individualmente.
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="shrink-0 border-amber-600/60">
+                  <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
+                </Button>
+              </div>
+            );
+          })()}
+
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-sm font-medium mb-3">Productos</p>
             {editing ? (
@@ -370,11 +394,16 @@ function OrderDetail() {
                 pendingImages={editPendingImages}
                 onExistingImagesChange={setEditExistingImages}
                 onPendingImagesChange={setEditPendingImages}
+                existingPlanimetry={editExistingPlanimetry}
+                pendingPlanimetry={editPendingPlanimetry}
+                onExistingPlanimetryChange={setEditExistingPlanimetry}
+                onPendingPlanimetryChange={setEditPendingPlanimetry}
               />
             ) : (
               <div className="space-y-3">
-                {items.map((it, idx) => {
+                {items.map((it: any, idx: number) => {
                   const imgs: string[] = Array.isArray(it.images) ? it.images : [];
+                  const planiFiles: PlanimetryFile[] = Array.isArray(it.planimetry_files) ? it.planimetry_files : [];
                   return (
                     <OrderItemReadCard
                       key={it.id}
@@ -384,6 +413,8 @@ function OrderDetail() {
                       unitPrice={Number(it.unit_price)}
                       lineTotal={Number(it.line_total)}
                       images={imgs}
+                      planimetryFiles={planiFiles}
+                      sentToProduction={!!it.production_order_id}
                     />
                   );
                 })}
