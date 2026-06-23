@@ -167,7 +167,28 @@ function SuppliersPage() {
               <div className="sm:col-span-2">
                 <Label className="text-xs">Email</Label>
                 <Input value={editing.email ?? ""} onChange={(e) => setEditing({ ...editing, email: e.target.value })} />
+              <div className="sm:col-span-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={!!editing.requires_advance_payment}
+                    onChange={(e) => setEditing({ ...editing, requires_advance_payment: e.target.checked })}
+                  />
+                  <span className="font-medium">Requiere pago anticipado para iniciar producción</span>
+                </label>
+                {editing.requires_advance_payment && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs">% del costo</Label>
+                    <Input
+                      type="number" min={1} max={100} step="1"
+                      value={editing.advance_payment_pct ?? 50}
+                      onChange={(e) => setEditing({ ...editing, advance_payment_pct: Number(e.target.value) })}
+                      className="w-24"
+                    />
+                  </div>
+                )}
               </div>
+            </div>
               <div className="sm:col-span-2">
                 <Label className="text-xs">Notas</Label>
                 <Textarea rows={2} value={editing.notes ?? ""} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} />
