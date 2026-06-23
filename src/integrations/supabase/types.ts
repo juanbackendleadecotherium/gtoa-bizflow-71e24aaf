@@ -497,6 +497,106 @@ export type Database = {
         }
         Relationships: []
       }
+      order_item_supplier_payments: {
+        Row: {
+          amount: number
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          id: string
+          order_id: string
+          order_item_id: string
+          paid_at: string
+          production_order_id: string | null
+          receipt_mime: string | null
+          receipt_path: string
+          receipt_size_bytes: number | null
+          supplier_id: string
+          supplier_name_snapshot: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          order_id: string
+          order_item_id: string
+          paid_at: string
+          production_order_id?: string | null
+          receipt_mime?: string | null
+          receipt_path: string
+          receipt_size_bytes?: number | null
+          supplier_id: string
+          supplier_name_snapshot: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          order_id?: string
+          order_item_id?: string
+          paid_at?: string
+          production_order_id?: string | null
+          receipt_mime?: string | null
+          receipt_path?: string
+          receipt_size_bytes?: number | null
+          supplier_id?: string
+          supplier_name_snapshot?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_item_supplier_payments_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_supplier_payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_item_supplier_payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_supplier_payments_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: true
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_supplier_payments_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_supplier_payments_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           cost_notes: string | null
@@ -1386,6 +1486,7 @@ export type Database = {
       }
       suppliers: {
         Row: {
+          advance_payment_pct: number
           brand_id: string
           category: string | null
           contact_name: string | null
@@ -1397,9 +1498,11 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          requires_advance_payment: boolean
           updated_at: string
         }
         Insert: {
+          advance_payment_pct?: number
           brand_id: string
           category?: string | null
           contact_name?: string | null
@@ -1411,9 +1514,11 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          requires_advance_payment?: boolean
           updated_at?: string
         }
         Update: {
+          advance_payment_pct?: number
           brand_id?: string
           category?: string | null
           contact_name?: string | null
@@ -1425,6 +1530,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          requires_advance_payment?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -1561,6 +1667,10 @@ export type Database = {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
+      effective_production_start_for_item: {
+        Args: { _item_id: string }
+        Returns: string
+      }
       has_brand_access: {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
@@ -1580,7 +1690,10 @@ export type Database = {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
-      start_real_production: { Args: { p_item_id: string }; Returns: undefined }
+      start_real_production: {
+        Args: { p_item_id: string; p_started_at?: string }
+        Returns: undefined
+      }
       update_order_status: {
         Args: { p_note?: string; p_order_id: string; p_status_id: string }
         Returns: undefined
