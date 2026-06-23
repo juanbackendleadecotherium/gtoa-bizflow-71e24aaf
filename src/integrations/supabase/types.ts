@@ -1615,6 +1615,134 @@ export type Database = {
         }
         Relationships: []
       }
+      warehouse_movements: {
+        Row: {
+          client_cedula: string | null
+          client_invoice: string | null
+          created_at: string
+          id: string
+          item_id: string
+          moved_at: string
+          moved_by: string | null
+          moved_by_email: string | null
+          movement_type: string
+          product_quantity: number
+          reason: string | null
+          zone_id: string
+        }
+        Insert: {
+          client_cedula?: string | null
+          client_invoice?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          moved_at?: string
+          moved_by?: string | null
+          moved_by_email?: string | null
+          movement_type: string
+          product_quantity?: number
+          reason?: string | null
+          zone_id: string
+        }
+        Update: {
+          client_cedula?: string | null
+          client_invoice?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          moved_at?: string
+          moved_by?: string | null
+          moved_by_email?: string | null
+          movement_type?: string
+          product_quantity?: number
+          reason?: string | null
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_movements_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouse_zones: {
+        Row: {
+          active: boolean
+          capacity_units: number | null
+          created_at: string
+          description: string | null
+          id: string
+          updated_at: string
+          warehouse_id: string
+          zone_code: string
+        }
+        Insert: {
+          active?: boolean
+          capacity_units?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+          warehouse_id: string
+          zone_code: string
+        }
+        Update: {
+          active?: boolean
+          capacity_units?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+          warehouse_id?: string
+          zone_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_zones_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouses: {
+        Row: {
+          active: boolean
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       order_financials: {
@@ -1645,6 +1773,23 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouse_item_locations: {
+        Row: {
+          current_zone_id: string | null
+          item_id: string | null
+          last_movement_at: string | null
+          last_movement_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
             referencedColumns: ["id"]
           },
         ]
