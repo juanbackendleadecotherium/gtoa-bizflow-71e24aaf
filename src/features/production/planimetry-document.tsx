@@ -201,6 +201,39 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
+  // === PLANIMETRY (seller-uploaded technical drawings) ======================
+  planiSection: {
+    marginBottom: 14,
+    paddingTop: 10,
+    borderTopWidth: 0.6,
+    borderTopColor: LINE,
+    borderTopStyle: "solid",
+  },
+  planiGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
+  planiCellFull: { width: "100%", paddingHorizontal: 5, paddingBottom: 10 },
+  planiCellHalf: { width: "50%", paddingHorizontal: 5, paddingBottom: 10 },
+  planiImageFrame: {
+    borderWidth: 0.6,
+    borderColor: INK,
+    borderStyle: "solid",
+    padding: 4,
+  },
+  planiImageLarge: { width: "100%", height: 360, objectFit: "contain" },
+  planiImageMedium: { width: "100%", height: 220, objectFit: "contain" },
+  planiCaption: {
+    fontSize: 7.5,
+    color: MUTED,
+    marginTop: 4,
+    textAlign: "center",
+    letterSpacing: 0.4,
+  },
+  planiPdfNote: {
+    marginTop: 4,
+    fontSize: 8.5,
+    color: SUB,
+    fontStyle: "italic",
+  },
+
   // === NOTES ================================================================
   notesSection: {
     marginBottom: 10,
