@@ -18,7 +18,9 @@ import { OrderItemsEditor, formatMoney } from "@/features/orders/order-items-edi
 import { AmountOrPercentInput } from "@/features/orders/amount-percent-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
 import type { PendingImage } from "@/features/orders/image-uploader";
+import type { PendingPlanimetry } from "@/features/orders/planimetry-files-uploader";
 import { uploadOrderImages } from "@/lib/image-upload";
+import { uploadPlanimetryFiles, type PlanimetryFile } from "@/lib/planimetry-upload";
 import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 import { InvoicePanel } from "@/features/invoices/invoice-panel";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
