@@ -26,7 +26,7 @@ const brands: BrandItem[] = [
   { name: "Espacio Mobiliario", logo: espacioLogo },
   { name: "Montenegro Design",  logo: montenegroLogo },
   { name: "Casa Diseño",        logo: casaLogo },
-  { name: "Grupo Getova",       token: "bg-brand-getova" },
+  { name: "Grupo Getova",       logo: getovaLogo },
 ];
 
 
