@@ -699,7 +699,7 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
                       <SupplierAdvancePaymentNotice supplierName={sup.name} pct={Number(sup.advance_payment_pct ?? 50)} />
                       <SupplierAdvancePaymentForm
                         orderItemId={it.id}
-                        brandId={row.brand_id ?? row.order?.brand_id ?? selectedBrandFromRow(row)}
+                        brandId={row.brand_id}
                         orderId={it.order_id ?? row.order_id}
                         suggestedAmount={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
                         pct={Number(sup.advance_payment_pct ?? 50)}
