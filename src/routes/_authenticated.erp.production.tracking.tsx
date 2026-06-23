@@ -12,6 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NOVEDADES, novedadMeta } from "@/features/production/novedad-meta";
 import { MoneyInput } from "@/features/orders/money-input";
+import { SupplierAdvancePaymentNotice } from "@/features/production/supplier-advance-payment-notice";
+import { SupplierAdvancePaymentForm } from "@/features/production/supplier-advance-payment-form";
+import { SupplierAdvancePaymentCard } from "@/features/production/supplier-advance-payment-card";
 
 export const Route = createFileRoute("/_authenticated/erp/production/tracking")({
   head: () => ({ meta: [{ title: "Seguimiento de producción — ERP" }] }),
@@ -65,22 +68,28 @@ function TrackingPage() {
 
   useEffect(() => {
     if (!selectedBrandId) return;
-    const refresh = () => {
+    const refresh = (itemId?: string) => {
       qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
       qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
       qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
+      if (itemId) qc.invalidateQueries({ queryKey: ["supplier-advance-payment", itemId] });
     };
     const channel = supabase
       .channel(`production-tracking-${selectedBrandId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "production_orders", filter: `brand_id=eq.${selectedBrandId}` },
-        refresh,
+        () => refresh(),
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "order_items" },
-        refresh,
+        () => refresh(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "order_item_supplier_payments", filter: `brand_id=eq.${selectedBrandId}` },
+        (payload: any) => refresh(payload?.new?.order_item_id ?? payload?.old?.order_item_id),
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -91,7 +100,7 @@ function TrackingPage() {
     enabled: !!selectedBrandId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("suppliers").select("id, name")
+        .from("suppliers").select("id, name, requires_advance_payment, advance_payment_pct")
         .eq("brand_id", selectedBrandId!).eq("is_active", true)
         .order("name");
       if (error) throw error;
@@ -110,7 +119,7 @@ function TrackingPage() {
       let query = supabase
         .from("production_orders")
         .select(`
-          id, code, novedad, status, supplier_id, manufacturing_cost, margin_pct,
+          id, code, novedad, status, supplier_id, manufacturing_cost, margin_pct, brand_id,
           invoice_date, planimetry_sent_date, quotation_date, production_start_date,
           supplier_promised_date, supplier_actual_date, client_promised_date, client_actual_date,
           assigned_to_label, notes, created_at, order_id,
@@ -544,7 +553,7 @@ function InlineMoney({
   );
 }
 
-function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id: string; name: string }[]; onPatch: (patch: Record<string, any>) => void }) {
+function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[]; onPatch: (patch: Record<string, any>) => void }) {
   const r = row;
   const qc = useQueryClient();
   const desv = daysDiff(r.client_actual_date, r.client_promised_date);
@@ -660,20 +669,44 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
                         })
                       }
                     />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => startProd.mutate(it.id)}
-                      disabled={startProd.isPending && startProd.variables === it.id}
-                      className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50 self-end"
-                      title="Marcar inicio real de producción hoy (notifica al vendedor)"
-                    >
-                      {startProd.isPending && startProd.variables === it.id
-                        ? <Loader2 className="h-3 w-3 animate-spin" />
-                        : "🚀"} Inicio hoy
-                    </button>
-                  )}
+                  ) : (() => {
+                    const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
+                    if (sup?.requires_advance_payment) return <span className="text-[10px] text-muted-foreground self-end pb-1.5">Requiere pago anticipado ↓</span>;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => startProd.mutate(it.id)}
+                        disabled={startProd.isPending && startProd.variables === it.id}
+                        className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50 self-end"
+                        title="Marcar inicio real de producción hoy (notifica al vendedor)"
+                      >
+                        {startProd.isPending && startProd.variables === it.id
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : "🚀"} Inicio hoy
+                      </button>
+                    );
+                  })()}
                 </div>
+
+                {(() => {
+                  const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
+                  if (!sup?.requires_advance_payment) return null;
+                  if (it.production_started_at) {
+                    return <SupplierAdvancePaymentCard orderItemId={it.id} />;
+                  }
+                  return (
+                    <div className="space-y-2">
+                      <SupplierAdvancePaymentNotice supplierName={sup.name} pct={Number(sup.advance_payment_pct ?? 50)} />
+                      <SupplierAdvancePaymentForm
+                        orderItemId={it.id}
+                        brandId={row.brand_id}
+                        orderId={it.order_id ?? row.order_id}
+                        suggestedAmount={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
+                        pct={Number(sup.advance_payment_pct ?? 50)}
+                      />
+                    </div>
+                  );
+                })()}
               </li>
             ))}
           </ul>

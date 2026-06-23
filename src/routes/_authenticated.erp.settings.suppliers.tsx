@@ -19,6 +19,8 @@ type Supplier = {
   id: string; brand_id: string; name: string; category: string | null;
   contact_name: string | null; phone: string | null; email: string | null;
   notes: string | null; is_active: boolean;
+  requires_advance_payment?: boolean;
+  advance_payment_pct?: number;
 };
 
 function SuppliersPage() {
@@ -72,14 +74,18 @@ function SuppliersPage() {
           name: s.name, category: s.category, contact_name: s.contact_name,
           phone: s.phone, email: s.email, notes: s.notes,
           is_active: s.is_active ?? true,
-        }).eq("id", s.id);
+          requires_advance_payment: s.requires_advance_payment ?? false,
+          advance_payment_pct: s.advance_payment_pct ?? 50,
+        } as any).eq("id", s.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("suppliers").insert({
           brand_id: selectedBrandId!, name: s.name, category: s.category ?? null,
           contact_name: s.contact_name ?? null, phone: s.phone ?? null,
           email: s.email ?? null, notes: s.notes ?? null,
-        });
+          requires_advance_payment: s.requires_advance_payment ?? false,
+          advance_payment_pct: s.advance_payment_pct ?? 50,
+        } as any);
         if (error) throw error;
       }
     },
@@ -161,7 +167,28 @@ function SuppliersPage() {
               <div className="sm:col-span-2">
                 <Label className="text-xs">Email</Label>
                 <Input value={editing.email ?? ""} onChange={(e) => setEditing({ ...editing, email: e.target.value })} />
+              <div className="sm:col-span-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={!!editing.requires_advance_payment}
+                    onChange={(e) => setEditing({ ...editing, requires_advance_payment: e.target.checked })}
+                  />
+                  <span className="font-medium">Requiere pago anticipado para iniciar producción</span>
+                </label>
+                {editing.requires_advance_payment && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs">% del costo</Label>
+                    <Input
+                      type="number" min={1} max={100} step="1"
+                      value={editing.advance_payment_pct ?? 50}
+                      onChange={(e) => setEditing({ ...editing, advance_payment_pct: Number(e.target.value) })}
+                      className="w-24"
+                    />
+                  </div>
+                )}
               </div>
+            </div>
               <div className="sm:col-span-2">
                 <Label className="text-xs">Notas</Label>
                 <Textarea rows={2} value={editing.notes ?? ""} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} />
@@ -188,7 +215,14 @@ function SuppliersPage() {
             {list.data!.map((s) => (
               <li key={s.id} className="flex items-start justify-between gap-2 rounded-lg border border-border bg-background p-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm">{s.name}{s.category && <span className="text-muted-foreground"> · {s.category}</span>}</p>
+                  <p className="font-medium text-sm">
+                    {s.name}{s.category && <span className="text-muted-foreground"> · {s.category}</span>}
+                    {s.requires_advance_payment && (
+                      <span className="ml-2 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                        Anticipo {s.advance_payment_pct ?? 50}%
+                      </span>
+                    )}
+                  </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     {s.contact_name && <>{s.contact_name} · </>}
                     {s.phone && <>{s.phone} · </>}
