@@ -239,6 +239,34 @@ function OrderDetail() {
             .eq("id", itemId);
           if (imgErr) throw imgErr;
         }
+
+        // Planimetry files (image or PDF)
+        if (itemId) {
+          const existingPlani = editExistingPlanimetry[i] ?? [];
+          const pendingPlani = editPendingPlanimetry[i] ?? [];
+          const origPlani: PlanimetryFile[] = Array.isArray(orig?.planimetry_files)
+            ? (orig!.planimetry_files as PlanimetryFile[])
+            : [];
+          const planiChanged =
+            pendingPlani.length > 0 ||
+            existingPlani.length !== origPlani.length ||
+            existingPlani.some((f, k) => f.url !== origPlani[k]?.url);
+          if (planiChanged) {
+            let uploaded: PlanimetryFile[] = [];
+            if (pendingPlani.length > 0) {
+              uploaded = await uploadPlanimetryFiles(
+                pendingPlani.map((p) => p.file),
+                `items/${itemId}/planimetry`,
+              );
+            }
+            const finalPlani = [...existingPlani, ...uploaded];
+            const { error: planiErr } = await supabase
+              .from("order_items")
+              .update({ planimetry_files: finalPlani as never })
+              .eq("id", itemId);
+            if (planiErr) throw planiErr;
+          }
+        }
       }
       // Delete removed
       const toDelete = originalItems.filter((it) => !keptIds.has(it.id)).map((it) => it.id);
