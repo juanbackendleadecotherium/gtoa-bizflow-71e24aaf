@@ -28,6 +28,7 @@ type ItemRow = {
   images: string[];
   sort_order: number;
   production_order_id: string | null;
+  planimetry_files: Array<{ url: string; name: string; mime: string }>;
 };
 
 async function urlToDataUri(url: string): Promise<string | null> {
@@ -261,13 +262,14 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, images, sort_order, production_order_id")
+        .select("id, description, quantity, images, sort_order, production_order_id, planimetry_files")
         .eq("order_id", orderId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return (data ?? []).map((it: any) => ({
         ...it,
         images: Array.isArray(it.images) ? it.images : [],
+        planimetry_files: Array.isArray(it.planimetry_files) ? it.planimetry_files : [],
       })) as ItemRow[];
     },
   });
@@ -285,8 +287,12 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
   }, [list.data]);
 
   // An item is "locked" for the current destination when it already belongs to
-  // a non-rejected production order that's different from the chosen target.
+  // a non-rejected production order that's different from the chosen target,
+  // OR when it doesn't have planimetry uploaded yet.
   const getItemLock = (it: ItemRow): { disabled: boolean; reason?: string } => {
+    if ((it.planimetry_files?.length ?? 0) === 0 && !it.production_order_id) {
+      return { disabled: true, reason: "Sin planimetría" };
+    }
     if (!it.production_order_id) return { disabled: false };
     const owner = ownerById.get(it.production_order_id);
     if (!owner || owner.status === "rechazada") return { disabled: false };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Pencil, Maximize2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Maximize2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { MoneyInput } from "@/features/orders/money-input";
 import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
+import {
+  PlanimetryFilesUploader,
+  type PendingPlanimetry,
+} from "@/features/orders/planimetry-files-uploader";
+import type { PlanimetryFile } from "@/lib/planimetry-upload";
 import type { OrderItemInput } from "@/features/orders/schemas";
 
 function parseDecimal(val: string) {
@@ -188,6 +193,10 @@ export function OrderItemsEditor({
   pendingImages,
   onExistingImagesChange,
   onPendingImagesChange,
+  existingPlanimetry,
+  pendingPlanimetry,
+  onExistingPlanimetryChange,
+  onPendingPlanimetryChange,
 }: {
   items: OrderItemInput[];
   onChange: (items: OrderItemInput[]) => void;
@@ -195,9 +204,18 @@ export function OrderItemsEditor({
   pendingImages?: PendingImage[][];
   onExistingImagesChange?: (next: string[][]) => void;
   onPendingImagesChange?: (next: PendingImage[][]) => void;
+  existingPlanimetry?: PlanimetryFile[][];
+  pendingPlanimetry?: PendingPlanimetry[][];
+  onExistingPlanimetryChange?: (next: PlanimetryFile[][]) => void;
+  onPendingPlanimetryChange?: (next: PendingPlanimetry[][]) => void;
 }) {
   const imagesEnabled =
     !!existingImages && !!pendingImages && !!onExistingImagesChange && !!onPendingImagesChange;
+  const planimetryEnabled =
+    !!existingPlanimetry &&
+    !!pendingPlanimetry &&
+    !!onExistingPlanimetryChange &&
+    !!onPendingPlanimetryChange;
 
   const add = () => {
     onChange([...items, { description: "", quantity: 1, unit_price: 0, sort_order: items.length }]);
@@ -205,12 +223,20 @@ export function OrderItemsEditor({
       onExistingImagesChange!([...(existingImages ?? []), []]);
       onPendingImagesChange!([...(pendingImages ?? []), []]);
     }
+    if (planimetryEnabled) {
+      onExistingPlanimetryChange!([...(existingPlanimetry ?? []), []]);
+      onPendingPlanimetryChange!([...(pendingPlanimetry ?? []), []]);
+    }
   };
   const remove = (idx: number) => {
     onChange(items.filter((_, i) => i !== idx));
     if (imagesEnabled) {
       onExistingImagesChange!((existingImages ?? []).filter((_, i) => i !== idx));
       onPendingImagesChange!((pendingImages ?? []).filter((_, i) => i !== idx));
+    }
+    if (planimetryEnabled) {
+      onExistingPlanimetryChange!((existingPlanimetry ?? []).filter((_, i) => i !== idx));
+      onPendingPlanimetryChange!((pendingPlanimetry ?? []).filter((_, i) => i !== idx));
     }
   };
   const update = (idx: number, patch: Partial<OrderItemInput>) =>
@@ -328,7 +354,7 @@ export function OrderItemsEditor({
               {imagesEnabled && (
                 <div>
                   <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                    Imágenes de referencia · planimetría
+                    Imágenes de referencia
                   </Label>
                   <ImageUploader
                     multiple
@@ -344,10 +370,51 @@ export function OrderItemsEditor({
                       arr[idx] = (arr[idx] ?? []).filter((u) => u !== url);
                       onExistingImagesChange!(arr);
                     }}
-                    hint="Se usarán al enviar a producción para construir la planimetría. Clic en una miniatura para verla en tamaño original."
+                    hint="Imágenes que el cliente trajo o que sirven de referencia visual."
                   />
                 </div>
               )}
+
+              {planimetryEnabled && (() => {
+                const ex = existingPlanimetry?.[idx] ?? [];
+                const pe = pendingPlanimetry?.[idx] ?? [];
+                const count = ex.length + pe.length;
+                const missing = count === 0;
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5 gap-2">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        Planimetría del producto
+                        {missing ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 normal-case tracking-normal text-[10px] font-semibold">
+                            <AlertTriangle className="h-3 w-3" /> Pendiente
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 normal-case tracking-normal text-[10px] font-semibold">
+                            ✓ {count} archivo{count === 1 ? "" : "s"}
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                    <PlanimetryFilesUploader
+                      existing={ex}
+                      pending={pe}
+                      onChangePending={(next) => {
+                        const arr = (pendingPlanimetry ?? []).slice();
+                        arr[idx] = next;
+                        onPendingPlanimetryChange!(arr);
+                      }}
+                      onRemoveExisting={(url) => {
+                        const arr = (existingPlanimetry ?? []).slice();
+                        arr[idx] = (arr[idx] ?? []).filter((f) => f.url !== url);
+                        onExistingPlanimetryChange!(arr);
+                      }}
+                      hint="Imagen o PDF con medidas, vistas y especificaciones técnicas. Obligatoria para enviar este producto a producción."
+                    />
+                  </div>
+                );
+              })()}
+
             </div>
           );
         })}

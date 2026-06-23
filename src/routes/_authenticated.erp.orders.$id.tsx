@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck, MessageSquare, Calendar } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck, MessageSquare, Calendar, AlertTriangle, FileText, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,9 @@ import { OrderItemsEditor, formatMoney } from "@/features/orders/order-items-edi
 import { AmountOrPercentInput } from "@/features/orders/amount-percent-input";
 import type { OrderItemInput } from "@/features/orders/schemas";
 import type { PendingImage } from "@/features/orders/image-uploader";
+import type { PendingPlanimetry } from "@/features/orders/planimetry-files-uploader";
 import { uploadOrderImages } from "@/lib/image-upload";
+import { uploadPlanimetryFiles, type PlanimetryFile } from "@/lib/planimetry-upload";
 import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 import { InvoicePanel } from "@/features/invoices/invoice-panel";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
@@ -50,7 +52,7 @@ function OrderDetail() {
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
-          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images)
+          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id)
         `)
         .eq("id", id).maybeSingle();
       if (error) throw error;
@@ -108,6 +110,8 @@ function OrderDetail() {
   const [editItems, setEditItems] = useState<(OrderItemInput & { id?: string })[]>([]);
   const [editExistingImages, setEditExistingImages] = useState<string[][]>([]);
   const [editPendingImages, setEditPendingImages] = useState<PendingImage[][]>([]);
+  const [editExistingPlanimetry, setEditExistingPlanimetry] = useState<PlanimetryFile[][]>([]);
+  const [editPendingPlanimetry, setEditPendingPlanimetry] = useState<PendingPlanimetry[][]>([]);
 
   // Hydration: only sync from server when NOT editing or when the order id changes.
   // This prevents losing in-progress edits when other queries (status, history, audit)
@@ -128,6 +132,10 @@ function OrderDetail() {
     })));
     setEditExistingImages(its.map((it) => (Array.isArray(it.images) ? [...it.images] : [])));
     setEditPendingImages(its.map(() => []));
+    setEditExistingPlanimetry(
+      its.map((it) => (Array.isArray(it.planimetry_files) ? [...it.planimetry_files] : [])),
+    );
+    setEditPendingPlanimetry(its.map(() => []));
     hydratedFor.current = id;
   }, [orderQuery.data, editing, id]);
 
@@ -231,6 +239,34 @@ function OrderDetail() {
             .eq("id", itemId);
           if (imgErr) throw imgErr;
         }
+
+        // Planimetry files (image or PDF)
+        if (itemId) {
+          const existingPlani = editExistingPlanimetry[i] ?? [];
+          const pendingPlani = editPendingPlanimetry[i] ?? [];
+          const origPlani: PlanimetryFile[] = Array.isArray(orig?.planimetry_files)
+            ? (orig!.planimetry_files as PlanimetryFile[])
+            : [];
+          const planiChanged =
+            pendingPlani.length > 0 ||
+            existingPlani.length !== origPlani.length ||
+            existingPlani.some((f, k) => f.url !== origPlani[k]?.url);
+          if (planiChanged) {
+            let uploaded: PlanimetryFile[] = [];
+            if (pendingPlani.length > 0) {
+              uploaded = await uploadPlanimetryFiles(
+                pendingPlani.map((p) => p.file),
+                `items/${itemId}/planimetry`,
+              );
+            }
+            const finalPlani = [...existingPlani, ...uploaded];
+            const { error: planiErr } = await supabase
+              .from("order_items")
+              .update({ planimetry_files: finalPlani as never })
+              .eq("id", itemId);
+            if (planiErr) throw planiErr;
+          }
+        }
       }
       // Delete removed
       const toDelete = originalItems.filter((it) => !keptIds.has(it.id)).map((it) => it.id);
@@ -246,6 +282,9 @@ function OrderDetail() {
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["order-audit", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
+      qc.invalidateQueries({ queryKey: ["order-items-for-production", id] });
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -321,6 +360,30 @@ function OrderDetail() {
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
+          {(() => {
+            const missing = items.filter(
+              (it: any) => !it.production_order_id && (!Array.isArray(it.planimetry_files) || it.planimetry_files.length === 0),
+            ).length;
+            if (missing === 0 || editing) return null;
+            return (
+              <div className="rounded-xl border-2 border-amber-500/60 bg-amber-500/10 p-4 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    Faltan {missing} planimetría{missing === 1 ? "" : "s"} para enviar todo a producción
+                  </p>
+                  <p className="text-xs text-amber-800/90 dark:text-amber-200/80 mt-0.5">
+                    Edita la venta y sube la planimetría (imagen o PDF) de cada producto pendiente.
+                    Los productos que ya la tengan sí podrán enviarse a producción individualmente.
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="shrink-0 border-amber-600/60">
+                  <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
+                </Button>
+              </div>
+            );
+          })()}
+
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-sm font-medium mb-3">Productos</p>
             {editing ? (
@@ -331,11 +394,16 @@ function OrderDetail() {
                 pendingImages={editPendingImages}
                 onExistingImagesChange={setEditExistingImages}
                 onPendingImagesChange={setEditPendingImages}
+                existingPlanimetry={editExistingPlanimetry}
+                pendingPlanimetry={editPendingPlanimetry}
+                onExistingPlanimetryChange={setEditExistingPlanimetry}
+                onPendingPlanimetryChange={setEditPendingPlanimetry}
               />
             ) : (
               <div className="space-y-3">
-                {items.map((it, idx) => {
+                {items.map((it: any, idx: number) => {
                   const imgs: string[] = Array.isArray(it.images) ? it.images : [];
+                  const planiFiles: PlanimetryFile[] = Array.isArray(it.planimetry_files) ? it.planimetry_files : [];
                   return (
                     <OrderItemReadCard
                       key={it.id}
@@ -345,6 +413,8 @@ function OrderDetail() {
                       unitPrice={Number(it.unit_price)}
                       lineTotal={Number(it.line_total)}
                       images={imgs}
+                      planimetryFiles={planiFiles}
+                      sentToProduction={!!it.production_order_id}
                     />
                   );
                 })}
@@ -588,6 +658,8 @@ function OrderItemReadCard({
   unitPrice,
   lineTotal,
   images,
+  planimetryFiles,
+  sentToProduction,
 }: {
   index: number;
   description: string;
@@ -595,19 +667,39 @@ function OrderItemReadCard({
   unitPrice: number;
   lineTotal: number;
   images: string[];
+  planimetryFiles: PlanimetryFile[];
+  sentToProduction: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const isEmpty = !description.trim();
   const lineCount = description.split("\n").filter((l) => l.trim()).length;
   const firstLine = description.split("\n").find((l) => l.trim()) ?? "";
+  const hasPlani = planimetryFiles.length > 0;
 
   return (
     <div className="rounded-lg border border-border bg-background/40 p-3 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Producto #{index + 1}
         </span>
+        <div className="flex items-center gap-1.5">
+          {sentToProduction && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+              En producción
+            </span>
+          )}
+          {hasPlani ? (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold">
+              <CheckCircle2 className="h-3 w-3" /> Planimetría OK
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200 font-semibold">
+              <AlertTriangle className="h-3 w-3" /> Falta planimetría
+            </span>
+          )}
+        </div>
       </div>
+
 
       <button
         type="button"
@@ -670,6 +762,41 @@ function OrderItemReadCard({
                 <img src={u} alt="" className="w-full h-full object-contain" />
               </a>
             ))}
+          </div>
+        </div>
+      )}
+
+      {planimetryFiles.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+            Planimetría · {planimetryFiles.length} archivo{planimetryFiles.length === 1 ? "" : "s"}
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {planimetryFiles.map((f) => {
+              const isImage = /^image\//i.test(f.mime);
+              const isPdf = /pdf/i.test(f.mime);
+              return (
+                <a
+                  key={f.url}
+                  href={f.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={f.name}
+                  className="aspect-square rounded-md border border-border overflow-hidden bg-muted/40 hover:border-accent/60 transition-colors flex items-center justify-center"
+                >
+                  {isImage ? (
+                    <img src={f.url} alt={f.name} className="w-full h-full object-contain" />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-1 p-2 text-center">
+                      <FileText className={`h-7 w-7 ${isPdf ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`} />
+                      <span className="text-[9px] text-muted-foreground line-clamp-2 break-all">
+                        {f.name}
+                      </span>
+                    </div>
+                  )}
+                </a>
+              );
+            })}
           </div>
         </div>
       )}
