@@ -666,20 +666,44 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
                         })
                       }
                     />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => startProd.mutate(it.id)}
-                      disabled={startProd.isPending && startProd.variables === it.id}
-                      className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50 self-end"
-                      title="Marcar inicio real de producción hoy (notifica al vendedor)"
-                    >
-                      {startProd.isPending && startProd.variables === it.id
-                        ? <Loader2 className="h-3 w-3 animate-spin" />
-                        : "🚀"} Inicio hoy
-                    </button>
-                  )}
+                  ) : (() => {
+                    const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
+                    if (sup?.requires_advance_payment) return <span className="text-[10px] text-muted-foreground self-end pb-1.5">Requiere pago anticipado ↓</span>;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => startProd.mutate(it.id)}
+                        disabled={startProd.isPending && startProd.variables === it.id}
+                        className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50 self-end"
+                        title="Marcar inicio real de producción hoy (notifica al vendedor)"
+                      >
+                        {startProd.isPending && startProd.variables === it.id
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : "🚀"} Inicio hoy
+                      </button>
+                    );
+                  })()}
                 </div>
+
+                {(() => {
+                  const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
+                  if (!sup?.requires_advance_payment) return null;
+                  if (it.production_started_at) {
+                    return <SupplierAdvancePaymentCard orderItemId={it.id} />;
+                  }
+                  return (
+                    <div className="space-y-2">
+                      <SupplierAdvancePaymentNotice supplierName={sup.name} pct={Number(sup.advance_payment_pct ?? 50)} />
+                      <SupplierAdvancePaymentForm
+                        orderItemId={it.id}
+                        brandId={row.brand_id ?? row.order?.brand_id ?? selectedBrandFromRow(row)}
+                        orderId={it.order_id ?? row.order_id}
+                        suggestedAmount={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
+                        pct={Number(sup.advance_payment_pct ?? 50)}
+                      />
+                    </div>
+                  );
+                })()}
               </li>
             ))}
           </ul>
