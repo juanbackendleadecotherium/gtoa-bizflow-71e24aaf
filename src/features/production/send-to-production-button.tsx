@@ -287,8 +287,12 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
   }, [list.data]);
 
   // An item is "locked" for the current destination when it already belongs to
-  // a non-rejected production order that's different from the chosen target.
+  // a non-rejected production order that's different from the chosen target,
+  // OR when it doesn't have planimetry uploaded yet.
   const getItemLock = (it: ItemRow): { disabled: boolean; reason?: string } => {
+    if ((it.planimetry_files?.length ?? 0) === 0 && !it.production_order_id) {
+      return { disabled: true, reason: "Sin planimetría" };
+    }
     if (!it.production_order_id) return { disabled: false };
     const owner = ownerById.get(it.production_order_id);
     if (!owner || owner.status === "rechazada") return { disabled: false };
