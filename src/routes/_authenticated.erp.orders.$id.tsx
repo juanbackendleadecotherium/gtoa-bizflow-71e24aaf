@@ -132,6 +132,10 @@ function OrderDetail() {
     })));
     setEditExistingImages(its.map((it) => (Array.isArray(it.images) ? [...it.images] : [])));
     setEditPendingImages(its.map(() => []));
+    setEditExistingPlanimetry(
+      its.map((it) => (Array.isArray(it.planimetry_files) ? [...it.planimetry_files] : [])),
+    );
+    setEditPendingPlanimetry(its.map(() => []));
     hydratedFor.current = id;
   }, [orderQuery.data, editing, id]);
 
