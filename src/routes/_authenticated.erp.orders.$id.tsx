@@ -110,6 +110,8 @@ function OrderDetail() {
   const [editItems, setEditItems] = useState<(OrderItemInput & { id?: string })[]>([]);
   const [editExistingImages, setEditExistingImages] = useState<string[][]>([]);
   const [editPendingImages, setEditPendingImages] = useState<PendingImage[][]>([]);
+  const [editExistingPlanimetry, setEditExistingPlanimetry] = useState<PlanimetryFile[][]>([]);
+  const [editPendingPlanimetry, setEditPendingPlanimetry] = useState<PendingPlanimetry[][]>([]);
 
   // Hydration: only sync from server when NOT editing or when the order id changes.
   // This prevents losing in-progress edits when other queries (status, history, audit)
