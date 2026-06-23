@@ -31,43 +31,57 @@ type ItemRow = {
   planimetry_files: Array<{ url: string; name: string; mime: string }>;
 };
 
+// Max edge (px) for images embedded into the production PDF. Phone photos
+// arrive at 4000+ px and bloat the PDF; 1400 px is plenty for print at the
+// sizes used in planimetry-document.tsx (~250 px hero, ~360 px planimetry).
+const PDF_IMAGE_MAX_EDGE = 1400;
+const PDF_IMAGE_JPEG_QUALITY = 0.82;
+
 async function urlToDataUri(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return null;
     const blob = await res.blob();
-
-    if (!/^image\/(png|jpe?g)$/i.test(blob.type)) {
-      const objectUrl = URL.createObjectURL(blob);
-      try {
-        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-          const image = new window.Image();
-          image.onload = () => resolve(image);
-          image.onerror = reject;
-          image.src = objectUrl;
-        });
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return null;
-        ctx.drawImage(img, 0, 0);
-        return canvas.toDataURL("image/png");
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-      }
+    if (!/^image\//i.test(blob.type) && !/^image\//i.test(blob.type || "")) {
+      // Non-image (e.g. PDF) — can't embed via <Image> in @react-pdf.
+      return null;
     }
 
-    return await new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result as string);
-      r.onerror = reject;
-      r.readAsDataURL(blob);
-    });
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new window.Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = objectUrl;
+      });
+      const srcW = img.naturalWidth || img.width;
+      const srcH = img.naturalHeight || img.height;
+      const longest = Math.max(srcW, srcH);
+      const scale = longest > PDF_IMAGE_MAX_EDGE ? PDF_IMAGE_MAX_EDGE / longest : 1;
+      const dstW = Math.max(1, Math.round(srcW * scale));
+      const dstH = Math.max(1, Math.round(srcH * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = dstW;
+      canvas.height = dstH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      // White background under transparency keeps JPEG output clean for print.
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, dstW, dstH);
+      ctx.drawImage(img, 0, 0, dstW, dstH);
+      // JPEG keeps the embedded payload small; planimetry sheets don't need
+      // alpha and print drivers handle JPEG better than huge PNGs.
+      return canvas.toDataURL("image/jpeg", PDF_IMAGE_JPEG_QUALITY);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   } catch {
     return null;
   }
 }
+
 
 async function buildPlanData(
   orderId: string, brandId: string, productionCode: string, selectedItemIds: string[],

@@ -218,8 +218,8 @@ const styles = StyleSheet.create({
     borderStyle: "solid",
     padding: 4,
   },
-  planiImageLarge: { width: "100%", height: 360, objectFit: "contain" },
-  planiImageMedium: { width: "100%", height: 220, objectFit: "contain" },
+  planiImageLarge: { width: "75%", height: 260, objectFit: "contain", alignSelf: "center" },
+  planiImageMedium: { width: "100%", height: 180, objectFit: "contain" },
   planiCaption: {
     fontSize: 7.5,
     color: MUTED,
