@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck, MessageSquare, Calendar } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck, MessageSquare, Calendar, AlertTriangle, FileText, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
