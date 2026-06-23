@@ -3,6 +3,7 @@ import { ArrowRight, Lock, Shield } from "lucide-react";
 import espacioLogo from "@/assets/brands/espacio-mobiliario.png";
 import casaLogo from "@/assets/brands/casa-diseno.png";
 import montenegroLogo from "@/assets/brands/montenegro.webp";
+import getovaLogo from "@/assets/brands/getova-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
