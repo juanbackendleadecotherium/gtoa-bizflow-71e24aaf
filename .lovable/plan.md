@@ -1,93 +1,57 @@
+## Objetivo
 
-# Producción: planimetría por producto y seguimiento granular
+Convertir la subida de planimetría en un paso obligatorio por producto antes de enviar a producción. La venta nace en **Pendiente de planimetría** y solo los productos con planimetría cargada pueden viajar a la OP; los que falten quedan como tarea pendiente para el vendedor con alerta visible.
 
-## Objetivos
+## Cambios en la base de datos (una sola migración)
 
-1. **Una planimetría por producto** (PDF independiente por ítem).
-2. **Fechas de proveedor por producto** dentro del seguimiento.
-3. **Botón "Inicio de producción real" por producto** que sella la fecha y notifica al vendedor en *Mis tareas*.
-4. **Due-date para producción = entrega al cliente − 3 días hábiles** (excluye domingos y festivos CO; sábados cuentan), impreso en la planimetría.
-5. **Automatizaciones**:
-   - Al asignar proveedor por primera vez (a la OP o a un ítem), auto-rellenar la fecha de cotización con hoy.
-6. **Sembrar proveedores principales**: *Montenegro Atelier Tapicería* y *Ebanistería*.
+1. **Catálogo de estados** (`order_statuses`, por marca):
+   - Renombrar `borrador` → `pendiente-planimetria` · nombre "Pendiente de planimetría" · color `#a855f7` (morado, distinto a Confirmado/En producción) · `is_initial=true`.
+   - Desactivar `confirmado` (`is_active=false`). No se elimina para preservar historial de ventas que ya pasaron por ese estado.
+2. **Nuevo campo en `order_items`**:
+   - `planimetry_files jsonb NOT NULL DEFAULT '[]'::jsonb` → array de `{ url, name, mime, size, uploaded_at }`.
+   - Índice GIN opcional para futuros filtros tipo "items sin planimetría".
+3. **Helper SQL** `public.order_item_has_planimetry(order_item_id uuid) → boolean` (security definer) usado por la UI y por triggers.
+4. **Guardrail server-side**: trigger `BEFORE UPDATE` en `order_items` que rechaza setear `production_order_id` si `planimetry_files` está vacío (evita bypass desde queries directas).
+5. **Tarea automática**: trigger en `order_items` que, al enviar a producción parcialmente, crea/actualiza un `seller_tasks` tipo `upload_planimetry` por cada item de la venta que quedó sin planimetría (una tarea por item, con `order_item_id` ya soportado por la tabla). Se resuelve sola cuando el item recibe su primer archivo.
 
-## Cambios de base de datos (migración)
+## Cambios en frontend
 
-### `order_items` — campos nuevos por producto
-- `supplier_promised_date date`
-- `supplier_actual_date date`
-- `production_started_at timestamptz`
-- `production_due_date date` *(snapshot = entrega cliente − 3 hábiles al momento de generar planimetría; se usa también para mostrar en el seguimiento)*
+### Editor de productos (`src/features/orders/order-items-editor.tsx`)
+Agregar bloque nuevo debajo de "Imágenes de referencia":
+- **Planimetría del producto** · uploader múltiple aceptando `image/*` y `application/pdf`.
+- Reutiliza `ImageUploader` extendido (o un componente nuevo `PlanimetryFilesUploader` si el uploader actual no acepta PDF) con preview:
+  - imágenes → thumbnail directo
+  - PDF → ícono + primera página renderizada con `pdfjs-dist` (ya usado en planimetry-document si aplica; si no, fallback a ícono + nombre).
+- Archivos suben al bucket `order-attachments` bajo `orders/<order_id>/items/<item_id>/planimetry/`.
+- Estado vacío con copy claro: "Sin planimetría · obligatoria para enviar a producción".
 
-### `production_planimetries` — planimetría individual
-- `order_item_id uuid references order_items(id) on delete cascade` *(nullable para no romper históricos; nuevas filas siempre lo traen)*
-- Índice `(production_order_id, order_item_id, version)`.
+### Vista de la venta (`_authenticated.erp.orders.$id.tsx`)
+- Banner persistente naranja cuando hay items sin planimetría: "Faltan N planimetrías para enviar todo a producción".
+- Por cada item en la lista: chip verde "Planimetría OK" o chip ámbar "Falta planimetría".
 
-### `seller_tasks` — nuevo tipo informativo
-- Permitir `type = 'production_started'` (no requiere acción, solo alertamiento).
-- Campos extra opcionales: `order_item_id uuid`, `severity text default 'info'` (para distinguir tarea vs alerta).
+### Botón Enviar a producción (`src/features/production/send-to-production-button.tsx`)
+- En el diálogo de selección de items: deshabilitar checkbox de los items sin planimetría con tooltip "Sube la planimetría primero".
+- Permitir confirmar con selección parcial (4 de 5 está bien).
+- Tras enviar: refrescar tareas del vendedor (los items restantes ya tienen su `seller_task` por trigger).
 
-### Triggers / funciones
-- `order_items_auto_quotation_date()`: si `supplier_id` cambia de NULL→algo y la OP no tiene `quotation_date`, setear `production_orders.quotation_date = current_date`. (Igual cuando se asigna proveedor a nivel OP.)
-- `production_orders_auto_quotation_date()`: misma idea sobre `production_orders.supplier_id`.
-- RPC `start_real_production(p_item_id uuid)`:
-  - Set `order_items.production_started_at = now()`.
-  - Insert `seller_tasks` tipo `production_started`, severity `info`, vinculado al ítem y al vendedor de la orden, título "Tu producto ya empezó a producirse" + descripción con el nombre del producto + fecha.
-  - Si todas las líneas de la OP tienen `production_started_at`, también setear `production_orders.production_start_date = current_date` (si está vacío).
-- GRANTs estándar para columnas nuevas + RLS heredada (no cambia).
+### Mis tareas (`_authenticated.erp.my-tasks.tsx` + `seller-tasks-panel.tsx`)
+- Manejar el nuevo `type='upload_planimetry'`: tarjeta con link directo a la venta, ícono dedicado, severity `warning`.
+- Badge inline en la venta (similar a `OrderSellerTasksBadge`) listando los items sin planimetría.
 
-### Seed de proveedores
-- Insertar *Montenegro Atelier Tapicería* y *Ebanistería* en cada `brands` activa donde aún no existan (idempotente por `(brand_id, lower(name))`).
+### Form de creación de venta
+- Mensaje informativo en el footer del wizard: "La venta se guardará como **Pendiente de planimetría**. Podrás subir las planimetrías después y enviar productos a producción a medida que estén listos."
+- No bloquea guardar la venta sin planimetría (ese es el punto: poder vender en sitio).
 
-## Cambios de frontend
+## Detalles técnicos
 
-### Util `lib/business-days.ts`
-- `subtractBusinessDays(date, n)` que retrocede `n` días saltando domingos y festivos CO.
-- Festivos CO hardcodeados para 2025-2027 (lista cerrada de fechas fijas + Ley Emiliani trasladados al lunes). Comentario para extender cada año.
+- **Sin nuevos buckets** — reusamos `order-attachments` (público). El path por item facilita borrado por cascada manual.
+- **Validación cliente**: max 10 MB por archivo, hasta 8 archivos por producto.
+- **PDF preview**: si `pdfjs-dist` no está, agregar con `bun add pdfjs-dist` y renderizar la primera página a un canvas de 200×260.
+- **Tipos**: regenerar `src/integrations/supabase/types.ts` no es manual — la migración lo dispara.
+- **Compatibilidad hacia atrás**: items existentes quedan con `planimetry_files=[]`. Para ventas ya en producción no afecta nada (el guardrail solo aplica al setear `production_order_id` desde NULL).
 
-### Planimetría — un PDF por producto
-`src/features/production/send-to-production-button.tsx` → `generatePlanimetryForOrder`:
-- Para cada `selectedItemId`: construir `PlanimetryDocumentData` con **un solo item**, generar PDF independiente, subir a Storage, e insertar fila en `production_planimetries` con `order_item_id` poblado y `version` calculada por ítem.
-- En la planimetría usar `production_due_date` (calculado con `subtractBusinessDays(estimated_delivery_date, 3)`) en lugar de la fecha cruda. Persistir ese valor también en `order_items.production_due_date` para que coincida con lo que ve el equipo.
-- Mantener regeneración: si se vuelve a generar para los mismos ítems, sube a `version + 1` por ítem.
+## Out of scope (lo dejo para otra iteración si lo pides)
 
-`planimetry-uploader` / lista de planimetrías:
-- Mostrar agrupadas por producto (cuando exista `order_item_id`); fallback al comportamiento actual para históricos.
-
-### Seguimiento (`_authenticated.erp.production.tracking.tsx`) — panel expandido
-En la lista de "Productos en producción" del `ExpandedPanel`, debajo de cada producto:
-- Dos `DateField`: **Prometida proveedor** (`supplier_promised_date`) y **Real proveedor** (`supplier_actual_date`).
-- **Indicador de "Producción debe terminar"**: `production_due_date` en chip (read-only, recalculable si cambia la entrega).
-- Botón **"Inicio producción real"**:
-  - Visible cuando `production_started_at` es NULL.
-  - Al clic: `rpc("start_real_production", { p_item_id })`. Toast "Marcado e informado al vendedor".
-  - Cuando ya tiene valor, muestra `📍 Iniciado el dd/mm` (texto fijo).
-- Patch de los DateField por ítem va contra `order_items`, no la OP.
-
-### Aprobación de órdenes (visual)
-No cambia el flujo, pero la previsualización/listado debe mostrar las planimetrías por ítem cuando el operador entre al detalle.
-
-### Mis tareas (`_authenticated.erp.my-tasks.tsx`)
-- Renderizar tareas `type = 'production_started'` con estilo "info" (azul, ícono `Rocket`), sin botón de acción, con CTA "Ver venta" → ruta de la orden. Las `fix_planimetry` mantienen su estilo actual.
-- Badge sidebar sigue contando solo pendientes (las `info` se pueden auto-resolver en 14 días vía `pg_cron` opcional — fuera de alcance ahora).
-
-## Recomendaciones / mejoras incluidas
-
-1. **`production_due_date` como snapshot en el ítem**: si después cambia la fecha de entrega al cliente, el due-date original queda visible y se puede recalcular con un botón "Recalcular due-date" (lo dejo previsto pero no expongo UI en esta tanda salvo que lo pidas).
-2. **Quotation_date** se autocompleta también cuando el proveedor se asigna a nivel de ítem (no solo OP), porque ahora la asignación real es por producto.
-3. **Sábados como hábiles**: tal como pediste; festivos colombianos como no hábiles. Para feriados futuros, agregamos la lista 2025-2027 ahora y dejamos un comentario `// extender cada año` en el util.
-
-## Cómo lo probamos
-
-1. **Migración**: aprobar la migración (crea columnas, triggers, RPC y semilla de proveedores).
-2. **Crear venta** con 3 productos en marcas existentes; enviar a producción.
-3. **Verificar planimetrías**: ahora deben aparecer 3 archivos PDF separados (uno por ítem) en la sección Planimetrías de la OP; cada uno con la fecha de entrega impresa = entrega cliente − 3 hábiles.
-4. **Aceptar la OP** y abrir Seguimiento → expandir la fila → comprobar que cada producto tiene sus dos fechas de proveedor + botón "Inicio producción real".
-5. **Asignar proveedor distinto** a cada ítem → la *fecha de cotización* de la OP se autocompleta con la fecha de hoy.
-6. **Pulsar "Inicio producción real"** en uno: aparece sello con la fecha y el vendedor recibe en *Mis tareas* una tarjeta info "Tu producto … empezó a producirse hoy".
-7. **Cambiar fecha de entrega** en la venta a un viernes y verificar que la planimetría regenerada muestra el martes anterior (saltando domingo).
-
-## Pendiente de confirmar antes de implementar
-
-- **Proveedores semilla en qué marcas**: por defecto los crearé en todas las marcas activas. Si solo aplica a una marca específica (Getova, otra), dímelo y lo limito.
-- **Alerta "producción iniciada"**: la generaré por producto (1 alerta por ítem). Si prefieres una sola alerta agregada por OP cuando arranca el primer ítem, lo ajusto.
+- Validación OCR / aprobación del contenido de la planimetría.
+- Versión / historial de planimetrías por item (hoy solo lista plana).
+- Notificación por WhatsApp al vendedor cuando hay planimetría pendiente.
