@@ -28,159 +28,247 @@ export type PlanimetryDocumentData = {
   items: PlanimetryItem[];
 };
 
-// Palette — neutral warm grays with a single accent
+// Palette — neutral warm grays with single accent (matches reference)
 const INK = "#1a1a1a";
 const SUB = "#3d3d3d";
 const MUTED = "#6b6b6b";
-const CARD = "#c9c7c2";       // warm gray card (like reference)
-const CARD_SOFT = "#d8d6d1";  // softer inner area
-const PAPER = "#c9c7c2";      // unified gray background (same as cards)
+const CARD = "#c9c7c2";
+const PAPER = "#c9c7c2";
 const LINE = "#9a9893";
-const ACCENT_DEFAULT = "#e8542a"; // warm orange highlight
+const ACCENT_DEFAULT = "#e8542a";
+
+// Page margins — generous so wrapped content never touches the edge
+const PAGE_MARGIN_X = 22;
+const PAGE_MARGIN_TOP = 18;
+const PAGE_MARGIN_BOTTOM = 70;
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 18, paddingBottom: 70, paddingHorizontal: 18,
-    fontSize: 10, color: INK, fontFamily: "Helvetica",
+    paddingTop: PAGE_MARGIN_TOP,
+    paddingBottom: PAGE_MARGIN_BOTTOM,
+    paddingHorizontal: PAGE_MARGIN_X,
+    fontSize: 9.5,
+    color: INK,
+    fontFamily: "Helvetica",
     backgroundColor: PAPER,
   },
 
   // === HEADER CARD ===========================================================
   headerCard: {
-    backgroundColor: CARD, borderRadius: 16, padding: 18,
-    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
-    marginBottom: 12,
+    backgroundColor: CARD,
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 10,
   },
   headerLeft: { flex: 1, paddingRight: 12 },
   headerTitle: {
-    fontSize: 13, fontWeight: 700, fontStyle: "italic",
-    letterSpacing: 0.6, color: INK, marginBottom: 10,
+    fontSize: 12,
+    fontWeight: 700,
+    fontStyle: "italic",
+    letterSpacing: 0.6,
+    color: INK,
+    marginBottom: 8,
   },
-  headerMetaRow: { flexDirection: "row", marginBottom: 4 },
-  headerMetaLabel: { fontSize: 11, fontStyle: "italic", color: INK, width: 78 },
-  headerMetaValue: { fontSize: 11, fontWeight: 700, color: INK },
+  headerMetaRow: { flexDirection: "row", marginBottom: 3 },
+  headerMetaLabel: { fontSize: 10, fontStyle: "italic", color: INK, width: 72 },
+  headerMetaValue: { fontSize: 10, fontWeight: 700, color: INK },
 
-  headerRight: { alignItems: "flex-end", minWidth: 140 },
-  factLabel: { fontSize: 11, fontStyle: "italic", color: INK },
-  factNumber: { fontSize: 36, fontWeight: 700, color: INK, lineHeight: 1, marginTop: 2 },
-  prodCode: { fontSize: 8, color: MUTED, marginTop: 4, letterSpacing: 0.8 },
+  headerRight: { alignItems: "flex-end", minWidth: 130 },
+  factLabel: { fontSize: 10, fontStyle: "italic", color: INK },
+  factNumber: { fontSize: 32, fontWeight: 700, color: INK, lineHeight: 1, marginTop: 2 },
+  prodCode: { fontSize: 7.5, color: MUTED, marginTop: 4, letterSpacing: 0.8 },
 
-  // === HERO / ITEM CARD ======================================================
-  itemCard: {
-    backgroundColor: CARD, borderRadius: 16, padding: 16,
-    marginBottom: 12,
-  },
-  deliveryStrip: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "baseline",
-    marginBottom: 12, gap: 8,
-  },
-  qtyBadge: {
-    backgroundColor: "#1a1a1a", color: "#ffffff",
-    fontSize: 9, fontWeight: 700, letterSpacing: 1,
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10,
-  },
-  deliveryWrap: { flexDirection: "row", alignItems: "baseline", gap: 6 },
-  deliveryLabel: { fontSize: 11, fontWeight: 700, fontStyle: "italic", color: INK },
-  deliveryValue: { fontSize: 13, fontWeight: 700, fontStyle: "italic" },
+  // === MAIN TWO-COLUMN BLOCK =================================================
+  mainRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
+  mainLeft: { width: "44%" },
+  mainRight: { width: "56%", flexDirection: "column" },
 
-  // Hero image — narrower than full width but still legible, centered
-  heroImageWrap: { alignItems: "center", width: "100%" },
+  // Left column card containing hero image + product name
+  heroCard: {
+    backgroundColor: CARD,
+    borderRadius: 14,
+    padding: 10,
+  },
   heroImage: {
-    width: "72%", height: 320, objectFit: "contain", borderRadius: 12,
+    width: "100%",
+    height: 220,
+    objectFit: "cover",
+    borderRadius: 10,
   },
   heroNoImage: {
-    width: "72%", height: 320, borderRadius: 12, borderWidth: 1, borderStyle: "dashed",
-    borderColor: LINE, justifyContent: "center", alignItems: "center",
+    width: "100%",
+    height: 220,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: LINE,
+    justifyContent: "center",
+    alignItems: "center",
   },
   heroNoImageText: { fontSize: 9, color: MUTED, fontStyle: "italic" },
   heroProductName: {
-    fontSize: 20, fontWeight: 700, fontStyle: "italic",
-    color: INK, marginTop: 12,
+    fontSize: 15,
+    fontWeight: 700,
+    color: INK,
+    marginTop: 8,
   },
-  heroProductCaption: { fontSize: 10, fontStyle: "italic", color: SUB, marginTop: 2 },
+  heroProductCaption: { fontSize: 9, fontStyle: "italic", color: SUB, marginTop: 1 },
 
-  // === SPECS (description) — separate card so it can flow across pages =======
+  // Right column card — specs / delivery
   specsCard: {
-    backgroundColor: CARD, borderRadius: 16, padding: 16, marginBottom: 12,
+    backgroundColor: CARD,
+    borderRadius: 14,
+    padding: 12,
+    flex: 1,
   },
-  specsLabel: {
-    fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
-    color: SUB, marginBottom: 8,
+  specsTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
   },
-  specsBody: { fontSize: 11, color: INK, lineHeight: 1.6 },
+  qtyBadge: {
+    backgroundColor: "#1a1a1a",
+    color: "#ffffff",
+    fontSize: 8.5,
+    fontWeight: 700,
+    letterSpacing: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 9,
+  },
+  deliveryBlock: { alignItems: "flex-end" },
+  deliveryLabel: { fontSize: 10, fontWeight: 700, fontStyle: "italic", color: INK },
+  deliveryValue: { fontSize: 13, fontWeight: 700, fontStyle: "italic", marginTop: 1 },
 
-  // === SECONDARY IMAGES CARD — bigger, contain ===============================
+  specsLabel: {
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: SUB,
+    marginBottom: 5,
+    marginTop: 2,
+  },
+  specsBody: { fontSize: 10, color: INK, lineHeight: 1.5 },
+
+  // === REFERENCES GRID — small thumbnails side by side =======================
   refCard: {
-    backgroundColor: CARD, borderRadius: 16, padding: 16, marginBottom: 12,
+    backgroundColor: CARD,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
   },
   refTitle: {
-    fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
-    color: SUB, marginBottom: 10,
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: SUB,
+    marginBottom: 8,
   },
-  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
-  refCell: { width: "50%", paddingHorizontal: 5, paddingBottom: 10, alignItems: "center" },
+  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
+  refCell: {
+    width: "33.333%",
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+    alignItems: "center",
+  },
   refImage: {
-    width: "100%", height: 260, objectFit: "contain", borderRadius: 10,
+    width: "100%",
+    height: 130,
+    objectFit: "cover",
+    borderRadius: 8,
   },
-  refCaption: { fontSize: 8, color: MUTED, marginTop: 4, textAlign: "center", fontStyle: "italic" },
+  refCaption: {
+    fontSize: 7.5,
+    color: MUTED,
+    marginTop: 3,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
 
   // === NOTES =================================================================
   notesCard: {
-    backgroundColor: CARD, borderRadius: 16, padding: 14, marginBottom: 12,
+    backgroundColor: CARD,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
   },
   notesLabel: {
-    fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
-    color: SUB, marginBottom: 6,
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: SUB,
+    marginBottom: 5,
   },
-  notesBody: { fontSize: 10.5, color: INK, lineHeight: 1.5 },
+  notesBody: { fontSize: 10, color: INK, lineHeight: 1.5 },
 
   // === FOOTER ================================================================
   footer: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 18, paddingTop: 10,
-    position: "absolute", bottom: 18, left: 0, right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: PAGE_MARGIN_X,
+    paddingTop: 10,
+    position: "absolute",
+    bottom: 18,
+    left: 0,
+    right: 0,
     backgroundColor: PAPER,
   },
-  logoBox: { width: 90, height: 32, justifyContent: "center" },
-  logo: { maxWidth: 90, maxHeight: 32, objectFit: "contain" },
-  footerBrand: { fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: INK },
+  logoBox: { width: 80, height: 30, justifyContent: "center" },
+  logo: { maxWidth: 80, maxHeight: 30, objectFit: "contain" },
+  footerBrand: { fontSize: 8.5, fontWeight: 700, letterSpacing: 1.2, color: INK },
   footerText: { fontSize: 8, color: MUTED },
 });
 
 const fmtDate = (s?: string | null) => {
   if (!s) return "—";
   try {
-    return new Date(s).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
-  } catch { return s; }
+    return new Date(s).toLocaleDateString("es-CO", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return s;
+  }
 };
 const fmtDateLong = (s?: string | null) => {
   if (!s) return null;
   try {
     return new Date(s).toLocaleDateString("es-CO", { day: "2-digit", month: "long" });
-  } catch { return s; }
+  } catch {
+    return s;
+  }
 };
 
 export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
   const logo = getBrandLogo(data.brand.slug, data.brand.logo_url);
-  const accent = (data.brand.primary_color && /^#[0-9a-f]{3,8}$/i.test(data.brand.primary_color))
-    ? data.brand.primary_color : ACCENT_DEFAULT;
+  const accent =
+    data.brand.primary_color && /^#[0-9a-f]{3,8}$/i.test(data.brand.primary_color)
+      ? data.brand.primary_color
+      : ACCENT_DEFAULT;
   const deliveryLong = fmtDateLong(data.estimated_delivery_date);
   const factNumber = data.invoice_number || data.order_number;
 
   return (
     <Document title={`Planimetría ${data.production_code}`}>
       {data.items.map((it, idx) => {
-        const lines = it.description.split(/\n+/).map(l => l.trim()).filter(Boolean);
+        const lines = it.description.split(/\n+/).map((l) => l.trim()).filter(Boolean);
         const title = lines[0] || `Producto ${idx + 1}`;
-        // Show the FULL description (including the title line) as specs,
-        // so single-line descriptions don't render as "sin especificaciones".
         const body = it.description.trim();
         const hero = it.images[0];
         const rest = it.images.slice(1);
 
         return (
           <Page key={idx} size="LETTER" style={styles.page}>
-            {/* HEADER CARD — kept from previous design (logo & invoice) */}
+            {/* HEADER CARD */}
             <View style={styles.headerCard}>
               <View style={styles.headerLeft}>
                 <Text style={styles.headerTitle}>FICHA TÉCNICA DE PRODUCCIÓN</Text>
@@ -190,7 +278,9 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                 </View>
                 <View style={styles.headerMetaRow}>
                   <Text style={styles.headerMetaLabel}>Fecha:</Text>
-                  <Text style={styles.headerMetaValue}>{fmtDate(data.sale_date ?? new Date().toISOString())}</Text>
+                  <Text style={styles.headerMetaValue}>
+                    {fmtDate(data.sale_date ?? new Date().toISOString())}
+                  </Text>
                 </View>
                 {data.seller_name ? (
                   <View style={styles.headerMetaRow}>
@@ -220,44 +310,49 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
               </View>
             </View>
 
-            {/* HERO IMAGE CARD — full width, contain (no crop) */}
-            <View style={styles.itemCard} wrap={false}>
-              <View style={styles.deliveryStrip}>
-                <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
-                {deliveryLong ? (
-                  <View style={styles.deliveryWrap}>
-                    <Text style={styles.deliveryLabel}>Entrega:</Text>
-                    <Text style={[styles.deliveryValue, { color: accent }]}>{deliveryLong}</Text>
-                  </View>
-                ) : null}
+            {/* MAIN ROW — hero image LEFT, specs RIGHT (like reference) */}
+            <View style={styles.mainRow} wrap={false}>
+              <View style={styles.mainLeft}>
+                <View style={styles.heroCard}>
+                  {hero ? (
+                    <Image src={hero} style={styles.heroImage} />
+                  ) : (
+                    <View style={styles.heroNoImage}>
+                      <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
+                    </View>
+                  )}
+                  <Text style={styles.heroProductName}>{title}</Text>
+                  <Text style={styles.heroProductCaption}>Imagen de referencia</Text>
+                </View>
               </View>
 
-              <View style={styles.heroImageWrap}>
-                {hero ? (
-                  <Image src={hero} style={styles.heroImage} />
-                ) : (
-                  <View style={styles.heroNoImage}>
-                    <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
+              <View style={styles.mainRight}>
+                <View style={styles.specsCard}>
+                  <View style={styles.specsTopRow}>
+                    <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
+                    {deliveryLong ? (
+                      <View style={styles.deliveryBlock}>
+                        <Text style={styles.deliveryLabel}>Fecha de entrega:</Text>
+                        <Text style={[styles.deliveryValue, { color: accent }]}>
+                          {deliveryLong}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
-                )}
+
+                  <Text style={styles.specsLabel}>Especificaciones</Text>
+                  {body ? (
+                    <Text style={styles.specsBody}>{body}</Text>
+                  ) : (
+                    <Text style={[styles.specsBody, { color: MUTED, fontStyle: "italic" }]}>
+                      Sin especificaciones adicionales.
+                    </Text>
+                  )}
+                </View>
               </View>
-              <Text style={styles.heroProductName}>{title}</Text>
-              <Text style={styles.heroProductCaption}>Imagen de referencia principal</Text>
             </View>
 
-            {/* SPECS / DESCRIPTION — separate card, wraps across pages if needed */}
-            <View style={styles.specsCard}>
-              <Text style={styles.specsLabel}>Especificaciones</Text>
-              {body ? (
-                <Text style={styles.specsBody}>{body}</Text>
-              ) : (
-                <Text style={[styles.specsBody, { color: MUTED, fontStyle: "italic" }]}>
-                  Sin especificaciones adicionales.
-                </Text>
-              )}
-            </View>
-
-            {/* ADDITIONAL REFERENCES — larger thumbnails, contain */}
+            {/* REFERENCES — small thumbnails side by side in a 3-column grid */}
             {rest.length > 0 ? (
               <View style={styles.refCard}>
                 <Text style={styles.refTitle}>Referencias adicionales</Text>
@@ -272,7 +367,7 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
               </View>
             ) : null}
 
-            {/* NOTES — only on last page */}
+            {/* NOTES — only last item */}
             {data.notes && idx === data.items.length - 1 ? (
               <View style={styles.notesCard} wrap={false}>
                 <Text style={styles.notesLabel}>Notas de la venta</Text>
@@ -280,7 +375,7 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
               </View>
             ) : null}
 
-            {/* FOOTER — logo left, page number right */}
+            {/* FOOTER */}
             <View style={styles.footer} fixed>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 {logo ? (
@@ -292,8 +387,12 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                   {(data.brand.legal_name || data.brand.name).toUpperCase()}
                 </Text>
               </View>
-              <Text style={styles.footerText}
-                render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
+              <Text
+                style={styles.footerText}
+                render={({ pageNumber, totalPages }) =>
+                  `Página ${pageNumber} de ${totalPages}`
+                }
+              />
             </View>
           </Page>
         );
