@@ -19,6 +19,8 @@ type Supplier = {
   id: string; brand_id: string; name: string; category: string | null;
   contact_name: string | null; phone: string | null; email: string | null;
   notes: string | null; is_active: boolean;
+  requires_advance_payment?: boolean;
+  advance_payment_pct?: number;
 };
 
 function SuppliersPage() {
