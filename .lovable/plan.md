@@ -1,100 +1,129 @@
-# Pago anticipado al proveedor — gate de inicio de producción
+# Plan — Control de bodega por zonas (Logística)
 
-## 1. Modelo de datos
+## Decisiones clave (responde a tus 4 preguntas)
 
-### `suppliers` (alter)
-- `requires_advance_payment boolean NOT NULL DEFAULT false`
-- `advance_payment_pct numeric(5,2) NOT NULL DEFAULT 50` (por si mañana otro proveedor exige otro %, sin código nuevo)
-- Migración semilla: `UPDATE suppliers SET requires_advance_payment = true WHERE lower(name) = 'ebanistería'` (en todas las marcas).
+### 1. ¿Qué hay en cada zona "ahora"? → Cálculo en tiempo real desde `warehouse_movements`
+No creo tabla derivada ni materialized view. Uso una **VIEW** `warehouse_item_locations` que para cada `item_id` devuelve el último movimiento (`DISTINCT ON (item_id) ... ORDER BY item_id, moved_at DESC, created_at DESC`) y su `zone_id` si el tipo es `in`, o `NULL` si el último es `out`. Sobre esa view armo `warehouse_zone_contents` (item actualmente en zona) y un `warehouse_zone_counts` para el resumen.
 
-### Nueva tabla `public.order_item_supplier_payments`
-Un pago anticipado por `order_item`. Una sola fila viva por ítem; al confirmar queda inmutable (la UI bloquea, no se construye undo).
+Razón: es el mismo patrón "fuente de verdad = log de eventos" que ya usas (status_history, audit_log). Evita drift, no necesita triggers de mantenimiento, y con índice `(item_id, moved_at DESC)` el costo es trivial para los volúmenes esperados. Realtime se logra suscribiéndose a `warehouse_movements` e invalidando las queries que leen la view (mismo patrón que ya usa producción tracking).
 
-Campos de dominio:
-- `order_item_id uuid NOT NULL UNIQUE REFERENCES order_items(id) ON DELETE CASCADE`
-- `production_order_id uuid REFERENCES production_orders(id) ON DELETE SET NULL`
-- `order_id uuid NOT NULL REFERENCES orders(id) ON DELETE CASCADE`
-- `brand_id uuid NOT NULL REFERENCES brands(id)`
-- `supplier_id uuid NOT NULL REFERENCES suppliers(id)` — snapshot del proveedor al momento del pago
-- `supplier_name_snapshot text NOT NULL`
-- `amount numeric(14,2) NOT NULL CHECK (amount > 0)`
-- `paid_at date NOT NULL`
-- `receipt_path text NOT NULL` — ruta en bucket `supplier-payments` (privado), mismo patrón que planimetría
-- `receipt_mime text`, `receipt_size_bytes int`
-- `created_by uuid`, `created_by_email text`
-- estándar `created_at` / `updated_at`
+### 2. Panel de admin sin códigos de zona aún
+Nueva ruta `/_authenticated/erp/settings/warehouses` (solo `admin`). Dos secciones:
+- **Bodegas**: crear/editar/desactivar `warehouses` (name, address, active).
+- **Zonas** (dentro de cada bodega): tabla con crear/editar/desactivar `warehouse_zones` (zone_code, description, capacity_units). Vacía al inicio. **No siembro ningún dato** — solo un empty state que dice "Aún no hay zonas. Crea la primera cuando tengas los códigos definidos."
 
-GRANTs: `SELECT, INSERT` a `authenticated` (no UPDATE/DELETE — atómico); `ALL` a `service_role`. RLS:
-- `SELECT`: `has_brand_access(auth.uid(), brand_id)`
-- `INSERT`: `can_write_brand(...)` + el ítem debe pertenecer a esa marca + proveedor debe tener `requires_advance_payment = true` (validado además dentro del server fn).
-- No policies de UPDATE/DELETE → inmutable.
+No bloqueo el resto de la UI por falta de zonas: la vista operativa también muestra empty state cuando no hay zonas creadas.
 
-Storage: bucket nuevo **`supplier-payments`** (privado), policies análogas a `production-planimetries` (lectura/escritura sólo con acceso de marca; path = `{brand_id}/{order_id}/{order_item_id}/{uuid}.{ext}`).
+### 3. Salida sin ingreso previo
+**Bloqueo en la base de datos** vía trigger `BEFORE INSERT` en `warehouse_movements`. Reglas:
+- Si `movement_type = 'in'` y el ítem ya tiene una ubicación activa (último movimiento es `in` sin `out` posterior) → `RAISE EXCEPTION` "Este producto ya está en bodega ({zona}). Registra primero la salida."
+- Si `movement_type = 'out'` y el ítem no tiene ubicación activa → `RAISE EXCEPTION` "Este producto no está actualmente en bodega; no se puede registrar una salida."
+- Si `movement_type = 'out'` y `zone_id` no coincide con la ubicación actual → `RAISE EXCEPTION` "El producto está en la zona X, no en la zona indicada."
 
-## 2. Punto único de verdad: "fecha efectiva de inicio real"
+Mismo patrón que `require_planimetry_for_production` / `prevent_reassign_active_production_item`. El error sube a la UI vía el server function y se muestra con `toast.error(error.message)`.
 
-Hoy `order_items.production_started_at` se setea con `now()` vía `start_real_production(p_item_id)`. Centralizo así:
+### 4. Archivos a crear/modificar
 
-- Reescribir **`public.start_real_production(p_item_id uuid, p_started_at timestamptz DEFAULT now())`** para que reciba opcionalmente la fecha efectiva.
-- Nueva función SQL `public.effective_production_start_for_item(_item_id uuid) RETURNS timestamptz` (STABLE, SECURITY DEFINER) — única fuente de la verdad:
-  - Si el supplier del ítem tiene `requires_advance_payment = true` → devuelve `paid_at` de `order_item_supplier_payments` (o `NULL` si no hay).
-  - Si no requiere → devuelve `now()`.
-- Toda la lógica de servidor (RPC `start_real_production`, server fn de confirmación de pago, cualquier futuro caller) consume esta función. **No se replica la regla en frontend ni en otro trigger.**
-- El cálculo `production_due_date = estimated_delivery_date − 3 días hábiles` se mantiene tal cual está hoy (ya queda sellado al enviar a producción); no se mueve. Lo que cambia es **qué fecha cuenta como inicio real** para tracking, badges de desviación y el mensaje de notificación. Si el negocio confirma que `production_due_date` también debe recalcularse desde el pago, lo agregamos en el mismo server fn (un solo UPDATE) — ver pregunta abierta abajo.
+**Migración SQL** (1 archivo nuevo):
+- 3 tablas + GRANTs + RLS + políticas
+- View `warehouse_item_locations`
+- Trigger de validación de movimientos
+- Trigger `set_warehouse_movement_creator` (rellena `moved_by`)
+- `ALTER PUBLICATION supabase_realtime ADD TABLE warehouse_movements`
 
-## 3. Server functions (TanStack, `createServerFn` + `requireSupabaseAuth`)
+**Server functions** (`src/lib/warehouse.functions.ts`, nuevo):
+- `listWarehousesWithZones()` — admin + operativo
+- `upsertWarehouse({...})` — admin
+- `upsertWarehouseZone({...})` — admin
+- `deactivateWarehouseZone(id)` — admin
+- `listZoneSummary()` — bodega resumen (zona + count + capacity)
+- `listZoneContents(zoneId)` — items en una zona
+- `listFinishedItemsAvailableForIntake()` — items en estado `terminado` sin ubicación activa
+- `listItemsInWarehouse()` — items con ubicación activa (para salida)
+- `registerWarehouseMovement({...})` — `in` u `out`, valida vía trigger DB
 
-Archivo nuevo `src/lib/supplier-advance-payments.functions.ts`:
+Todas con `requireSupabaseAuth`. Las de escritura chequean `has_role('admin')` o `has_role('operativo')` según corresponda.
 
-- `confirmSupplierAdvancePayment({ orderItemId, amount, paidAt, receiptPath })`
-  1. Carga ítem + supplier; valida `requires_advance_payment = true`, `can_write_brand`, que no exista pago previo, y que `receiptPath` empiece por la ruta del ítem (anti-spoof).
-  2. INSERT en `order_item_supplier_payments` (snapshot del supplier_name).
-  3. Llama internamente al RPC `start_real_production(p_item_id, paidAt::timestamptz)` → ese RPC ya inserta la `seller_task` `production_started` existente (mismo tipo, mismos destinatarios). Ajustamos el `reason` para que cuando venga de pago anticipado diga: *"Ítem X inició producción con {supplier_name}. Fecha estimada de entrega: {production_due_date | order.estimated_delivery_date}"*.
-  4. Devuelve el registro.
+**Rutas/componentes nuevos**:
+- `src/routes/_authenticated.erp.settings.warehouses.tsx` — panel admin (bodegas + zonas)
+- `src/routes/_authenticated.erp.warehouse.tsx` — vista operativa con tres tabs: **Resumen por zona**, **Registrar ingreso**, **Registrar salida**
+- `src/features/warehouse/zone-summary.tsx` — grid de zonas con conteo/capacidad y drawer con contenido
+- `src/features/warehouse/intake-form.tsx`
+- `src/features/warehouse/dispatch-form.tsx`
+- `src/features/warehouse/use-warehouse-realtime.ts` — hook con suscripción a `warehouse_movements` que invalida queries
 
-- `getSupplierAdvancePaymentForItem({ orderItemId })` — lee pago + signed URL (60 min) del comprobante.
+**Modificaciones mínimas**:
+- `src/routes/_authenticated.erp.tsx` — agregar item de nav "Bodega" → `/erp/warehouse`
+- `src/routes/_authenticated.erp.settings.*` — agregar link a "Bodegas y zonas" en la nav de settings
 
-- `uploadSupplierPaymentReceipt` — sigue el mismo patrón que `src/lib/planimetry-upload.ts` (sube desde el cliente con la sesión del usuario al bucket privado; el server fn sólo valida la ruta al confirmar). No se inventa un endpoint nuevo de upload.
+## Detalles técnicos
 
-## 4. Frontend
+### Roles
+El enum `app_role` actual es `('admin','operativo','finanzas','ventas')`. **No existen roles separados "producción" y "logística"**; el módulo operativo entero (incluyendo seguimiento de producción y logística) usa `operativo` hoy. Por consistencia con el resto del proyecto:
+- **Lectura** de las 3 tablas: `admin` o `operativo`.
+- **Inserción** en `warehouse_movements`: `admin` o `operativo`.
+- **Mantenimiento** de `warehouses` / `warehouse_zones`: solo `admin`.
 
-Componentes nuevos en `src/features/production/`:
+Si en el futuro quieres separar logística de producción, se hace ampliando el enum y los policies; no afecta el esquema.
 
-- `supplier-advance-payment-notice.tsx` — banner amarillo "Este proveedor requiere pago del 50% para iniciar producción" cuando `supplier.requires_advance_payment && !pago`.
-- `supplier-advance-payment-form.tsx` — monto (MoneyInput), `paid_at` (date), uploader de comprobante (PDF/imagen, reusa pattern de `planimetry-uploader.tsx`), botón **"Confirmar pago / Inicio real de producción"** que llama `confirmSupplierAdvancePayment`. Mientras `isPending` deshabilita todo.
-- `supplier-advance-payment-card.tsx` — vista de sólo lectura cuando ya hay pago: monto, fecha, link al comprobante (signed URL), badge "Inicio real registrado el …". Sin botón de deshacer.
+### Esquema SQL (resumen)
 
-Integración:
+```sql
+CREATE TABLE public.warehouses (
+  id uuid PK, name text NOT NULL, address text, active boolean DEFAULT true,
+  created_at, updated_at
+);
 
-- **`src/routes/_authenticated.erp.production.tracking.tsx`** (`ExpandedPanel`, alrededor de la línea 652) — antes del botón "Inicio hoy":
-  - Si `supplier.requires_advance_payment` y no hay pago → renderizar `SupplierAdvancePaymentNotice` + `SupplierAdvancePaymentForm`, y **ocultar el botón "🚀 Inicio hoy"** (el formulario lo reemplaza para esos ítems).
-  - Si ya hay pago → `SupplierAdvancePaymentCard` + `production_started_at` ya sellado por el RPC.
-  - Si supplier no requiere → comportamiento actual intacto.
-- Pasar `requires_advance_payment` en el SELECT de suppliers que ya hace la página (línea ~143/suppliers) — agregar la columna.
+CREATE TABLE public.warehouse_zones (
+  id uuid PK, warehouse_id uuid FK,
+  zone_code text NOT NULL, description text, capacity_units int,
+  active boolean DEFAULT true,
+  UNIQUE (warehouse_id, zone_code)
+);
 
-Realtime: nuevo `useEffect` que se suscribe a `postgres_changes` en `public.order_item_supplier_payments` filtrado por `brand_id` y a `public.order_items` (ya cubierto). Sigue el patrón existente del módulo de tracking; invalida las queries `production-orders-drive` y `supplier-advance-payment`.
+CREATE TABLE public.warehouse_movements (
+  id uuid PK,
+  item_id uuid FK -> order_items(id),
+  zone_id uuid FK -> warehouse_zones(id),
+  movement_type text CHECK (in ('in','out')),
+  moved_at timestamptz DEFAULT now(),
+  moved_by uuid, moved_by_email text,
+  reason text,
+  client_invoice text, client_cedula text,   -- requeridos cuando out + motivo=entrega
+  product_quantity numeric DEFAULT 1
+);
+CREATE INDEX ON warehouse_movements (item_id, moved_at DESC);
+```
 
-## 5. Cambio de proveedor con pago ya confirmado
+GRANTs explícitos `authenticated`/`service_role` en las tres; RLS habilitada; policies vía `has_role()`.
 
-Regla: **el pago queda atado al `order_item` y al `supplier_id` snapshot**, no migra.
+### View de ubicación actual
 
-- Trigger BEFORE UPDATE OF `supplier_id` en `order_items`: si existe pago para el ítem y `NEW.supplier_id IS DISTINCT FROM OLD.supplier_id` → `RAISE EXCEPTION 'No se puede cambiar el proveedor: este ítem ya tiene un pago anticipado confirmado a {snapshot}. Crea una nueva orden o gestiona el reembolso fuera del sistema.'`. Esto cubre el caso de error de captura y evita inconsistencias silenciosas. Si el negocio quiere un flujo de "anular pago", se discute aparte (fuera del alcance porque el usuario dijo "no construyas función para deshacer").
+```sql
+CREATE VIEW public.warehouse_item_locations AS
+SELECT DISTINCT ON (item_id)
+  item_id,
+  CASE WHEN movement_type = 'in' THEN zone_id END AS current_zone_id,
+  moved_at AS last_movement_at,
+  movement_type AS last_movement_type
+FROM warehouse_movements
+ORDER BY item_id, moved_at DESC, created_at DESC;
+```
 
-## 6. Archivos tocados
+### Cambio de proveedor / re-ingreso
+Si un ítem sale y vuelve a entrar (ej. devolución → reingreso a otra zona), es válido: el log es la verdad. La restricción solo impide dos `in` consecutivos sin un `out` intermedio.
 
-Nuevos:
-- `supabase/migrations/<ts>_supplier_advance_payments.sql` — alter suppliers + tabla nueva + GRANTs + RLS + funciones `effective_production_start_for_item` y `start_real_production` v2 + trigger anti-cambio-de-proveedor + bucket `supplier-payments` (vía `storage_create_bucket` tool, en mensaje aparte) + storage policies + seed Ebanistería + `ALTER PUBLICATION supabase_realtime ADD TABLE public.order_item_supplier_payments`.
-- `src/lib/supplier-advance-payments.functions.ts`
-- `src/lib/supplier-payment-upload.ts` (helper análogo a `planimetry-upload.ts`)
-- `src/features/production/supplier-advance-payment-notice.tsx`
-- `src/features/production/supplier-advance-payment-form.tsx`
-- `src/features/production/supplier-advance-payment-card.tsx`
+### Realtime
+Hook `useWarehouseRealtime()` se suscribe en la ruta `/erp/warehouse` y en el panel admin:
+```ts
+supabase.channel('warehouse_movements')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'warehouse_movements' },
+      () => queryClient.invalidateQueries({ queryKey: ['warehouse'] }))
+  .subscribe()
+```
+Cleanup en el `return` del `useEffect`.
 
-Modificados:
-- `src/routes/_authenticated.erp.production.tracking.tsx` — render condicional + subscripción realtime + select de suppliers incluye `requires_advance_payment`.
-- `src/routes/_authenticated.erp.settings.suppliers.tsx` — toggle `requires_advance_payment` en el editor y badge en la lista (catálogo).
-- `src/integrations/supabase/types.ts` se regenera tras la migración (no se edita).
-
-## Pregunta abierta antes de codear
-
-`production_due_date` (entrega cliente − 3 días hábiles) hoy se sella **al enviar a producción**, no depende del inicio. Para ítems con pago anticipado, ¿quieres que también se **recalcule en el momento del pago** usando la `estimated_delivery_date` vigente del pedido (por si la fecha de entrega cambió entre el envío a producción y el pago)? Si sí, lo hago dentro del mismo server fn de confirmación (un solo UPDATE) y el mensaje de notificación usa ese valor recién recalculado. Si no, dejo la fecha actual tal cual.
+## Fuera de alcance (confirmar si lo quieres en una siguiente iteración)
+- Traslados entre zonas como movimiento atómico único (hoy = `out` + `in`).
+- Adjuntar fotos del producto al ingresar.
+- Reporte histórico de movimientos por ítem (es trivial agregarlo después leyendo `warehouse_movements`).
