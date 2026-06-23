@@ -354,7 +354,7 @@ export function OrderItemsEditor({
               {imagesEnabled && (
                 <div>
                   <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                    Imágenes de referencia · planimetría
+                    Imágenes de referencia
                   </Label>
                   <ImageUploader
                     multiple
@@ -370,10 +370,51 @@ export function OrderItemsEditor({
                       arr[idx] = (arr[idx] ?? []).filter((u) => u !== url);
                       onExistingImagesChange!(arr);
                     }}
-                    hint="Se usarán al enviar a producción para construir la planimetría. Clic en una miniatura para verla en tamaño original."
+                    hint="Imágenes que el cliente trajo o que sirven de referencia visual."
                   />
                 </div>
               )}
+
+              {planimetryEnabled && (() => {
+                const ex = existingPlanimetry?.[idx] ?? [];
+                const pe = pendingPlanimetry?.[idx] ?? [];
+                const count = ex.length + pe.length;
+                const missing = count === 0;
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5 gap-2">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        Planimetría del producto
+                        {missing ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 normal-case tracking-normal text-[10px] font-semibold">
+                            <AlertTriangle className="h-3 w-3" /> Pendiente
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 normal-case tracking-normal text-[10px] font-semibold">
+                            ✓ {count} archivo{count === 1 ? "" : "s"}
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                    <PlanimetryFilesUploader
+                      existing={ex}
+                      pending={pe}
+                      onChangePending={(next) => {
+                        const arr = (pendingPlanimetry ?? []).slice();
+                        arr[idx] = next;
+                        onPendingPlanimetryChange!(arr);
+                      }}
+                      onRemoveExisting={(url) => {
+                        const arr = (existingPlanimetry ?? []).slice();
+                        arr[idx] = (arr[idx] ?? []).filter((f) => f.url !== url);
+                        onExistingPlanimetryChange!(arr);
+                      }}
+                      hint="Imagen o PDF con medidas, vistas y especificaciones técnicas. Obligatoria para enviar este producto a producción."
+                    />
+                  </div>
+                );
+              })()}
+
             </div>
           );
         })}
