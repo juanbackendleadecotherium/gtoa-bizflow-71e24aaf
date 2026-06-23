@@ -193,6 +193,10 @@ export function OrderItemsEditor({
   pendingImages,
   onExistingImagesChange,
   onPendingImagesChange,
+  existingPlanimetry,
+  pendingPlanimetry,
+  onExistingPlanimetryChange,
+  onPendingPlanimetryChange,
 }: {
   items: OrderItemInput[];
   onChange: (items: OrderItemInput[]) => void;
@@ -200,9 +204,18 @@ export function OrderItemsEditor({
   pendingImages?: PendingImage[][];
   onExistingImagesChange?: (next: string[][]) => void;
   onPendingImagesChange?: (next: PendingImage[][]) => void;
+  existingPlanimetry?: PlanimetryFile[][];
+  pendingPlanimetry?: PendingPlanimetry[][];
+  onExistingPlanimetryChange?: (next: PlanimetryFile[][]) => void;
+  onPendingPlanimetryChange?: (next: PendingPlanimetry[][]) => void;
 }) {
   const imagesEnabled =
     !!existingImages && !!pendingImages && !!onExistingImagesChange && !!onPendingImagesChange;
+  const planimetryEnabled =
+    !!existingPlanimetry &&
+    !!pendingPlanimetry &&
+    !!onExistingPlanimetryChange &&
+    !!onPendingPlanimetryChange;
 
   const add = () => {
     onChange([...items, { description: "", quantity: 1, unit_price: 0, sort_order: items.length }]);
@@ -210,12 +223,20 @@ export function OrderItemsEditor({
       onExistingImagesChange!([...(existingImages ?? []), []]);
       onPendingImagesChange!([...(pendingImages ?? []), []]);
     }
+    if (planimetryEnabled) {
+      onExistingPlanimetryChange!([...(existingPlanimetry ?? []), []]);
+      onPendingPlanimetryChange!([...(pendingPlanimetry ?? []), []]);
+    }
   };
   const remove = (idx: number) => {
     onChange(items.filter((_, i) => i !== idx));
     if (imagesEnabled) {
       onExistingImagesChange!((existingImages ?? []).filter((_, i) => i !== idx));
       onPendingImagesChange!((pendingImages ?? []).filter((_, i) => i !== idx));
+    }
+    if (planimetryEnabled) {
+      onExistingPlanimetryChange!((existingPlanimetry ?? []).filter((_, i) => i !== idx));
+      onPendingPlanimetryChange!((pendingPlanimetry ?? []).filter((_, i) => i !== idx));
     }
   };
   const update = (idx: number, patch: Partial<OrderItemInput>) =>
