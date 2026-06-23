@@ -181,7 +181,7 @@ export const listZoneContents = createServerFn({ method: "POST" })
       .select("item_id, last_movement_at")
       .eq("current_zone_id", data.zoneId);
     if (error) throw error;
-    const ids = (locs ?? []).map((l) => l.item_id);
+    const ids = (locs ?? []).map((l) => l.item_id).filter((x): x is string => !!x);
     if (ids.length === 0) return [];
     const { data: items, error: iErr } = await supabase
       .from("order_items")
