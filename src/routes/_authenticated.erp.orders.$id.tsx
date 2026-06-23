@@ -766,6 +766,41 @@ function OrderItemReadCard({
         </div>
       )}
 
+      {planimetryFiles.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+            Planimetría · {planimetryFiles.length} archivo{planimetryFiles.length === 1 ? "" : "s"}
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {planimetryFiles.map((f) => {
+              const isImage = /^image\//i.test(f.mime);
+              const isPdf = /pdf/i.test(f.mime);
+              return (
+                <a
+                  key={f.url}
+                  href={f.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={f.name}
+                  className="aspect-square rounded-md border border-border overflow-hidden bg-muted/40 hover:border-accent/60 transition-colors flex items-center justify-center"
+                >
+                  {isImage ? (
+                    <img src={f.url} alt={f.name} className="w-full h-full object-contain" />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-1 p-2 text-center">
+                      <FileText className={`h-7 w-7 ${isPdf ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`} />
+                      <span className="text-[9px] text-muted-foreground line-clamp-2 break-all">
+                        {f.name}
+                      </span>
+                    </div>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
