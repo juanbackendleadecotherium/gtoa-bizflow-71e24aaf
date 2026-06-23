@@ -28,6 +28,7 @@ type ItemRow = {
   images: string[];
   sort_order: number;
   production_order_id: string | null;
+  planimetry_files: Array<{ url: string; name: string; mime: string }>;
 };
 
 async function urlToDataUri(url: string): Promise<string | null> {
