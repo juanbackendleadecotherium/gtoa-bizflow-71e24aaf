@@ -215,7 +215,14 @@ function SuppliersPage() {
             {list.data!.map((s) => (
               <li key={s.id} className="flex items-start justify-between gap-2 rounded-lg border border-border bg-background p-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm">{s.name}{s.category && <span className="text-muted-foreground"> · {s.category}</span>}</p>
+                  <p className="font-medium text-sm">
+                    {s.name}{s.category && <span className="text-muted-foreground"> · {s.category}</span>}
+                    {s.requires_advance_payment && (
+                      <span className="ml-2 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                        Anticipo {s.advance_payment_pct ?? 50}%
+                      </span>
+                    )}
+                  </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     {s.contact_name && <>{s.contact_name} · </>}
                     {s.phone && <>{s.phone} · </>}
