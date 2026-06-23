@@ -3,6 +3,7 @@ import { ArrowRight, Lock, Shield } from "lucide-react";
 import espacioLogo from "@/assets/brands/espacio-mobiliario.png";
 import casaLogo from "@/assets/brands/casa-diseno.png";
 import montenegroLogo from "@/assets/brands/montenegro.webp";
+import getovaLogo from "@/assets/brands/getova-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,7 +26,7 @@ const brands: BrandItem[] = [
   { name: "Espacio Mobiliario", logo: espacioLogo },
   { name: "Montenegro Design",  logo: montenegroLogo },
   { name: "Casa Diseño",        logo: casaLogo },
-  { name: "Grupo Getova",       token: "bg-brand-getova" },
+  { name: "Grupo Getova",       logo: getovaLogo },
 ];
 
 
