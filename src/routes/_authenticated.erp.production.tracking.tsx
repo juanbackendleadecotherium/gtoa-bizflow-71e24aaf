@@ -65,22 +65,28 @@ function TrackingPage() {
 
   useEffect(() => {
     if (!selectedBrandId) return;
-    const refresh = () => {
+    const refresh = (itemId?: string) => {
       qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
       qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
       qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
+      if (itemId) qc.invalidateQueries({ queryKey: ["supplier-advance-payment", itemId] });
     };
     const channel = supabase
       .channel(`production-tracking-${selectedBrandId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "production_orders", filter: `brand_id=eq.${selectedBrandId}` },
-        refresh,
+        () => refresh(),
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "order_items" },
-        refresh,
+        () => refresh(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "order_item_supplier_payments", filter: `brand_id=eq.${selectedBrandId}` },
+        (payload: any) => refresh(payload?.new?.order_item_id ?? payload?.old?.order_item_id),
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -91,7 +97,7 @@ function TrackingPage() {
     enabled: !!selectedBrandId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("suppliers").select("id, name")
+        .from("suppliers").select("id, name, requires_advance_payment, advance_payment_pct")
         .eq("brand_id", selectedBrandId!).eq("is_active", true)
         .order("name");
       if (error) throw error;
