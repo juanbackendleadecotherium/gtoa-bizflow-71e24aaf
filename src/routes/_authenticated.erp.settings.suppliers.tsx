@@ -74,14 +74,18 @@ function SuppliersPage() {
           name: s.name, category: s.category, contact_name: s.contact_name,
           phone: s.phone, email: s.email, notes: s.notes,
           is_active: s.is_active ?? true,
-        }).eq("id", s.id);
+          requires_advance_payment: s.requires_advance_payment ?? false,
+          advance_payment_pct: s.advance_payment_pct ?? 50,
+        } as any).eq("id", s.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("suppliers").insert({
           brand_id: selectedBrandId!, name: s.name, category: s.category ?? null,
           contact_name: s.contact_name ?? null, phone: s.phone ?? null,
           email: s.email ?? null, notes: s.notes ?? null,
-        });
+          requires_advance_payment: s.requires_advance_payment ?? false,
+          advance_payment_pct: s.advance_payment_pct ?? 50,
+        } as any);
         if (error) throw error;
       }
     },
