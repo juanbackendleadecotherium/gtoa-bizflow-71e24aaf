@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedErpRouteImport } from './routes/_authenticated.erp'
 import { Route as AuthenticatedErpIndexRouteImport } from './routes/_authenticated.erp.index'
+import { Route as AuthenticatedErpWarehouseRouteImport } from './routes/_authenticated.erp.warehouse'
 import { Route as AuthenticatedErpRealProductionRouteImport } from './routes/_authenticated.erp.real-production'
 import { Route as AuthenticatedErpOrdersRouteImport } from './routes/_authenticated.erp.orders'
 import { Route as AuthenticatedErpMyTasksRouteImport } from './routes/_authenticated.erp.my-tasks'
@@ -23,6 +24,7 @@ import { Route as AuthenticatedErpRealProductionIndexRouteImport } from './route
 import { Route as AuthenticatedErpProductionIndexRouteImport } from './routes/_authenticated.erp.production.index'
 import { Route as AuthenticatedErpOrdersIndexRouteImport } from './routes/_authenticated.erp.orders.index'
 import { Route as AuthenticatedErpFinanceIndexRouteImport } from './routes/_authenticated.erp.finance.index'
+import { Route as AuthenticatedErpSettingsWarehousesRouteImport } from './routes/_authenticated.erp.settings.warehouses'
 import { Route as AuthenticatedErpSettingsTermsRouteImport } from './routes/_authenticated.erp.settings.terms'
 import { Route as AuthenticatedErpSettingsSuppliersRouteImport } from './routes/_authenticated.erp.settings.suppliers'
 import { Route as AuthenticatedErpSettingsStatusesRouteImport } from './routes/_authenticated.erp.settings.statuses'
@@ -62,6 +64,12 @@ const AuthenticatedErpIndexRoute = AuthenticatedErpIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedErpRoute,
 } as any)
+const AuthenticatedErpWarehouseRoute =
+  AuthenticatedErpWarehouseRouteImport.update({
+    id: '/warehouse',
+    path: '/warehouse',
+    getParentRoute: () => AuthenticatedErpRoute,
+  } as any)
 const AuthenticatedErpRealProductionRoute =
   AuthenticatedErpRealProductionRouteImport.update({
     id: '/real-production',
@@ -112,6 +120,12 @@ const AuthenticatedErpFinanceIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedErpFinanceRoute,
+  } as any)
+const AuthenticatedErpSettingsWarehousesRoute =
+  AuthenticatedErpSettingsWarehousesRouteImport.update({
+    id: '/settings/warehouses',
+    path: '/settings/warehouses',
+    getParentRoute: () => AuthenticatedErpRoute,
   } as any)
 const AuthenticatedErpSettingsTermsRoute =
   AuthenticatedErpSettingsTermsRouteImport.update({
@@ -207,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/erp/my-tasks': typeof AuthenticatedErpMyTasksRoute
   '/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/erp/real-production': typeof AuthenticatedErpRealProductionRouteWithChildren
+  '/erp/warehouse': typeof AuthenticatedErpWarehouseRoute
   '/erp/': typeof AuthenticatedErpIndexRoute
   '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
@@ -222,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/erp/settings/suppliers': typeof AuthenticatedErpSettingsSuppliersRoute
   '/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
+  '/erp/settings/warehouses': typeof AuthenticatedErpSettingsWarehousesRoute
   '/erp/finance/': typeof AuthenticatedErpFinanceIndexRoute
   '/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
   '/erp/production/': typeof AuthenticatedErpProductionIndexRoute
@@ -232,6 +248,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/erp/analytics': typeof AuthenticatedErpAnalyticsRoute
   '/erp/my-tasks': typeof AuthenticatedErpMyTasksRoute
+  '/erp/warehouse': typeof AuthenticatedErpWarehouseRoute
   '/erp': typeof AuthenticatedErpIndexRoute
   '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
@@ -247,6 +264,7 @@ export interface FileRoutesByTo {
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/erp/settings/suppliers': typeof AuthenticatedErpSettingsSuppliersRoute
   '/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
+  '/erp/settings/warehouses': typeof AuthenticatedErpSettingsWarehousesRoute
   '/erp/finance': typeof AuthenticatedErpFinanceIndexRoute
   '/erp/orders': typeof AuthenticatedErpOrdersIndexRoute
   '/erp/production': typeof AuthenticatedErpProductionIndexRoute
@@ -263,6 +281,7 @@ export interface FileRoutesById {
   '/_authenticated/erp/my-tasks': typeof AuthenticatedErpMyTasksRoute
   '/_authenticated/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/_authenticated/erp/real-production': typeof AuthenticatedErpRealProductionRouteWithChildren
+  '/_authenticated/erp/warehouse': typeof AuthenticatedErpWarehouseRoute
   '/_authenticated/erp/': typeof AuthenticatedErpIndexRoute
   '/_authenticated/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/_authenticated/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
@@ -278,6 +297,7 @@ export interface FileRoutesById {
   '/_authenticated/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/_authenticated/erp/settings/suppliers': typeof AuthenticatedErpSettingsSuppliersRoute
   '/_authenticated/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
+  '/_authenticated/erp/settings/warehouses': typeof AuthenticatedErpSettingsWarehousesRoute
   '/_authenticated/erp/finance/': typeof AuthenticatedErpFinanceIndexRoute
   '/_authenticated/erp/orders/': typeof AuthenticatedErpOrdersIndexRoute
   '/_authenticated/erp/production/': typeof AuthenticatedErpProductionIndexRoute
@@ -294,6 +314,7 @@ export interface FileRouteTypes {
     | '/erp/my-tasks'
     | '/erp/orders'
     | '/erp/real-production'
+    | '/erp/warehouse'
     | '/erp/'
     | '/erp/finance/deletions'
     | '/erp/finance/receivables'
@@ -309,6 +330,7 @@ export interface FileRouteTypes {
     | '/erp/settings/statuses'
     | '/erp/settings/suppliers'
     | '/erp/settings/terms'
+    | '/erp/settings/warehouses'
     | '/erp/finance/'
     | '/erp/orders/'
     | '/erp/production/'
@@ -319,6 +341,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/erp/analytics'
     | '/erp/my-tasks'
+    | '/erp/warehouse'
     | '/erp'
     | '/erp/finance/deletions'
     | '/erp/finance/receivables'
@@ -334,6 +357,7 @@ export interface FileRouteTypes {
     | '/erp/settings/statuses'
     | '/erp/settings/suppliers'
     | '/erp/settings/terms'
+    | '/erp/settings/warehouses'
     | '/erp/finance'
     | '/erp/orders'
     | '/erp/production'
@@ -349,6 +373,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/my-tasks'
     | '/_authenticated/erp/orders'
     | '/_authenticated/erp/real-production'
+    | '/_authenticated/erp/warehouse'
     | '/_authenticated/erp/'
     | '/_authenticated/erp/finance/deletions'
     | '/_authenticated/erp/finance/receivables'
@@ -364,6 +389,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/settings/statuses'
     | '/_authenticated/erp/settings/suppliers'
     | '/_authenticated/erp/settings/terms'
+    | '/_authenticated/erp/settings/warehouses'
     | '/_authenticated/erp/finance/'
     | '/_authenticated/erp/orders/'
     | '/_authenticated/erp/production/'
@@ -411,6 +437,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/erp/'
       preLoaderRoute: typeof AuthenticatedErpIndexRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
+    '/_authenticated/erp/warehouse': {
+      id: '/_authenticated/erp/warehouse'
+      path: '/warehouse'
+      fullPath: '/erp/warehouse'
+      preLoaderRoute: typeof AuthenticatedErpWarehouseRouteImport
       parentRoute: typeof AuthenticatedErpRoute
     }
     '/_authenticated/erp/real-production': {
@@ -475,6 +508,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/erp/finance/'
       preLoaderRoute: typeof AuthenticatedErpFinanceIndexRouteImport
       parentRoute: typeof AuthenticatedErpFinanceRoute
+    }
+    '/_authenticated/erp/settings/warehouses': {
+      id: '/_authenticated/erp/settings/warehouses'
+      path: '/settings/warehouses'
+      fullPath: '/erp/settings/warehouses'
+      preLoaderRoute: typeof AuthenticatedErpSettingsWarehousesRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
     }
     '/_authenticated/erp/settings/terms': {
       id: '/_authenticated/erp/settings/terms'
@@ -645,6 +685,7 @@ interface AuthenticatedErpRouteChildren {
   AuthenticatedErpMyTasksRoute: typeof AuthenticatedErpMyTasksRoute
   AuthenticatedErpOrdersRoute: typeof AuthenticatedErpOrdersRouteWithChildren
   AuthenticatedErpRealProductionRoute: typeof AuthenticatedErpRealProductionRouteWithChildren
+  AuthenticatedErpWarehouseRoute: typeof AuthenticatedErpWarehouseRoute
   AuthenticatedErpIndexRoute: typeof AuthenticatedErpIndexRoute
   AuthenticatedErpProductionIdRoute: typeof AuthenticatedErpProductionIdRoute
   AuthenticatedErpProductionApprovalsRoute: typeof AuthenticatedErpProductionApprovalsRoute
@@ -653,6 +694,7 @@ interface AuthenticatedErpRouteChildren {
   AuthenticatedErpSettingsStatusesRoute: typeof AuthenticatedErpSettingsStatusesRoute
   AuthenticatedErpSettingsSuppliersRoute: typeof AuthenticatedErpSettingsSuppliersRoute
   AuthenticatedErpSettingsTermsRoute: typeof AuthenticatedErpSettingsTermsRoute
+  AuthenticatedErpSettingsWarehousesRoute: typeof AuthenticatedErpSettingsWarehousesRoute
   AuthenticatedErpProductionIndexRoute: typeof AuthenticatedErpProductionIndexRoute
 }
 
@@ -663,6 +705,7 @@ const AuthenticatedErpRouteChildren: AuthenticatedErpRouteChildren = {
   AuthenticatedErpOrdersRoute: AuthenticatedErpOrdersRouteWithChildren,
   AuthenticatedErpRealProductionRoute:
     AuthenticatedErpRealProductionRouteWithChildren,
+  AuthenticatedErpWarehouseRoute: AuthenticatedErpWarehouseRoute,
   AuthenticatedErpIndexRoute: AuthenticatedErpIndexRoute,
   AuthenticatedErpProductionIdRoute: AuthenticatedErpProductionIdRoute,
   AuthenticatedErpProductionApprovalsRoute:
@@ -675,6 +718,8 @@ const AuthenticatedErpRouteChildren: AuthenticatedErpRouteChildren = {
   AuthenticatedErpSettingsSuppliersRoute:
     AuthenticatedErpSettingsSuppliersRoute,
   AuthenticatedErpSettingsTermsRoute: AuthenticatedErpSettingsTermsRoute,
+  AuthenticatedErpSettingsWarehousesRoute:
+    AuthenticatedErpSettingsWarehousesRoute,
   AuthenticatedErpProductionIndexRoute: AuthenticatedErpProductionIndexRoute,
 }
 
