@@ -128,8 +128,21 @@ function MyTasks() {
                   <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold inline-flex items-center gap-2">
+                        <p className="text-sm font-semibold inline-flex items-center gap-2 flex-wrap">
                           <Icon className={`h-4 w-4 ${iconCls}`} /> {t.title}
+                          {deadline && (
+                            <span
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide ${
+                                deadline.tone === "danger"
+                                  ? "bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40"
+                                  : deadline.tone === "warn"
+                                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40"
+                                    : "bg-muted text-muted-foreground border border-border"
+                              }`}
+                            >
+                              <Clock className="h-3 w-3" /> {deadline.label}
+                            </span>
+                          )}
                         </p>
                         {t.reason ? (
                           <div className={`mt-2 rounded-md p-2.5 border ${isInfo ? "bg-blue-500/10 border-blue-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
