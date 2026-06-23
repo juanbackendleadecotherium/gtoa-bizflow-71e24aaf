@@ -262,13 +262,14 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, images, sort_order, production_order_id")
+        .select("id, description, quantity, images, sort_order, production_order_id, planimetry_files")
         .eq("order_id", orderId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return (data ?? []).map((it: any) => ({
         ...it,
         images: Array.isArray(it.images) ? it.images : [],
+        planimetry_files: Array.isArray(it.planimetry_files) ? it.planimetry_files : [],
       })) as ItemRow[];
     },
   });
