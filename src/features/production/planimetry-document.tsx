@@ -272,29 +272,31 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
 
         return (
           <Page key={idx} size="LETTER" style={styles.page}>
-            {/* HEADER CARD */}
-            <View style={styles.headerCard}>
+            {/* HEADER — top rule + clean meta */}
+            <View style={styles.headerTopRule} fixed />
+            <View style={styles.headerRow}>
               <View style={styles.headerLeft}>
-                <Text style={styles.headerTitle}>FICHA TÉCNICA DE PRODUCCIÓN</Text>
+                <Text style={styles.headerEyebrow}>DOCUMENTO DE PRODUCCIÓN</Text>
+                <Text style={styles.headerTitle}>FICHA TÉCNICA</Text>
                 <View style={styles.headerMetaRow}>
-                  <Text style={styles.headerMetaLabel}>Cliente:</Text>
+                  <Text style={styles.headerMetaLabel}>Cliente</Text>
                   <Text style={styles.headerMetaValue}>{data.customer_name}</Text>
                 </View>
                 <View style={styles.headerMetaRow}>
-                  <Text style={styles.headerMetaLabel}>Fecha:</Text>
+                  <Text style={styles.headerMetaLabel}>Fecha</Text>
                   <Text style={styles.headerMetaValue}>
                     {fmtDate(data.sale_date ?? new Date().toISOString())}
                   </Text>
                 </View>
                 {data.seller_name ? (
                   <View style={styles.headerMetaRow}>
-                    <Text style={styles.headerMetaLabel}>Comercial:</Text>
+                    <Text style={styles.headerMetaLabel}>Comercial</Text>
                     <Text style={styles.headerMetaValue}>{data.seller_name}</Text>
                   </View>
                 ) : null}
                 {data.customer_city ? (
                   <View style={styles.headerMetaRow}>
-                    <Text style={styles.headerMetaLabel}>Ciudad:</Text>
+                    <Text style={styles.headerMetaLabel}>Ciudad</Text>
                     <Text style={styles.headerMetaValue}>{data.customer_city}</Text>
                   </View>
                 ) : null}
@@ -302,7 +304,7 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
 
               <View style={styles.headerRight}>
                 <Text style={styles.factLabel}>
-                  {data.invoice_number ? "Nro Fact:" : "Pedido:"}
+                  {data.invoice_number ? "NRO FACT" : "PEDIDO"}
                 </Text>
                 <Text style={styles.factNumber}>{factNumber}</Text>
                 <Text style={styles.prodCode}>{data.production_code}</Text>
@@ -314,10 +316,10 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
               </View>
             </View>
 
-            {/* MAIN ROW — hero image LEFT, specs RIGHT (like reference) */}
+            {/* MAIN ROW — hero image LEFT, specs RIGHT */}
             <View style={styles.mainRow} wrap={false}>
               <View style={styles.mainLeft}>
-                <View style={styles.heroCard}>
+                <View style={styles.heroFrame}>
                   {hero ? (
                     <Image src={hero} style={styles.heroImage} />
                   ) : (
@@ -325,46 +327,46 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                       <Text style={styles.heroNoImageText}>Sin imagen de referencia</Text>
                     </View>
                   )}
-                  <Text style={styles.heroProductName}>{title}</Text>
-                  <Text style={styles.heroProductCaption}>Imagen de referencia</Text>
                 </View>
+                <Text style={styles.heroProductName}>{title}</Text>
+                <Text style={styles.heroProductCaption}>IMAGEN DE REFERENCIA</Text>
               </View>
 
               <View style={styles.mainRight}>
-                <View style={styles.specsCard}>
-                  <View style={styles.specsTopRow}>
-                    <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
-                    {deliveryLong ? (
-                      <View style={styles.deliveryBlock}>
-                        <Text style={styles.deliveryLabel}>Fecha de entrega:</Text>
-                        <Text style={[styles.deliveryValue, { color: accent }]}>
-                          {deliveryLong}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-
-                  <Text style={styles.specsLabel}>Especificaciones</Text>
-                  {body ? (
-                    <Text style={styles.specsBody}>{body}</Text>
-                  ) : (
-                    <Text style={[styles.specsBody, { color: MUTED, fontStyle: "italic" }]}>
-                      Sin especificaciones adicionales.
-                    </Text>
-                  )}
+                <View style={styles.specsTopRow}>
+                  <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
+                  {deliveryLong ? (
+                    <View style={styles.deliveryBlock}>
+                      <Text style={styles.deliveryLabel}>Fecha de entrega</Text>
+                      <Text style={[styles.deliveryValue, { color: accent }]}>
+                        {deliveryLong}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
+
+                <Text style={styles.sectionLabel}>Especificaciones</Text>
+                {body ? (
+                  <Text style={styles.specsBody}>{body}</Text>
+                ) : (
+                  <Text style={[styles.specsBody, { color: MUTED, fontStyle: "italic" }]}>
+                    Sin especificaciones adicionales.
+                  </Text>
+                )}
               </View>
             </View>
 
-            {/* REFERENCES — small thumbnails side by side in a 3-column grid */}
+            {/* REFERENCES — small thumbnails side by side */}
             {rest.length > 0 ? (
-              <View style={styles.refCard}>
-                <Text style={styles.refTitle}>Referencias adicionales</Text>
+              <View style={styles.refSection}>
+                <Text style={styles.sectionLabel}>Referencias adicionales</Text>
                 <View style={styles.refGrid}>
                   {rest.map((url, i) => (
                     <View key={i} style={styles.refCell} wrap={false}>
-                      <Image src={url} style={styles.refImage} />
-                      <Text style={styles.refCaption}>Referencia {i + 2}</Text>
+                      <View style={styles.refImageFrame}>
+                        <Image src={url} style={styles.refImage} />
+                      </View>
+                      <Text style={styles.refCaption}>REFERENCIA {i + 2}</Text>
                     </View>
                   ))}
                 </View>
@@ -373,11 +375,12 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
 
             {/* NOTES — only last item */}
             {data.notes && idx === data.items.length - 1 ? (
-              <View style={styles.notesCard} wrap={false}>
-                <Text style={styles.notesLabel}>Notas de la venta</Text>
+              <View style={styles.notesSection} wrap={false}>
+                <Text style={styles.sectionLabel}>Notas de la venta</Text>
                 <Text style={styles.notesBody}>{data.notes}</Text>
               </View>
             ) : null}
+
 
             {/* FOOTER */}
             <View style={styles.footer} fixed>
