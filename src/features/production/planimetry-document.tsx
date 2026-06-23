@@ -408,6 +408,42 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
               </View>
             ) : null}
 
+            {/* PLANIMETRY — seller-uploaded technical drawings (image files) */}
+            {(it.planimetryImages?.length ?? 0) > 0 || (it.planimetryPdfNames?.length ?? 0) > 0 ? (
+              <View style={styles.planiSection} break>
+                <Text style={styles.sectionLabel}>Planimetría del producto</Text>
+                {it.planimetryImages && it.planimetryImages.length > 0 ? (
+                  <View style={styles.planiGrid}>
+                    {it.planimetryImages.map((url, i) => {
+                      const single = it.planimetryImages!.length === 1;
+                      return (
+                        <View
+                          key={i}
+                          style={single ? styles.planiCellFull : styles.planiCellHalf}
+                          wrap={false}
+                        >
+                          <View style={styles.planiImageFrame}>
+                            <Image
+                              src={url}
+                              style={single ? styles.planiImageLarge : styles.planiImageMedium}
+                            />
+                          </View>
+                          <Text style={styles.planiCaption}>
+                            PLANIMETRÍA {it.planimetryImages!.length > 1 ? i + 1 : ""}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : null}
+                {it.planimetryPdfNames && it.planimetryPdfNames.length > 0 ? (
+                  <Text style={styles.planiPdfNote}>
+                    Planimetría adjunta en PDF: {it.planimetryPdfNames.join(", ")}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+
             {/* NOTES — only last item */}
             {data.notes && idx === data.items.length - 1 ? (
               <View style={styles.notesSection} wrap={false}>
