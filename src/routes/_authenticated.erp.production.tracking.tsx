@@ -119,7 +119,7 @@ function TrackingPage() {
       let query = supabase
         .from("production_orders")
         .select(`
-          id, code, novedad, status, supplier_id, manufacturing_cost, margin_pct,
+          id, code, novedad, status, supplier_id, manufacturing_cost, margin_pct, brand_id,
           invoice_date, planimetry_sent_date, quotation_date, production_start_date,
           supplier_promised_date, supplier_actual_date, client_promised_date, client_actual_date,
           assigned_to_label, notes, created_at, order_id,
