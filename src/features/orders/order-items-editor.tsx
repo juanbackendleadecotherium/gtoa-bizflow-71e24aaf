@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Pencil, Maximize2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Maximize2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { MoneyInput } from "@/features/orders/money-input";
 import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
+import {
+  PlanimetryFilesUploader,
+  type PendingPlanimetry,
+} from "@/features/orders/planimetry-files-uploader";
+import type { PlanimetryFile } from "@/lib/planimetry-upload";
 import type { OrderItemInput } from "@/features/orders/schemas";
 
 function parseDecimal(val: string) {
