@@ -47,6 +47,11 @@ function ErpDashboard() {
         </p>
       </div>
 
+      <div className="mb-6">
+        <OverduePlanimetriesAdminAlert />
+      </div>
+
+
       <div className="grid sm:grid-cols-2 gap-4 mb-8">
         <Stat label="Ventas" value={statsQuery.data?.orders ?? "—"} />
         <Stat label="Tu rol" value={roles.length > 0 ? roles.join(", ") : "Sin rol"} muted />
