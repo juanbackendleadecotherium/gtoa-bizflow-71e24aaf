@@ -106,11 +106,19 @@ function MyTasks() {
                 const isInfo = t.severity === "info" || t.type === "production_started";
                 const isPlanimetry = t.type === "upload_planimetry";
                 const pending = t.status === "pendiente";
-                const wrapCls = isInfo
-                  ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
-                  : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
-                const Icon = isPlanimetry ? FileUp : isInfo ? Rocket : AlertTriangle;
-                const iconCls = isInfo ? "text-blue-600 dark:text-blue-400" : "text-amber-600 dark:text-amber-400";
+                const deadline = isPlanimetry && pending ? computeDeadlineState(t.planimetry_due_at) : null;
+                const overdue = deadline?.isOverdue ?? false;
+                const wrapCls = overdue
+                  ? "border-red-500/60 bg-red-500/5"
+                  : isInfo
+                    ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
+                    : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
+                const Icon = overdue ? AlertOctagon : isPlanimetry ? FileUp : isInfo ? Rocket : AlertTriangle;
+                const iconCls = overdue
+                  ? "text-red-600 dark:text-red-400"
+                  : isInfo
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-amber-600 dark:text-amber-400";
                 const ctaLabel = isPlanimetry
                   ? "Subir planimetría"
                   : isInfo
