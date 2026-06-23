@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ClipboardList, Settings, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
+import { OverduePlanimetriesAdminAlert } from "@/features/seller-tasks/overdue-planimetries-admin-alert";
 
 export const Route = createFileRoute("/_authenticated/erp/")({
   component: ErpDashboard,
