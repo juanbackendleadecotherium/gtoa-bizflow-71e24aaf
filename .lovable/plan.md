@@ -1,57 +1,51 @@
-## Objetivo
+## 1. Subir planimetría con pegar / arrastrar / elegir
 
-Convertir la subida de planimetría en un paso obligatorio por producto antes de enviar a producción. La venta nace en **Pendiente de planimetría** y solo los productos con planimetría cargada pueden viajar a la OP; los que falten quedan como tarea pendiente para el vendedor con alerta visible.
+Hoy `PlanimetryFilesUploader` solo abre el selector de archivos al hacer clic. Lo voy a igualar al uploader de imágenes de referencia (`ImageUploader`), que ya soporta clic, drag & drop y Ctrl/Cmd+V.
 
-## Cambios en la base de datos (una sola migración)
+- Reutilizar la misma lógica: zona de drop con estado `isDragging`, listener `paste` global filtrado por foco/hover dentro del componente, y micro-feedback "Pegado" tras pegar.
+- Aceptar tanto imágenes como PDF (las imágenes ya van por `compressImage` desde el padre al guardar; aquí solo agrego archivos al `pending`).
+- Validar tamaño (10 MB) y tipo (`image/*` o `application/pdf`) como ya hace hoy.
+- Textos: añadir una línea pequeña tipo "Puedes arrastrar o pegar con Ctrl/Cmd+V" igual que en la sección de Imágenes de referencia.
 
-1. **Catálogo de estados** (`order_statuses`, por marca):
-   - Renombrar `borrador` → `pendiente-planimetria` · nombre "Pendiente de planimetría" · color `#a855f7` (morado, distinto a Confirmado/En producción) · `is_initial=true`.
-   - Desactivar `confirmado` (`is_active=false`). No se elimina para preservar historial de ventas que ya pasaron por ese estado.
-2. **Nuevo campo en `order_items`**:
-   - `planimetry_files jsonb NOT NULL DEFAULT '[]'::jsonb` → array de `{ url, name, mime, size, uploaded_at }`.
-   - Índice GIN opcional para futuros filtros tipo "items sin planimetría".
-3. **Helper SQL** `public.order_item_has_planimetry(order_item_id uuid) → boolean` (security definer) usado por la UI y por triggers.
-4. **Guardrail server-side**: trigger `BEFORE UPDATE` en `order_items` que rechaza setear `production_order_id` si `planimetry_files` está vacío (evita bypass desde queries directas).
-5. **Tarea automática**: trigger en `order_items` que, al enviar a producción parcialmente, crea/actualiza un `seller_tasks` tipo `upload_planimetry` por cada item de la venta que quedó sin planimetría (una tarea por item, con `order_item_id` ya soportado por la tabla). Se resuelve sola cuando el item recibe su primer archivo.
+Sin cambios de esquema ni de backend para esta parte.
 
-## Cambios en frontend
+## 2. Cuenta regresiva de 2 días hábiles para la planimetría
 
-### Editor de productos (`src/features/orders/order-items-editor.tsx`)
-Agregar bloque nuevo debajo de "Imágenes de referencia":
-- **Planimetría del producto** · uploader múltiple aceptando `image/*` y `application/pdf`.
-- Reutiliza `ImageUploader` extendido (o un componente nuevo `PlanimetryFilesUploader` si el uploader actual no acepta PDF) con preview:
-  - imágenes → thumbnail directo
-  - PDF → ícono + primera página renderizada con `pdfjs-dist` (ya usado en planimetry-document si aplica; si no, fallback a ícono + nombre).
-- Archivos suben al bucket `order-attachments` bajo `orders/<order_id>/items/<item_id>/planimetry/`.
-- Estado vacío con copy claro: "Sin planimetría · obligatoria para enviar a producción".
+### Regla de negocio
+- Al crear la orden de producción (ya se genera una tarea `upload_planimetry` para el vendedor), calculamos un `planimetry_due_at` = creación + **2 días hábiles** (lunes–viernes, ignorando sábados y domingos).
+- Estados visibles según el tiempo restante:
+  - **A tiempo** (>1 día hábil restante): se ve igual que hoy.
+  - **Por vencer** (<1 día hábil): badge ámbar "Vence pronto" en la alerta del vendedor.
+  - **Vencida** (ya pasó el plazo): badge rojo "Vencida hace Xh" + escalamiento al gerente.
 
-### Vista de la venta (`_authenticated.erp.orders.$id.tsx`)
-- Banner persistente naranja cuando hay items sin planimetría: "Faltan N planimetrías para enviar todo a producción".
-- Por cada item en la lista: chip verde "Planimetría OK" o chip ámbar "Falta planimetría".
+### Cambios de datos
+- Añadir columna `planimetry_due_at timestamptz` a `seller_tasks` (solo se llena para `type = 'upload_planimetry'`).
+- Función SQL `add_business_days(ts, n)` para calcular el plazo saltando fines de semana.
+- Trigger `BEFORE INSERT` en `seller_tasks`: si `type = 'upload_planimetry'` y `planimetry_due_at` es null → asignar `add_business_days(now(), 2)`.
+- Backfill para las tareas pendientes existentes.
 
-### Botón Enviar a producción (`src/features/production/send-to-production-button.tsx`)
-- En el diálogo de selección de items: deshabilitar checkbox de los items sin planimetría con tooltip "Sube la planimetría primero".
-- Permitir confirmar con selección parcial (4 de 5 está bien).
-- Tras enviar: refrescar tareas del vendedor (los items restantes ya tienen su `seller_task` por trigger).
+### UI del vendedor (`OrderSellerPlanimetryAlert` / panel "Mis tareas")
+- Mostrar el tiempo restante / vencido junto a cada producto pendiente de planimetría.
+- Cuando esté vencida, cambiar la alerta de ámbar a roja con icono y mensaje "Lleva más de 2 días hábiles sin planimetría".
 
-### Mis tareas (`_authenticated.erp.my-tasks.tsx` + `seller-tasks-panel.tsx`)
-- Manejar el nuevo `type='upload_planimetry'`: tarjeta con link directo a la venta, ícono dedicado, severity `warning`.
-- Badge inline en la venta (similar a `OrderSellerTasksBadge`) listando los items sin planimetría.
+### Vista del gerente (admin)
+- Nuevo panel `OverduePlanimetriesAdminAlert` que solo se renderiza si `has_role(auth.uid(),'admin')`.
+- Lo coloco en el dashboard del ERP (`/erp` index) y como banner sticky en la cabecera del módulo de Ventas mientras haya pendientes vencidos.
+- Lista agrupada por vendedor: nombre, # de planimetrías vencidas, antigüedad de la más vieja, link directo a cada venta.
+- Query: `seller_tasks` con `type='upload_planimetry'`, `status='pendiente'`, `planimetry_due_at < now()`, join a `profiles` (vendedor) y `orders` (código/cliente).
+- RLS: añadir policy de `SELECT` a `seller_tasks` para admin (hoy el vendedor solo ve las suyas).
 
-### Form de creación de venta
-- Mensaje informativo en el footer del wizard: "La venta se guardará como **Pendiente de planimetría**. Podrás subir las planimetrías después y enviar productos a producción a medida que estén listos."
-- No bloquea guardar la venta sin planimetría (ese es el punto: poder vender en sitio).
+### Notificación al gerente
+- Toast/badge contador en el header del ERP (icono campana) con el número de planimetrías vencidas, visible solo para admin. Click → abre el panel.
+- No envío email en esta iteración (lo dejo como sugerencia para luego, ya que requiere SMTP/edge function adicional). Si lo quieres, lo agrego después.
 
-## Detalles técnicos
+## Archivos a tocar (técnico)
 
-- **Sin nuevos buckets** — reusamos `order-attachments` (público). El path por item facilita borrado por cascada manual.
-- **Validación cliente**: max 10 MB por archivo, hasta 8 archivos por producto.
-- **PDF preview**: si `pdfjs-dist` no está, agregar con `bun add pdfjs-dist` y renderizar la primera página a un canvas de 200×260.
-- **Tipos**: regenerar `src/integrations/supabase/types.ts` no es manual — la migración lo dispara.
-- **Compatibilidad hacia atrás**: items existentes quedan con `planimetry_files=[]`. Para ventas ya en producción no afecta nada (el guardrail solo aplica al setear `production_order_id` desde NULL).
+- `src/features/orders/planimetry-files-uploader.tsx` — drag/drop + paste.
+- Nueva migración SQL — columna `planimetry_due_at`, función `add_business_days`, trigger, backfill, policy admin SELECT en `seller_tasks`.
+- `src/features/seller-tasks/seller-tasks-panel.tsx` — mostrar countdown/estado vencido en las tareas del vendedor.
+- Nuevo `src/features/seller-tasks/overdue-planimetries-admin-alert.tsx`.
+- Montar el panel admin en `src/routes/_authenticated.erp.tsx` (header) y en el dashboard si aplica.
 
-## Out of scope (lo dejo para otra iteración si lo pides)
-
-- Validación OCR / aprobación del contenido de la planimetría.
-- Versión / historial de planimetrías por item (hoy solo lista plana).
-- Notificación por WhatsApp al vendedor cuando hay planimetría pendiente.
+## Pregunta abierta
+- ¿"2 días hábiles" cuenta solo lunes–viernes (excluye sábado y domingo) y sin festivos? Asumo que sí salvo que me indiques festivos colombianos.
