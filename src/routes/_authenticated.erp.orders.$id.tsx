@@ -658,6 +658,8 @@ function OrderItemReadCard({
   unitPrice,
   lineTotal,
   images,
+  planimetryFiles,
+  sentToProduction,
 }: {
   index: number;
   description: string;
@@ -665,19 +667,39 @@ function OrderItemReadCard({
   unitPrice: number;
   lineTotal: number;
   images: string[];
+  planimetryFiles: PlanimetryFile[];
+  sentToProduction: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const isEmpty = !description.trim();
   const lineCount = description.split("\n").filter((l) => l.trim()).length;
   const firstLine = description.split("\n").find((l) => l.trim()) ?? "";
+  const hasPlani = planimetryFiles.length > 0;
 
   return (
     <div className="rounded-lg border border-border bg-background/40 p-3 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Producto #{index + 1}
         </span>
+        <div className="flex items-center gap-1.5">
+          {sentToProduction && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+              En producción
+            </span>
+          )}
+          {hasPlani ? (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold">
+              <CheckCircle2 className="h-3 w-3" /> Planimetría OK
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200 font-semibold">
+              <AlertTriangle className="h-3 w-3" /> Falta planimetría
+            </span>
+          )}
+        </div>
       </div>
+
 
       <button
         type="button"
