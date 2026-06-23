@@ -12,6 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NOVEDADES, novedadMeta } from "@/features/production/novedad-meta";
 import { MoneyInput } from "@/features/orders/money-input";
+import { SupplierAdvancePaymentNotice } from "@/features/production/supplier-advance-payment-notice";
+import { SupplierAdvancePaymentForm } from "@/features/production/supplier-advance-payment-form";
+import { SupplierAdvancePaymentCard } from "@/features/production/supplier-advance-payment-card";
 
 export const Route = createFileRoute("/_authenticated/erp/production/tracking")({
   head: () => ({ meta: [{ title: "Seguimiento de producción — ERP" }] }),
