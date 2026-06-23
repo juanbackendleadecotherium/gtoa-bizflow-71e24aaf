@@ -102,12 +102,18 @@ function MyTasks() {
             <ul className="space-y-2">
               {tasks.map((t) => {
                 const isInfo = t.severity === "info" || t.type === "production_started";
+                const isPlanimetry = t.type === "upload_planimetry";
                 const pending = t.status === "pendiente";
                 const wrapCls = isInfo
                   ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
                   : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
-                const Icon = isInfo ? Rocket : AlertTriangle;
+                const Icon = isPlanimetry ? FileUp : isInfo ? Rocket : AlertTriangle;
                 const iconCls = isInfo ? "text-blue-600 dark:text-blue-400" : "text-amber-600 dark:text-amber-400";
+                const ctaLabel = isPlanimetry
+                  ? "Subir planimetría"
+                  : isInfo
+                    ? "Ver venta"
+                    : "Ir a la venta para corregir";
                 return (
                   <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
                     <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -119,7 +125,7 @@ function MyTasks() {
                           <div className={`mt-2 rounded-md p-2.5 border ${isInfo ? "bg-blue-500/10 border-blue-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
                             {!isInfo && (
                               <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-300 mb-1">
-                                Qué debes corregir
+                                {isPlanimetry ? "Acción requerida" : "Qué debes corregir"}
                               </p>
                             )}
                             <p className="text-sm text-foreground whitespace-pre-wrap">{t.reason}</p>
@@ -141,7 +147,7 @@ function MyTasks() {
                             params={{ id: t.order_id }}
                             className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
                           >
-                            {isInfo ? "Ver venta" : "Ir a la venta para corregir"} <ArrowRight className="h-3 w-3" />
+                            {ctaLabel} <ArrowRight className="h-3 w-3" />
                           </Link>
                         )}
                         {isInfo && pending && (
