@@ -150,23 +150,42 @@ export const listZoneSummary = createServerFn({ method: "GET" })
       .order("zone_code", { ascending: true });
     if (zErr) throw zErr;
 
-    // Current locations (view)
     const { data: locs, error: lErr } = await supabase
       .from("warehouse_item_locations")
       .select("item_id, current_zone_id")
       .not("current_zone_id", "is", null);
     if (lErr) throw lErr;
 
+    const itemIds = (locs ?? []).map((l: any) => l.item_id).filter((x: any): x is string => !!x);
+    const priceByItem = new Map<string, number>();
+    if (itemIds.length) {
+      const { data: items, error: iErr } = await supabase
+        .from("order_items")
+        .select("id, unit_price, quantity")
+        .in("id", itemIds);
+      if (iErr) throw iErr;
+      for (const it of items ?? []) {
+        priceByItem.set(it.id, Number(it.unit_price ?? 0) * Number(it.quantity ?? 0));
+      }
+    }
+
     const counts = new Map<string, number>();
+    const values = new Map<string, number>();
     for (const l of locs ?? []) {
       if (!l.current_zone_id) continue;
       counts.set(l.current_zone_id, (counts.get(l.current_zone_id) ?? 0) + 1);
+      values.set(
+        l.current_zone_id,
+        (values.get(l.current_zone_id) ?? 0) + (priceByItem.get(l.item_id) ?? 0),
+      );
     }
     return (zones ?? []).map((z: any) => ({
       ...z,
       current_count: counts.get(z.id) ?? 0,
+      current_value: values.get(z.id) ?? 0,
     }));
   });
+
 
 // ---------------------------------------------------------------------------
 // Zone contents — items currently in a specific zone
