@@ -176,7 +176,7 @@ export const listZoneSummary = createServerFn({ method: "GET" })
       counts.set(l.current_zone_id, (counts.get(l.current_zone_id) ?? 0) + 1);
       values.set(
         l.current_zone_id,
-        (values.get(l.current_zone_id) ?? 0) + (priceByItem.get(l.item_id) ?? 0),
+        (values.get(l.current_zone_id) ?? 0) + (l.item_id ? priceByItem.get(l.item_id) ?? 0 : 0),
       );
     }
     return (zones ?? []).map((z: any) => ({
