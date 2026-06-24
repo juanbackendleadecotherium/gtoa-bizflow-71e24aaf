@@ -204,7 +204,7 @@ export const listZoneContents = createServerFn({ method: "POST" })
     if (ids.length === 0) return [];
     const { data: items, error: iErr } = await supabase
       .from("order_items")
-      .select(`id, description, quantity,
+      .select(`id, description, quantity, unit_price,
                order:orders!order_id(id, order_number, invoice_number, customer_name)`)
       .in("id", ids);
     if (iErr) throw iErr;
@@ -212,6 +212,7 @@ export const listZoneContents = createServerFn({ method: "POST" })
     return (items ?? []).map((it: any) => ({
       ...it,
       last_movement_at: locMap.get(it.id),
+      line_value: Number(it.unit_price ?? 0) * Number(it.quantity ?? 0),
     }));
   });
 
