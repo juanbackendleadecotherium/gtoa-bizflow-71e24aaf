@@ -166,16 +166,25 @@ function ZoneContents({ zoneId }: { zoneId: string }) {
   if (q.isLoading) return <div className="py-6 text-center"><Loader2 className="h-4 w-4 animate-spin inline" /></div>;
   const items = q.data ?? [];
   if (items.length === 0) return <p className="text-sm text-muted-foreground mt-4">Esta zona está vacía.</p>;
+  const subtotal = items.reduce((s: number, it: any) => s + (it.line_value ?? 0), 0);
   return (
     <div className="mt-4 space-y-2">
       {items.map((it: any) => (
         <div key={it.id} className="rounded-lg border border-border p-3">
-          <p className="text-sm font-medium line-clamp-2">{it.description || "Producto"}</p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-medium line-clamp-2 flex-1">{it.description || "Producto"}</p>
+            <p className="text-sm font-semibold whitespace-nowrap">{COP.format(it.line_value ?? 0)}</p>
+          </div>
           <p className="text-xs text-muted-foreground mt-1">
             {it.order?.customer_name ?? "—"}
             {it.order?.order_number && <> · {it.order.order_number}</>}
             {it.order?.invoice_number && <> · Fact. {it.order.invoice_number}</>}
           </p>
+          {Number(it.quantity ?? 1) > 1 && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {it.quantity} × {COP.format(Number(it.unit_price ?? 0))}
+            </p>
+          )}
           {it.last_movement_at && (
             <p className="text-[10px] text-muted-foreground mt-1">
               Ingreso: {new Date(it.last_movement_at).toLocaleString("es-CO")}
@@ -183,6 +192,10 @@ function ZoneContents({ zoneId }: { zoneId: string }) {
           )}
         </div>
       ))}
+      <div className="rounded-lg border border-border bg-muted/40 p-3 flex items-baseline justify-between sticky bottom-0">
+        <p className="text-xs uppercase text-muted-foreground">Subtotal zona</p>
+        <p className="text-base font-semibold">{COP.format(subtotal)}</p>
+      </div>
     </div>
   );
 }
