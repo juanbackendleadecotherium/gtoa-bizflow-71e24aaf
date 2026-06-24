@@ -60,6 +60,12 @@ function WarehousePage() {
 // ---------------------------------------------------------------------------
 // Zone summary
 // ---------------------------------------------------------------------------
+const COP = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  maximumFractionDigits: 0,
+});
+
 function ZoneSummary() {
   const fn = useServerFn(listZoneSummary);
   const q = useQuery({
@@ -82,11 +88,25 @@ function ZoneSummary() {
       </div>
     );
 
+  const totalCount = zones.reduce((s: number, z: any) => s + (z.current_count ?? 0), 0);
+  const totalValue = zones.reduce((s: number, z: any) => s + (z.current_value ?? 0), 0);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      {zones.map((z: any) => (
-        <ZoneCard key={z.id} zone={z} />
-      ))}
+    <div className="space-y-3">
+      <div className="rounded-xl border border-border bg-surface p-4 flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <p className="text-[10px] uppercase text-muted-foreground">Total en bodega</p>
+          <p className="text-2xl font-semibold">{COP.format(totalValue)}</p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {totalCount} {totalCount === 1 ? "producto" : "productos"} · precio de venta al cliente
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {zones.map((z: any) => (
+          <ZoneCard key={z.id} zone={z} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -99,7 +119,7 @@ function ZoneCard({ zone }: { zone: any }) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <button className="text-left rounded-xl border border-border bg-surface p-4 hover:border-primary/50 transition-colors">
+        <button className="text-left rounded-xl border border-border bg-surface p-4 hover:border-primary/50 transition-colors w-full">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="font-mono text-sm font-semibold">{zone.zone_code}</p>
@@ -110,6 +130,10 @@ function ZoneCard({ zone }: { zone: any }) {
               <p className="text-2xl font-semibold leading-tight">{zone.current_count}</p>
               <p className="text-[10px] uppercase text-muted-foreground">productos</p>
             </div>
+          </div>
+          <div className="mt-3 flex items-baseline justify-between gap-2">
+            <p className="text-[10px] uppercase text-muted-foreground">Valor</p>
+            <p className="text-sm font-semibold">{COP.format(zone.current_value ?? 0)}</p>
           </div>
           {pct !== null && (
             <div className="mt-3">
