@@ -1,21 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, User } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
-import { PasswordStrength } from "@/features/auth/components/password-strength";
 import { SmokeyBackground } from "@/components/ui/smokey-background";
 import { cn } from "@/lib/utils";
-import {
-  MIN_PASSWORD_SCORE,
-  scorePassword,
-  signInSchema,
-  signUpSchema,
-} from "@/features/auth/schemas/auth-schemas";
-import { signIn, signUpAndLogin } from "@/features/auth/hooks/use-auth-actions";
+import { signInSchema } from "@/features/auth/schemas/auth-schemas";
+import { signIn } from "@/features/auth/hooks/use-auth-actions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
