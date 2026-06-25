@@ -725,12 +725,7 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
             <DateField label="Factura" value={r.invoice_date} onSave={(v) => onPatch({ invoice_date: v })} />
             <DateField label="Planimetría" value={r.planimetry_sent_date} onSave={(v) => onPatch({ planimetry_sent_date: v })} />
-            <DateField label="Cotización" value={r.quotation_date} onSave={(v) => onPatch({ quotation_date: v })} />
-            <DateField label="Inicio prod." value={r.production_start_date} onSave={(v) => onPatch({ production_start_date: v })} />
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1.5 italic">
-            Cotización se autocompleta al asignar proveedor. Inicio prod. se sella cuando todos los productos arrancan.
-          </p>
         </div>
 
         <div>
