@@ -55,7 +55,7 @@ type RoleValue = (typeof ROLES)[number]["value"];
 
 type UserRow = {
   user_id: string;
-  email: string;
+  email: string | null;
   display_name: string | null;
   created_at: string | null;
   roles: RoleValue[];
