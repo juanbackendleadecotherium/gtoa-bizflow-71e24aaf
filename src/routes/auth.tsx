@@ -1,21 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, User } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
-import { PasswordStrength } from "@/features/auth/components/password-strength";
 import { SmokeyBackground } from "@/components/ui/smokey-background";
 import { cn } from "@/lib/utils";
-import {
-  MIN_PASSWORD_SCORE,
-  scorePassword,
-  signInSchema,
-  signUpSchema,
-} from "@/features/auth/schemas/auth-schemas";
-import { signIn, signUpAndLogin } from "@/features/auth/hooks/use-auth-actions";
+import { signInSchema } from "@/features/auth/schemas/auth-schemas";
+import { signIn } from "@/features/auth/hooks/use-auth-actions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -28,7 +22,6 @@ export const Route = createFileRoute("/auth")({
 });
 
 type Errors = Record<string, string>;
-type Tab = "signin" | "signup";
 
 function fieldErrors(parseError: unknown): Errors {
   const out: Errors = {};
@@ -41,16 +34,8 @@ function fieldErrors(parseError: unknown): Errors {
   return out;
 }
 
-/** Input flotante con label animado e icono */
 function FloatingField({
-  id,
-  type,
-  value,
-  onChange,
-  label,
-  icon,
-  autoComplete,
-  invalid,
+  id, type, value, onChange, label, icon, autoComplete, invalid,
 }: {
   id: string;
   type: string;
@@ -89,8 +74,7 @@ function FloatingField({
         className={cn(
           "pointer-events-none absolute left-11 text-white/50 transition-all duration-200",
           "top-1/2 -translate-y-1/2 text-sm",
-          (filled || true) &&
-            "peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-wider peer-focus:text-amber-300",
+          "peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-wider peer-focus:text-amber-300",
           filled &&
             "top-2 translate-y-0 text-[10px] uppercase tracking-wider text-amber-300/80",
         )}
@@ -118,27 +102,11 @@ function FloatingField({
 function AuthPage() {
   const navigate = useNavigate();
   const session = useSession();
-  const [tab, setTab] = useState<Tab>("signin");
 
-  // signin
   const [siEmail, setSiEmail] = useState("");
   const [siPass, setSiPass] = useState("");
   const [siErrors, setSiErrors] = useState<Errors>({});
-
-  // signup
-  const [suName, setSuName] = useState("");
-  const [suEmail, setSuEmail] = useState("");
-  const [suPass, setSuPass] = useState("");
-  const [suErrors, setSuErrors] = useState<Errors>({});
-
   const [loading, setLoading] = useState(false);
-
-  const suScore = useMemo(() => scorePassword(suPass).score, [suPass]);
-  const canSignUp =
-    suName.trim().length > 0 &&
-    suEmail.trim().length > 0 &&
-    suPass.length >= 8 &&
-    suScore >= MIN_PASSWORD_SCORE;
 
   useEffect(() => {
     if (session.status === "authenticated") {
@@ -168,39 +136,11 @@ function AuthPage() {
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const parsed = signUpSchema.safeParse({
-      displayName: suName,
-      email: suEmail,
-      password: suPass,
-    });
-    if (!parsed.success) {
-      setSuErrors(fieldErrors(parsed.error));
-      return;
-    }
-    setSuErrors({});
-    setLoading(true);
-    try {
-      await signUpAndLogin(parsed.data);
-      toast.success("Cuenta creada", { description: "Entrando al backoffice…" });
-      navigate({ to: "/erp" });
-    } catch (err) {
-      toast.error("No se pudo crear la cuenta", {
-        description: err instanceof Error ? err.message : "Intenta de nuevo",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#08090f] text-white">
-      {/* Fondo smokey WebGL */}
       <SmokeyBackground color="#E6962A" backdropBlurAmount="sm" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/70 pointer-events-none" />
 
-      {/* Top */}
       <header className="relative z-10 flex items-center justify-between px-6 sm:px-10 py-6">
         <Link
           to="/"
@@ -215,178 +155,71 @@ function AuthPage() {
         </div>
       </header>
 
-      {/* Centro */}
       <main className="relative z-10 flex items-center justify-center px-6 pb-16 pt-2 min-h-[calc(100vh-100px)]">
         <div className="w-full max-w-md">
-          {/* Glass card */}
           <div className="relative rounded-3xl border border-white/15 bg-white/[0.06] backdrop-blur-2xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] p-7 sm:p-9">
-            {/* Brand */}
             <div className="flex flex-col items-center text-center mb-7">
               <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-600 text-black font-display font-bold text-2xl shadow-lg shadow-amber-500/40">
                 G
               </div>
               <h1 className="font-display text-2xl font-semibold mt-4">
-                {tab === "signin" ? "Bienvenido de nuevo" : "Crear cuenta"}
+                Bienvenido de nuevo
               </h1>
               <p className="text-sm text-white/60 mt-1">
-                {tab === "signin"
-                  ? "Inicia sesión para continuar"
-                  : "Únete al backoffice de Grupo Getova"}
+                Inicia sesión para continuar
               </p>
             </div>
 
-            {/* Tabs */}
-            <div className="relative grid grid-cols-2 rounded-full bg-white/5 border border-white/10 p-1 mb-6">
-              {(["signin", "signup"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTab(t)}
-                  className={cn(
-                    "relative z-10 rounded-full py-2 text-sm font-medium transition-colors",
-                    tab === t ? "text-black" : "text-white/70 hover:text-white",
-                  )}
-                >
-                  {tab === t && (
-                    <motion.span
-                      layoutId="auth-pill"
-                      className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 shadow-md shadow-amber-500/30"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  {t === "signin" ? "Iniciar sesión" : "Crear cuenta"}
-                </button>
-              ))}
-            </div>
-
-            <AnimatePresence mode="wait">
-              {tab === "signin" ? (
-                <motion.form
-                  key="signin"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.22 }}
-                  onSubmit={handleSignIn}
-                  className="space-y-4"
-                  noValidate
-                >
-                  <FloatingField
-                    id="email-in"
-                    type="email"
-                    value={siEmail}
-                    onChange={setSiEmail}
-                    label="Correo electrónico"
-                    icon={<Mail className="h-4 w-4" />}
-                    autoComplete="email"
-                    invalid={!!siErrors.email}
-                  />
-                  {siErrors.email && (
-                    <p className="text-xs text-red-300 -mt-2 pl-2">{siErrors.email}</p>
-                  )}
-
-                  <FloatingField
-                    id="pass-in"
-                    type="password"
-                    value={siPass}
-                    onChange={setSiPass}
-                    label="Contraseña"
-                    icon={<Lock className="h-4 w-4" />}
-                    autoComplete="current-password"
-                    invalid={!!siErrors.password}
-                  />
-                  {siErrors.password && (
-                    <p className="text-xs text-red-300 -mt-2 pl-2">{siErrors.password}</p>
-                  )}
-
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      className="text-xs text-white/60 hover:text-amber-300 transition-colors"
-                    >
-                      ¿Olvidaste tu contraseña?
-                    </button>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="group w-full h-12 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 text-black hover:from-amber-200 hover:to-amber-400 shadow-lg shadow-amber-500/25 font-medium"
-                  >
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Iniciar sesión
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Button>
-                </motion.form>
-              ) : (
-                <motion.form
-                  key="signup"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.22 }}
-                  onSubmit={handleSignUp}
-                  className="space-y-4"
-                  noValidate
-                >
-                  <FloatingField
-                    id="name-up"
-                    type="text"
-                    value={suName}
-                    onChange={setSuName}
-                    label="Nombre"
-                    icon={<User className="h-4 w-4" />}
-                    autoComplete="name"
-                    invalid={!!suErrors.displayName}
-                  />
-                  {suErrors.displayName && (
-                    <p className="text-xs text-red-300 -mt-2 pl-2">{suErrors.displayName}</p>
-                  )}
-
-                  <FloatingField
-                    id="email-up"
-                    type="email"
-                    value={suEmail}
-                    onChange={setSuEmail}
-                    label="Correo electrónico"
-                    icon={<Mail className="h-4 w-4" />}
-                    autoComplete="email"
-                    invalid={!!suErrors.email}
-                  />
-                  {suErrors.email && (
-                    <p className="text-xs text-red-300 -mt-2 pl-2">{suErrors.email}</p>
-                  )}
-
-                  <FloatingField
-                    id="pass-up"
-                    type="password"
-                    value={suPass}
-                    onChange={setSuPass}
-                    label="Contraseña"
-                    icon={<Lock className="h-4 w-4" />}
-                    autoComplete="new-password"
-                    invalid={!!suErrors.password}
-                  />
-                  <PasswordStrength value={suPass} />
-                  {suErrors.password && (
-                    <p className="text-xs text-red-300 pl-2">{suErrors.password}</p>
-                  )}
-
-                  <Button
-                    type="submit"
-                    disabled={loading || !canSignUp}
-                    className="group w-full h-12 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 text-black hover:from-amber-200 hover:to-amber-400 shadow-lg shadow-amber-500/25 font-medium disabled:opacity-50"
-                  >
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Crear cuenta y entrar
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Button>
-                  <p className="text-xs text-white/50 text-center">
-                    Un administrador asignará rol y marcas tras crear la cuenta.
-                  </p>
-                </motion.form>
+            <motion.form
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22 }}
+              onSubmit={handleSignIn}
+              className="space-y-4"
+              noValidate
+            >
+              <FloatingField
+                id="email-in"
+                type="email"
+                value={siEmail}
+                onChange={setSiEmail}
+                label="Correo electrónico"
+                icon={<Mail className="h-4 w-4" />}
+                autoComplete="email"
+                invalid={!!siErrors.email}
+              />
+              {siErrors.email && (
+                <p className="text-xs text-red-300 -mt-2 pl-2">{siErrors.email}</p>
               )}
-            </AnimatePresence>
+
+              <FloatingField
+                id="pass-in"
+                type="password"
+                value={siPass}
+                onChange={setSiPass}
+                label="Contraseña"
+                icon={<Lock className="h-4 w-4" />}
+                autoComplete="current-password"
+                invalid={!!siErrors.password}
+              />
+              {siErrors.password && (
+                <p className="text-xs text-red-300 -mt-2 pl-2">{siErrors.password}</p>
+              )}
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="group w-full h-12 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 text-black hover:from-amber-200 hover:to-amber-400 shadow-lg shadow-amber-500/25 font-medium"
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Iniciar sesión
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+
+              <p className="text-xs text-white/50 text-center pt-2">
+                ¿Necesitas una cuenta? Solo un administrador puede crearla desde el panel interno.
+              </p>
+            </motion.form>
           </div>
 
           <p className="mt-6 text-center text-xs text-white/40">

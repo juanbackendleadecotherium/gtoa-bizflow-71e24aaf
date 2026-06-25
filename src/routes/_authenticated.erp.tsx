@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import {
   LayoutDashboard, ClipboardList, Settings,
   LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft, Menu,
-  FileText, Receipt, Wallet, Factory, BarChart3, Users, ListTodo, Boxes,
+  FileText, Receipt, Wallet, Factory, BarChart3, Users, ListTodo, Boxes, UserCog,
 } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -63,6 +63,7 @@ const NAV: NavItem[] = [
   { label: "Bodegas y zonas", to: "/erp/settings/warehouses", icon: Building2, adminOnly: true },
   { label: "Datos fiscales", to: "/erp/settings/brand-billing", icon: Receipt, adminOnly: true },
   { label: "Términos de venta", to: "/erp/settings/terms", icon: FileText, adminOnly: true },
+  { label: "Usuarios", to: "/erp/settings/users", icon: UserCog, adminOnly: true },
 ];
 
 function Shell() {
