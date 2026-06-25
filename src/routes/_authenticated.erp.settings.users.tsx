@@ -601,7 +601,7 @@ function CreateUserDialog({
 function EditProfileDialog({ user, onClose, onSuccess }: { user: UserRow; onClose: () => void; onSuccess: () => void }) {
   const fn = useServerFn(updateUserProfile);
   const [displayName, setDisplayName] = useState(user.display_name ?? "");
-  const [email, setEmail] = useState(user.email);
+  const [email, setEmail] = useState(user.email ?? "");
   const m = useMutation({
     mutationFn: () => fn({ data: { userId: user.user_id, displayName, email } }),
     onSuccess: () => { toast.success("Perfil actualizado"); onSuccess(); },
