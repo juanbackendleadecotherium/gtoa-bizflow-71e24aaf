@@ -43,14 +43,13 @@ export const confirmSupplierAdvancePayment = createServerFn({ method: "POST" })
       .maybeSingle();
     if (supErr) throw supErr;
     if (!supplier) throw new Error("Proveedor no encontrado");
-    if (!supplier.requires_advance_payment) {
-      throw new Error("Este proveedor no requiere pago anticipado");
-    }
 
-    // 2. Anti-spoof: receipt path must live under this item's prefix
-    const expectedPrefix = supplierPaymentPathPrefix(order.brand_id, item.order_id, item.id);
-    if (!data.receiptPath.startsWith(expectedPrefix + "/")) {
-      throw new Error("Comprobante inválido: ruta fuera del ítem");
+    // 2. Anti-spoof: if a receipt path is provided, it must live under this item's prefix
+    if (data.receiptPath) {
+      const expectedPrefix = supplierPaymentPathPrefix(order.brand_id, item.order_id, item.id);
+      if (!data.receiptPath.startsWith(expectedPrefix + "/")) {
+        throw new Error("Comprobante inválido: ruta fuera del ítem");
+      }
     }
 
     // 3. No existing payment
