@@ -14,6 +14,7 @@ import {
 } from "@/lib/warehouse.functions";
 import { useWarehouseRealtime } from "@/features/warehouse/use-warehouse-realtime";
 import { useBrand } from "@/features/brands/brand-context";
+import { ExecutiveDashboard } from "@/features/warehouse/executive-dashboard";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,8 @@ export const Route = createFileRoute("/_authenticated/erp/warehouse")({
 
 function WarehousePage() {
   useWarehouseRealtime();
+  const { roles, isAdmin } = useBrand();
+  const canOperate = isAdmin || roles.includes("operativo");
   return (
     <div className="space-y-4">
       <header>
@@ -39,19 +42,23 @@ function WarehousePage() {
           <Boxes className="h-5 w-5" /> Control de bodega
         </h1>
         <p className="text-sm text-muted-foreground">
-          Registra ingresos y salidas de productos por zona.
+          {canOperate
+            ? "Consulta el inventario y registra ingresos y salidas por zona."
+            : "Vista de consulta del inventario por zona."}
         </p>
       </header>
 
-      <Tabs defaultValue="summary">
+      <Tabs defaultValue="dashboard">
         <TabsList>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="summary">Resumen por zona</TabsTrigger>
-          <TabsTrigger value="intake">Ingreso</TabsTrigger>
-          <TabsTrigger value="dispatch">Salida</TabsTrigger>
+          {canOperate && <TabsTrigger value="intake">Ingreso</TabsTrigger>}
+          {canOperate && <TabsTrigger value="dispatch">Salida</TabsTrigger>}
         </TabsList>
+        <TabsContent value="dashboard" className="mt-4"><ExecutiveDashboard /></TabsContent>
         <TabsContent value="summary" className="mt-4"><ZoneSummary /></TabsContent>
-        <TabsContent value="intake" className="mt-4"><IntakeForm /></TabsContent>
-        <TabsContent value="dispatch" className="mt-4"><DispatchForm /></TabsContent>
+        {canOperate && <TabsContent value="intake" className="mt-4"><IntakeForm /></TabsContent>}
+        {canOperate && <TabsContent value="dispatch" className="mt-4"><DispatchForm /></TabsContent>}
       </Tabs>
     </div>
   );
