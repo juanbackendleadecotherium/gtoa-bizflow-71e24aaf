@@ -510,7 +510,7 @@ export type Database = {
           paid_at: string
           production_order_id: string | null
           receipt_mime: string | null
-          receipt_path: string
+          receipt_path: string | null
           receipt_size_bytes: number | null
           supplier_id: string
           supplier_name_snapshot: string
@@ -528,7 +528,7 @@ export type Database = {
           paid_at: string
           production_order_id?: string | null
           receipt_mime?: string | null
-          receipt_path: string
+          receipt_path?: string | null
           receipt_size_bytes?: number | null
           supplier_id: string
           supplier_name_snapshot: string
@@ -546,7 +546,7 @@ export type Database = {
           paid_at?: string
           production_order_id?: string | null
           receipt_mime?: string | null
-          receipt_path?: string
+          receipt_path?: string | null
           receipt_size_bytes?: number | null
           supplier_id?: string
           supplier_name_snapshot?: string

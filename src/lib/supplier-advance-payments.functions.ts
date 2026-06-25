@@ -7,9 +7,9 @@ const ConfirmInput = z.object({
   orderItemId: z.string().uuid(),
   amount: z.number().positive(),
   paidAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida"),
-  receiptPath: z.string().min(1),
-  receiptMime: z.string().optional(),
-  receiptSizeBytes: z.number().int().nonnegative().optional(),
+  receiptPath: z.string().min(1).optional().nullable(),
+  receiptMime: z.string().optional().nullable(),
+  receiptSizeBytes: z.number().int().nonnegative().optional().nullable(),
 });
 
 export const confirmSupplierAdvancePayment = createServerFn({ method: "POST" })
