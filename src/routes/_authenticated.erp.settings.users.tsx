@@ -246,7 +246,7 @@ function UsersAdminPage() {
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                              {initials(u.display_name, u.email)}
+                              {initials(u.display_name, u.email ?? "")}
                             </div>
                             <div>
                               <div className="font-medium">{u.display_name || "—"}</div>
@@ -765,12 +765,12 @@ function DeleteDialog({ user, onClose, onSuccess }: { user: UserRow; onClose: ()
             <span className="font-mono">{user.email}</span>
           </DialogDescription>
         </DialogHeader>
-        <Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={user.email} />
+        <Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={user.email ?? ""} />
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button
             variant="destructive"
-            disabled={confirm.toLowerCase() !== user.email.toLowerCase() || m.isPending}
+            disabled={confirm.toLowerCase() !== (user.email ?? "").toLowerCase() || m.isPending}
             onClick={() => m.mutate()}
           >
             {m.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Eliminar definitivamente
