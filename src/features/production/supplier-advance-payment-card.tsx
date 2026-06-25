@@ -39,14 +39,16 @@ export function SupplierAdvancePaymentCard({ orderItemId }: { orderItemId: strin
         <strong>{fmtMoney(Number(p.amount))}</strong> a {p.supplier_name_snapshot}
         {p.created_by_email && <span className="text-muted-foreground"> · registrado por {p.created_by_email}</span>}
       </div>
-      <a
-        href={p.receipt_signed_url}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
-      >
-        <ExternalLink className="h-3 w-3" /> Ver comprobante
-      </a>
+      {p.receipt_signed_url && (
+        <a
+          href={p.receipt_signed_url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+        >
+          <ExternalLink className="h-3 w-3" /> Ver comprobante
+        </a>
+      )}
     </div>
   );
 }
