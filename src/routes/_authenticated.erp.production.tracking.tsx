@@ -15,6 +15,7 @@ import { MoneyInput } from "@/features/orders/money-input";
 import { SupplierAdvancePaymentNotice } from "@/features/production/supplier-advance-payment-notice";
 import { SupplierAdvancePaymentForm } from "@/features/production/supplier-advance-payment-form";
 import { SupplierAdvancePaymentCard } from "@/features/production/supplier-advance-payment-card";
+import { SupplierQuickPaymentCheck } from "@/features/production/supplier-quick-payment-check";
 
 export const Route = createFileRoute("/_authenticated/erp/production/tracking")({
   head: () => ({ meta: [{ title: "Seguimiento de producción — ERP" }] }),
@@ -690,21 +691,30 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
 
                 {(() => {
                   const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
-                  if (!sup?.requires_advance_payment) return null;
+                  if (!sup) return null;
                   if (it.production_started_at) {
                     return <SupplierAdvancePaymentCard orderItemId={it.id} />;
                   }
+                  if (sup.requires_advance_payment) {
+                    return (
+                      <div className="space-y-2">
+                        <SupplierAdvancePaymentNotice supplierName={sup.name} pct={Number(sup.advance_payment_pct ?? 50)} />
+                        <SupplierAdvancePaymentForm
+                          orderItemId={it.id}
+                          brandId={row.brand_id}
+                          orderId={it.order_id ?? row.order_id}
+                          suggestedAmount={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
+                          pct={Number(sup.advance_payment_pct ?? 50)}
+                        />
+                      </div>
+                    );
+                  }
                   return (
-                    <div className="space-y-2">
-                      <SupplierAdvancePaymentNotice supplierName={sup.name} pct={Number(sup.advance_payment_pct ?? 50)} />
-                      <SupplierAdvancePaymentForm
-                        orderItemId={it.id}
-                        brandId={row.brand_id}
-                        orderId={it.order_id ?? row.order_id}
-                        suggestedAmount={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
-                        pct={Number(sup.advance_payment_pct ?? 50)}
-                      />
-                    </div>
+                    <SupplierQuickPaymentCheck
+                      orderItemId={it.id}
+                      supplierName={sup.name}
+                      suggestedCost={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
+                    />
                   );
                 })()}
               </li>
@@ -725,12 +735,7 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
             <DateField label="Factura" value={r.invoice_date} onSave={(v) => onPatch({ invoice_date: v })} />
             <DateField label="Planimetría" value={r.planimetry_sent_date} onSave={(v) => onPatch({ planimetry_sent_date: v })} />
-            <DateField label="Cotización" value={r.quotation_date} onSave={(v) => onPatch({ quotation_date: v })} />
-            <DateField label="Inicio prod." value={r.production_start_date} onSave={(v) => onPatch({ production_start_date: v })} />
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1.5 italic">
-            Cotización se autocompleta al asignar proveedor. Inicio prod. se sella cuando todos los productos arrancan.
-          </p>
         </div>
 
         <div>
