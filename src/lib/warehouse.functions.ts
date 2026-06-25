@@ -204,8 +204,9 @@ export const listZoneContents = createServerFn({ method: "POST" })
     if (ids.length === 0) return [];
     const { data: items, error: iErr } = await supabase
       .from("order_items")
-      .select(`id, description, quantity, unit_price,
-               order:orders!order_id(id, order_number, invoice_number, customer_name)`)
+      .select(`id, description, quantity, unit_price, supplier_id,
+               supplier:suppliers!supplier_id(id, name),
+               order:orders!order_id(id, order_number, invoice_number, customer_name, customer_doc_number, brand_id)`)
       .in("id", ids);
     if (iErr) throw iErr;
     const locMap = new Map((locs ?? []).map((l) => [l.item_id, l.last_movement_at]));
@@ -214,6 +215,108 @@ export const listZoneContents = createServerFn({ method: "POST" })
       last_movement_at: locMap.get(it.id),
       line_value: Number(it.unit_price ?? 0) * Number(it.quantity ?? 0),
     }));
+  });
+
+// ---------------------------------------------------------------------------
+// Executive dashboard — read-only inventory view with filters
+// ---------------------------------------------------------------------------
+export const listExecutiveDashboard = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        brandId: z.string().uuid().optional(),
+        supplierId: z.string().uuid().optional(),
+        fromDate: z.string().optional(),
+        toDate: z.string().optional(),
+      })
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    let q = supabase
+      .from("warehouse_item_locations")
+      .select("item_id, current_zone_id, last_movement_at")
+      .not("current_zone_id", "is", null);
+    if (data.fromDate) q = q.gte("last_movement_at", data.fromDate);
+    if (data.toDate) q = q.lte("last_movement_at", data.toDate);
+    const { data: locs, error: lErr } = await q;
+    if (lErr) throw lErr;
+
+    const ids = (locs ?? []).map((l: any) => l.item_id).filter((x: any): x is string => !!x);
+
+    const { data: zones, error: zErr } = await supabase
+      .from("warehouse_zones")
+      .select(`id, zone_code, description, active,
+               warehouse:warehouses!warehouse_id(id, name, active)`)
+      .eq("active", true);
+    if (zErr) throw zErr;
+
+    let items: any[] = [];
+    if (ids.length) {
+      const { data: rows, error: iErr } = await supabase
+        .from("order_items")
+        .select(`id, description, quantity, unit_price, supplier_id,
+                 supplier:suppliers!supplier_id(id, name),
+                 order:orders!order_id(id, order_number, invoice_number, customer_name, customer_doc_number, brand_id)`)
+        .in("id", ids);
+      if (iErr) throw iErr;
+      items = rows ?? [];
+    }
+    if (data.brandId) items = items.filter((it) => it.order?.brand_id === data.brandId);
+    if (data.supplierId) items = items.filter((it) => it.supplier_id === data.supplierId);
+
+    const itemMap = new Map(items.map((it) => [it.id, it]));
+    const locMap = new Map((locs ?? []).map((l: any) => [l.item_id, l]));
+    const now = Date.now();
+
+    const result = (zones ?? [])
+      .filter((z: any) => z.warehouse?.active)
+      .map((z: any) => {
+        const zItems = (locs ?? [])
+          .filter((l: any) => l.current_zone_id === z.id && itemMap.has(l.item_id))
+          .map((l: any) => {
+            const it = itemMap.get(l.item_id);
+            const last = l.last_movement_at ? new Date(l.last_movement_at).getTime() : now;
+            const days = Math.max(0, Math.floor((now - last) / 86400000));
+            return {
+              id: it.id,
+              description: it.description,
+              quantity: it.quantity,
+              line_value: Number(it.unit_price ?? 0) * Number(it.quantity ?? 0),
+              supplier_name: it.supplier?.name ?? null,
+              supplier_id: it.supplier_id,
+              order_number: it.order?.order_number ?? null,
+              invoice_number: it.order?.invoice_number ?? null,
+              customer_name: it.order?.customer_name ?? null,
+              customer_doc_number: it.order?.customer_doc_number ?? null,
+              brand_id: it.order?.brand_id ?? null,
+              last_movement_at: l.last_movement_at,
+              days_in_warehouse: days,
+            };
+          });
+        return {
+          id: z.id,
+          zone_code: z.zone_code,
+          description: z.description,
+          warehouse: z.warehouse,
+          items: zItems,
+          item_count: zItems.length,
+          max_days: zItems.reduce((m, it) => Math.max(m, it.days_in_warehouse), 0),
+        };
+      });
+    return result;
+  });
+
+export const listAllSuppliersLite = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("suppliers")
+      .select("id, name, brand_id")
+      .order("name", { ascending: true });
+    if (error) throw error;
+    return data ?? [];
   });
 
 // ---------------------------------------------------------------------------

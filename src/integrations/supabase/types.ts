@@ -1675,6 +1675,30 @@ export type Database = {
           },
         ]
       }
+      warehouse_settings: {
+        Row: {
+          id: string
+          singleton: boolean
+          stagnant_days_threshold: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          singleton?: boolean
+          stagnant_days_threshold?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          singleton?: boolean
+          stagnant_days_threshold?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       warehouse_zones: {
         Row: {
           active: boolean
