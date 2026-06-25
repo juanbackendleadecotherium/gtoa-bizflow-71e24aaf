@@ -15,6 +15,7 @@ import { MoneyInput } from "@/features/orders/money-input";
 import { SupplierAdvancePaymentNotice } from "@/features/production/supplier-advance-payment-notice";
 import { SupplierAdvancePaymentForm } from "@/features/production/supplier-advance-payment-form";
 import { SupplierAdvancePaymentCard } from "@/features/production/supplier-advance-payment-card";
+import { SupplierQuickPaymentCheck } from "@/features/production/supplier-quick-payment-check";
 
 export const Route = createFileRoute("/_authenticated/erp/production/tracking")({
   head: () => ({ meta: [{ title: "Seguimiento de producción — ERP" }] }),
