@@ -110,9 +110,13 @@ export const getSupplierAdvancePaymentForItem = createServerFn({ method: "POST" 
       .maybeSingle();
     if (error) throw error;
     if (!payment) return null;
-    const { data: signed, error: sErr } = await supabase.storage
-      .from("supplier-payments")
-      .createSignedUrl(payment.receipt_path, 3600);
-    if (sErr) throw sErr;
-    return { ...payment, receipt_signed_url: signed.signedUrl };
+    let receipt_signed_url: string | null = null;
+    if (payment.receipt_path) {
+      const { data: signed, error: sErr } = await supabase.storage
+        .from("supplier-payments")
+        .createSignedUrl(payment.receipt_path, 3600);
+      if (sErr) throw sErr;
+      receipt_signed_url = signed.signedUrl;
+    }
+    return { ...payment, receipt_signed_url };
   });
