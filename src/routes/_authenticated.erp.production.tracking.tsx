@@ -362,14 +362,17 @@ function TrackingPage() {
 }
 
 function TrackingRow({
-  row, suppliers, expanded, onToggle, onPatch,
+  row, suppliers, expanded, onToggle, onPatch, canFinish, isAdmin,
 }: {
   row: any;
   suppliers: { id: string; name: string }[];
   expanded: boolean;
   onToggle: () => void;
   onPatch: (patch: Record<string, any>) => void;
+  canFinish: boolean;
+  isAdmin: boolean;
 }) {
+
   const r = row;
   const saleTotal = Number(r.po_sale_total) || 0;
   const invoiceTotal = Number(r.order?.total) || 0;
