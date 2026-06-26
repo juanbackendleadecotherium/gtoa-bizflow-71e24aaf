@@ -62,7 +62,9 @@ function marginCls(margin: number | null) {
 }
 
 function TrackingPage() {
-  const { brands, selectedBrandId, setSelectedBrandId, loading } = useBrand();
+  const { brands, selectedBrandId, setSelectedBrandId, loading, roles, isAdmin } = useBrand();
+  const canFinish = isAdmin || roles.includes("operativo");
+
   const qc = useQueryClient();
   const [novedadFilter, setNovedadFilter] = useState<string>("all");
   const [year, setYear] = useState<number>(CURRENT_YEAR);
