@@ -735,7 +735,23 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
                     />
                   );
                 })()}
+
+                {it.production_started_at && (
+                  <div className="pt-1 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                      Estado producción
+                    </span>
+                    <FinishItemButton
+                      itemId={it.id}
+                      finishedAt={it.production_finished_at ?? null}
+                      finishedByEmail={it.production_finished_by_email ?? null}
+                      canFinish={canFinish}
+                      isAdmin={isAdmin}
+                    />
+                  </div>
+                )}
               </li>
+
             ))}
           </ul>
         )}
