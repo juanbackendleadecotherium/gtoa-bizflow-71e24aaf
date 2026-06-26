@@ -1901,6 +1901,10 @@ export type Database = {
         Args: { _item_id: string }
         Returns: undefined
       }
+      notify_seller_invoice_ready: {
+        Args: { _order_id: string }
+        Returns: undefined
+      }
       order_completion_progress: {
         Args: { _order_id: string }
         Returns: {
