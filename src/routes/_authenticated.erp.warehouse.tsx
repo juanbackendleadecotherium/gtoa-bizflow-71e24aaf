@@ -272,24 +272,66 @@ function IntakeForm() {
             placeholder="Cliente, factura, descripción…" className="pl-9" />
         </div>
         <p className="text-[11px] text-muted-foreground">Solo aparecen productos con producción terminada que no están en bodega.</p>
-        <div className="max-h-96 overflow-y-auto space-y-1.5">
+        <div className="max-h-[28rem] overflow-y-auto space-y-3">
           {itemsQ.isLoading ? <Loader2 className="h-4 w-4 animate-spin inline" /> :
             (itemsQ.data ?? []).length === 0 ? (
               <p className="text-xs text-muted-foreground py-4">Sin resultados.</p>
-            ) : (itemsQ.data ?? []).map((it: any) => (
-              <button key={it.id} onClick={() => setSelectedItemId(it.id)}
-                className={`w-full text-left rounded-lg border p-2 transition-colors ${
-                  selectedItemId === it.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                }`}>
-                <p className="text-sm font-medium line-clamp-1">{it.description || "Producto"}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {it.order?.customer_name ?? "—"}
-                  {it.order?.order_number && <> · {it.order.order_number}</>}
-                  {it.order?.invoice_number && <> · Fact. {it.order.invoice_number}</>}
-                </p>
-              </button>
-            ))}
+            ) : (() => {
+              const groups = new Map<string, { order: any; items: any[]; progress: any }>();
+              for (const it of itemsQ.data ?? []) {
+                const oid = it.order?.id ?? "_";
+                const g = groups.get(oid) ?? { order: it.order, items: [], progress: it.invoice_progress };
+                g.items.push(it);
+                groups.set(oid, g);
+              }
+              return Array.from(groups.values()).map((g) => {
+                const finished = g.progress?.finished ?? g.items.length;
+                const total = g.progress?.total ?? g.items.length;
+                const pending = total - finished;
+                const label = g.order?.invoice_number
+                  ? `Fact. ${g.order.invoice_number}`
+                  : g.order?.order_number ?? "Venta";
+                return (
+                  <div key={g.order?.id ?? "_"} className="rounded-lg border border-border bg-background overflow-hidden">
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 bg-muted/40 border-b border-border">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold truncate">{label} · {g.order?.customer_name ?? "—"}</p>
+                        {pending > 0 && (
+                          <p className="text-[10px] text-amber-700 dark:text-amber-300">
+                            {pending} {pending === 1 ? "producto sigue" : "productos siguen"} en producción
+                          </p>
+                        )}
+                      </div>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                        finished === total
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
+                          : "bg-muted text-foreground border-border"
+                      }`}>
+                        {finished}/{total} listos
+                      </span>
+                    </div>
+                    <div className="p-1.5 space-y-1">
+                      {g.items.map((it: any) => (
+                        <button key={it.id} onClick={() => setSelectedItemId(it.id)}
+                          className={`w-full text-left rounded-md border p-2 transition-colors ${
+                            selectedItemId === it.id ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/40 hover:bg-muted/30"
+                          }`}>
+                          <p className="text-sm font-medium line-clamp-1">{it.description || "Producto"}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Cant. {Number(it.quantity)}
+                            {it.production_finished_at && (
+                              <> · ✔ terminado {new Date(it.production_finished_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}</>
+                            )}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
         </div>
+
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
