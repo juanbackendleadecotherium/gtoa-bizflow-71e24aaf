@@ -16,7 +16,11 @@ export function useWarehouseRealtime() {
       .on("postgres_changes", { event: "*", schema: "public", table: "warehouses" }, () => {
         qc.invalidateQueries({ queryKey: ["warehouse"] });
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "order_items" }, () => {
+        qc.invalidateQueries({ queryKey: ["warehouse", "available-items"] });
+      })
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
