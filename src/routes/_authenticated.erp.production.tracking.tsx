@@ -16,6 +16,9 @@ import { SupplierAdvancePaymentNotice } from "@/features/production/supplier-adv
 import { SupplierAdvancePaymentForm } from "@/features/production/supplier-advance-payment-form";
 import { SupplierAdvancePaymentCard } from "@/features/production/supplier-advance-payment-card";
 import { SupplierQuickPaymentCheck } from "@/features/production/supplier-quick-payment-check";
+import { FinishItemButton } from "@/features/production/finish-item-button";
+import { InvoiceProgressPill } from "@/features/production/invoice-progress-pill";
+
 
 export const Route = createFileRoute("/_authenticated/erp/production/tracking")({
   head: () => ({ meta: [{ title: "Seguimiento de producción — ERP" }] }),
@@ -59,7 +62,9 @@ function marginCls(margin: number | null) {
 }
 
 function TrackingPage() {
-  const { brands, selectedBrandId, setSelectedBrandId, loading } = useBrand();
+  const { brands, selectedBrandId, setSelectedBrandId, loading, roles, isAdmin } = useBrand();
+  const canFinish = isAdmin || roles.includes("operativo");
+
   const qc = useQueryClient();
   const [novedadFilter, setNovedadFilter] = useState<string>("all");
   const [year, setYear] = useState<number>(CURRENT_YEAR);
@@ -150,7 +155,7 @@ function TrackingPage() {
         poIds.length
           ? supabase
               .from("order_items")
-              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_id, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date, quotation_date, manufacturing_cost")
+              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_id, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date, quotation_date, manufacturing_cost, production_finished_at, production_finished_by_email, order_id")
               .in("production_order_id", poIds)
               .order("sort_order", { ascending: true })
           : Promise.resolve({ data: [], error: null } as any),
@@ -347,7 +352,10 @@ function TrackingPage() {
                 expanded={expanded === r.id}
                 onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
                 onPatch={(patch) => updateField.mutate({ id: r.id, patch })}
+                canFinish={canFinish}
+                isAdmin={isAdmin}
               />
+
             ))}
           </div>
         </>
@@ -357,14 +365,17 @@ function TrackingPage() {
 }
 
 function TrackingRow({
-  row, suppliers, expanded, onToggle, onPatch,
+  row, suppliers, expanded, onToggle, onPatch, canFinish, isAdmin,
 }: {
   row: any;
   suppliers: { id: string; name: string }[];
   expanded: boolean;
   onToggle: () => void;
   onPatch: (patch: Record<string, any>) => void;
+  canFinish: boolean;
+  isAdmin: boolean;
 }) {
+
   const r = row;
   const saleTotal = Number(r.po_sale_total) || 0;
   const invoiceTotal = Number(r.order?.total) || 0;
@@ -488,7 +499,7 @@ function TrackingRow({
 
       {/* Panel expandido */}
       {expanded && (
-        <ExpandedPanel row={r} suppliers={suppliers} onPatch={onPatch} />
+        <ExpandedPanel row={r} suppliers={suppliers} onPatch={onPatch} canFinish={canFinish} isAdmin={isAdmin} />
       )}
     </div>
   );
@@ -554,7 +565,7 @@ function InlineMoney({
   );
 }
 
-function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[]; onPatch: (patch: Record<string, any>) => void }) {
+function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: any; suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[]; onPatch: (patch: Record<string, any>) => void; canFinish: boolean; isAdmin: boolean }) {
   const r = row;
   const qc = useQueryClient();
   const desv = daysDiff(r.client_actual_date, r.client_promised_date);
@@ -586,13 +597,20 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const itemsArr: any[] = r.items ?? [];
+  const finishedCount = itemsArr.filter((it) => it.production_finished_at).length;
+
   return (
     <div className="border-t border-border bg-background/60 p-4 pl-5 grid md:grid-cols-[1.2fr_1fr] gap-5">
       {/* Productos detallados con fechas y botón de inicio real */}
       <div>
-        <div className="flex items-center gap-2 mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          <Package className="h-3.5 w-3.5" /> Productos en producción
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <Package className="h-3.5 w-3.5" /> Productos en producción
+          </div>
+          {itemsArr.length > 0 && <InvoiceProgressPill finished={finishedCount} total={itemsArr.length} />}
         </div>
+
         {(r.items?.length ?? 0) === 0 ? (
           <p className="text-xs text-muted-foreground italic">Sin productos vinculados.</p>
         ) : (
@@ -717,7 +735,23 @@ function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id:
                     />
                   );
                 })()}
+
+                {it.production_started_at && (
+                  <div className="pt-1 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                      Estado producción
+                    </span>
+                    <FinishItemButton
+                      itemId={it.id}
+                      finishedAt={it.production_finished_at ?? null}
+                      finishedByEmail={it.production_finished_by_email ?? null}
+                      canFinish={canFinish}
+                      isAdmin={isAdmin}
+                    />
+                  </div>
+                )}
               </li>
+
             ))}
           </ul>
         )}

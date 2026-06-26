@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle, Rocket, Check, FileUp, Clock, AlertOctagon } from "lucide-react";
+import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle, Rocket, Check, FileUp, Clock, AlertOctagon, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -103,27 +103,35 @@ function MyTasks() {
           ) : (
             <ul className="space-y-2">
               {tasks.map((t) => {
-                const isInfo = t.severity === "info" || t.type === "production_started";
+                const isCollection = t.type === "invoice_ready_for_collection";
+                const isInfo = isCollection || t.severity === "info" || t.type === "production_started";
                 const isPlanimetry = t.type === "upload_planimetry";
                 const pending = t.status === "pendiente";
                 const deadline = isPlanimetry && pending ? computeDeadlineState(t.planimetry_due_at) : null;
                 const overdue = deadline?.isOverdue ?? false;
                 const wrapCls = overdue
                   ? "border-red-500/60 bg-red-500/5"
-                  : isInfo
-                    ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
-                    : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
-                const Icon = overdue ? AlertOctagon : isPlanimetry ? FileUp : isInfo ? Rocket : AlertTriangle;
+                  : isCollection
+                    ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
+                    : isInfo
+                      ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
+                      : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
+                const Icon = overdue ? AlertOctagon : isCollection ? DollarSign : isPlanimetry ? FileUp : isInfo ? Rocket : AlertTriangle;
                 const iconCls = overdue
                   ? "text-red-600 dark:text-red-400"
-                  : isInfo
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-amber-600 dark:text-amber-400";
-                const ctaLabel = isPlanimetry
-                  ? "Subir planimetría"
-                  : isInfo
-                    ? "Ver venta"
-                    : "Ir a la venta para corregir";
+                  : isCollection
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : isInfo
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-amber-600 dark:text-amber-400";
+                const ctaLabel = isCollection
+                  ? "Gestionar cobro"
+                  : isPlanimetry
+                    ? "Subir planimetría"
+                    : isInfo
+                      ? "Ver venta"
+                      : "Ir a la venta para corregir";
+
                 return (
                   <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
                     <div className="flex items-start justify-between gap-3 flex-wrap">
