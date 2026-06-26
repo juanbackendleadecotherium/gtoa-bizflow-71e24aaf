@@ -493,7 +493,7 @@ function TrackingRow({
 
       {/* Panel expandido */}
       {expanded && (
-        <ExpandedPanel row={r} suppliers={suppliers} onPatch={onPatch} />
+        <ExpandedPanel row={r} suppliers={suppliers} onPatch={onPatch} canFinish={canFinish} isAdmin={isAdmin} />
       )}
     </div>
   );
