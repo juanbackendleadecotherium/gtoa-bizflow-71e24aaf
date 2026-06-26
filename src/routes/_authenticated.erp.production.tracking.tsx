@@ -565,7 +565,7 @@ function InlineMoney({
   );
 }
 
-function ExpandedPanel({ row, suppliers, onPatch }: { row: any; suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[]; onPatch: (patch: Record<string, any>) => void }) {
+function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: any; suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[]; onPatch: (patch: Record<string, any>) => void; canFinish: boolean; isAdmin: boolean }) {
   const r = row;
   const qc = useQueryClient();
   const desv = daysDiff(r.client_actual_date, r.client_promised_date);
