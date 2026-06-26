@@ -329,21 +329,20 @@ export const listItemsAvailableForIntake = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    // Items whose production_order is 'listo' (terminado) -> physically ready
+    // Per-item rule: an item is eligible for intake only when it is individually
+    // marked finished in production (production_finished_at IS NOT NULL).
     let q = supabase
       .from("order_items")
-      .select(`id, description, quantity, production_order_id,
-               order:orders!order_id(id, order_number, invoice_number, customer_name, brand_id),
-               production_order:production_orders!production_order_id(status)`)
-      .eq("production_order.status", "listo")
-      .not("production_order_id", "is", null)
-      .order("updated_at", { ascending: false })
-      .limit(100);
+      .select(`id, description, quantity, production_finished_at,
+               order:orders!order_id(id, order_number, invoice_number, customer_name, brand_id, sale_date)`)
+      .not("production_finished_at", "is", null)
+      .order("production_finished_at", { ascending: false })
+      .limit(300);
     if (data.brandId) q = q.eq("order.brand_id", data.brandId);
     const { data: rows, error } = await q;
     if (error) throw error;
 
-    // Exclude items already in warehouse (last movement = 'in')
+    // Exclude items already in warehouse
     const ids = (rows ?? []).map((r: any) => r.id);
     let active = new Set<string>();
     if (ids.length) {
@@ -354,9 +353,7 @@ export const listItemsAvailableForIntake = createServerFn({ method: "POST" })
         .not("current_zone_id", "is", null);
       active = new Set((locs ?? []).map((l: any) => l.item_id));
     }
-    let filtered = (rows ?? []).filter(
-      (r: any) => r.production_order && !active.has(r.id),
-    );
+    let filtered = (rows ?? []).filter((r: any) => r.order && !active.has(r.id));
     const term = (data.search ?? "").trim().toLowerCase();
     if (term) {
       filtered = filtered.filter((r: any) =>
@@ -366,8 +363,35 @@ export const listItemsAvailableForIntake = createServerFn({ method: "POST" })
         (r.order?.customer_name ?? "").toLowerCase().includes(term),
       );
     }
-    return filtered.slice(0, 50);
+
+    // Compute invoice progress per distinct order
+    const orderIds = Array.from(new Set(filtered.map((r: any) => r.order?.id).filter(Boolean)));
+    const progress = new Map<string, { total: number; finished: number }>();
+    if (orderIds.length) {
+      const { data: siblings } = await supabase
+        .from("order_items")
+        .select("id, order_id, description, quantity, production_finished_at")
+        .in("order_id", orderIds);
+      const groups = new Map<string, any[]>();
+      for (const s of siblings ?? []) {
+        const arr = groups.get(s.order_id) ?? [];
+        arr.push(s);
+        groups.set(s.order_id, arr);
+      }
+      for (const [oid, arr] of groups) {
+        progress.set(oid, {
+          total: arr.length,
+          finished: arr.filter((x: any) => x.production_finished_at).length,
+        });
+      }
+    }
+
+    return filtered.slice(0, 200).map((r: any) => ({
+      ...r,
+      invoice_progress: r.order?.id ? progress.get(r.order.id) ?? null : null,
+    }));
   });
+
 
 export const listItemsInWarehouse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
