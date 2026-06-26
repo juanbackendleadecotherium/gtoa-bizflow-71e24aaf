@@ -1,0 +1,1 @@
+ALTER TYPE production_novedad ADD VALUE IF NOT EXISTS 'pendiente_por_logistica';
