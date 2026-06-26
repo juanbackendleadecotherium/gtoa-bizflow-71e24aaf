@@ -597,13 +597,20 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const itemsArr: any[] = r.items ?? [];
+  const finishedCount = itemsArr.filter((it) => it.production_finished_at).length;
+
   return (
     <div className="border-t border-border bg-background/60 p-4 pl-5 grid md:grid-cols-[1.2fr_1fr] gap-5">
       {/* Productos detallados con fechas y botón de inicio real */}
       <div>
-        <div className="flex items-center gap-2 mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          <Package className="h-3.5 w-3.5" /> Productos en producción
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <Package className="h-3.5 w-3.5" /> Productos en producción
+          </div>
+          {itemsArr.length > 0 && <InvoiceProgressPill finished={finishedCount} total={itemsArr.length} />}
         </div>
+
         {(r.items?.length ?? 0) === 0 ? (
           <p className="text-xs text-muted-foreground italic">Sin productos vinculados.</p>
         ) : (
