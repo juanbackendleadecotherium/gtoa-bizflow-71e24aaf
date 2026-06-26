@@ -610,6 +610,9 @@ export type Database = {
           order_id: string
           planimetry_files: Json
           production_due_date: string | null
+          production_finished_at: string | null
+          production_finished_by: string | null
+          production_finished_by_email: string | null
           production_order_id: string | null
           production_started_at: string | null
           quantity: number
@@ -633,6 +636,9 @@ export type Database = {
           order_id: string
           planimetry_files?: Json
           production_due_date?: string | null
+          production_finished_at?: string | null
+          production_finished_by?: string | null
+          production_finished_by_email?: string | null
           production_order_id?: string | null
           production_started_at?: string | null
           quantity?: number
@@ -656,6 +662,9 @@ export type Database = {
           order_id?: string
           planimetry_files?: Json
           production_due_date?: string | null
+          production_finished_at?: string | null
+          production_finished_by?: string | null
+          production_finished_by_email?: string | null
           production_order_id?: string | null
           production_started_at?: string | null
           quantity?: number
@@ -1857,6 +1866,10 @@ export type Database = {
         Args: { _from: string; _n: number }
         Returns: string
       }
+      can_finish_order_item: {
+        Args: { _item_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_write_brand: {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
@@ -1884,6 +1897,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      mark_order_item_finished: {
+        Args: { _item_id: string }
+        Returns: undefined
+      }
+      order_completion_progress: {
+        Args: { _order_id: string }
+        Returns: {
+          all_finished: boolean
+          finished: number
+          total: number
+        }[]
+      }
       order_item_has_planimetry: {
         Args: { _item_id: string }
         Returns: boolean
@@ -1894,6 +1919,10 @@ export type Database = {
       }
       start_real_production: {
         Args: { p_item_id: string; p_started_at?: string }
+        Returns: undefined
+      }
+      unmark_order_item_finished: {
+        Args: { _item_id: string; _reason: string }
         Returns: undefined
       }
       update_order_status: {
