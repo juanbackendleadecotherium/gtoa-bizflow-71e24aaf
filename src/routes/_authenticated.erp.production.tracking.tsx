@@ -352,7 +352,10 @@ function TrackingPage() {
                 expanded={expanded === r.id}
                 onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
                 onPatch={(patch) => updateField.mutate({ id: r.id, patch })}
+                canFinish={canFinish}
+                isAdmin={isAdmin}
               />
+
             ))}
           </div>
         </>
