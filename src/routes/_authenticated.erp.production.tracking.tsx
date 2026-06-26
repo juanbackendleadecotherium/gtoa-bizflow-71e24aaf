@@ -16,6 +16,9 @@ import { SupplierAdvancePaymentNotice } from "@/features/production/supplier-adv
 import { SupplierAdvancePaymentForm } from "@/features/production/supplier-advance-payment-form";
 import { SupplierAdvancePaymentCard } from "@/features/production/supplier-advance-payment-card";
 import { SupplierQuickPaymentCheck } from "@/features/production/supplier-quick-payment-check";
+import { FinishItemButton } from "@/features/production/finish-item-button";
+import { InvoiceProgressPill } from "@/features/production/invoice-progress-pill";
+
 
 export const Route = createFileRoute("/_authenticated/erp/production/tracking")({
   head: () => ({ meta: [{ title: "Seguimiento de producción — ERP" }] }),
