@@ -52,6 +52,7 @@
         "lucide-react": "^0.575.0",
         "nitro": "3.0.260603-beta",
         "papaparse": "^5.5.3",
+        "pdf-lib": "^1.17.1",
         "react": "^19.2.0",
         "react-day-picker": "^9.14.0",
         "react-dom": "^19.2.0",
@@ -347,6 +348,10 @@
     "@opentelemetry/api": ["@opentelemetry/api@1.9.1", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@opentelemetry/api/-/api-1.9.1.tgz", {}, "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.133.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@oxc-project/types/-/types-0.133.0.tgz", {}, "sha512-KzkdCd6Uxqnf6l3HOw1xfatAlUURA0g14cvBYFyJ5SaNOQbOUvBr9PKArcPcrNIeRsBdgcUzOGrhKveVpvOIGA=="],
+
+    "@pdf-lib/standard-fonts": ["@pdf-lib/standard-fonts@1.0.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@pdf-lib/standard-fonts/-/standard-fonts-1.0.0.tgz", { "dependencies": { "pako": "^1.0.6" } }, "sha512-hU30BK9IUN/su0Mn9VdlVKsWBS6GyhVfqjwl1FjZN4TxP6cCw0jP2w7V3Hf5uX7M0AZJ16vey9yE0ny7Sa59ZA=="],
+
+    "@pdf-lib/upng": ["@pdf-lib/upng@1.0.1", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@pdf-lib/upng/-/upng-1.0.1.tgz", { "dependencies": { "pako": "^1.0.10" } }, "sha512-dQK2FUMQtowVP00mtIksrlZhdFXQZPC+taih1q4CvPZ5vqdxR/LKBaFg0oAfzd1GlHZXXSPdQfzQnt+ViGvEIQ=="],
 
     "@pkgr/core": ["@pkgr/core@0.2.9", "", {}, "sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA=="],
 
@@ -1200,6 +1205,8 @@
 
     "pathe": ["pathe@2.0.3", "", {}, "sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w=="],
 
+    "pdf-lib": ["pdf-lib@1.17.1", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/pdf-lib/-/pdf-lib-1.17.1.tgz", { "dependencies": { "@pdf-lib/standard-fonts": "^1.0.0", "@pdf-lib/upng": "^1.0.1", "pako": "^1.0.11", "tslib": "^1.11.1" } }, "sha512-V/mpyJAoTsN4cnP31vc0wfNA1+p20evqqnap0KLoRUN0Yk/p3wN52DOEsL4oBFcLdb76hlpKPtzJIgo67j/XLw=="],
+
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
     "picomatch": ["picomatch@4.0.4", "", {}, "sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A=="],
@@ -1527,6 +1534,8 @@
     "micromatch/picomatch": ["picomatch@2.3.2", "", {}, "sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA=="],
 
     "parse5/entities": ["entities@6.0.1", "", {}, "sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g=="],
+
+    "pdf-lib/tslib": ["tslib@1.14.1", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/tslib/-/tslib-1.14.1.tgz", {}, "sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg=="],
 
     "prop-types/react-is": ["react-is@16.13.1", "", {}, "sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ=="],
 
