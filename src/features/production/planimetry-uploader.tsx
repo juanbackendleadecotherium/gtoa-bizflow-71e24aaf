@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
-import { Upload, Loader2, Trash2, FileText, Download } from "lucide-react";
+import { Upload, Loader2, Trash2, FileText, Download, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { PlanimetryAnnotatorDialog } from "./planimetry-annotator";
+
 
 export type Planimetry = {
   id: string;
