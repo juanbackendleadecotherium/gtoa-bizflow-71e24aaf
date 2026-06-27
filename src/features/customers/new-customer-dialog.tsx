@@ -446,7 +446,13 @@ export function NewCustomerDialog({
 
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
   const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
+  const minAdvance = subtotal * 0.5;
+  const advanceOk = subtotal > 0 && (draft.order.advance_amount || 0) >= minAdvance - 0.01;
+  const paymentMethodOk = !!draft.order.payment_method;
+  const depositAccountOk = !!draft.order.advance_deposit_account;
+  const paymentBlockOk = subtotal > 0 && advanceOk && paymentMethodOk && depositAccountOk;
   const isJuridica = draft.customer.person_type === "juridica";
+
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
