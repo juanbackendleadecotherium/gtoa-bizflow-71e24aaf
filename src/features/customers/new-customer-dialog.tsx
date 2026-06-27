@@ -290,6 +290,19 @@ export function NewCustomerDialog({
       if (draft.items.length === 0)
         throw new Error("Agrega al menos un producto para crear el pedido");
 
+      const _subtotal = draft.items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0);
+      const _advance = draft.order.advance_amount || 0;
+      if (!draft.order.payment_method) throw new Error("Selecciona la modalidad de pago");
+      if (_subtotal <= 0) throw new Error("El subtotal de la venta debe ser mayor a cero");
+      if (_advance < _subtotal * 0.5 - 0.01) {
+        throw new Error(
+          `El abono debe ser mínimo el 50% del total (${formatMoney(_subtotal * 0.5)}).`,
+        );
+      }
+      if (!draft.order.advance_deposit_account)
+        throw new Error("Indica a qué cuenta llegó el abono del 50%");
+
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
