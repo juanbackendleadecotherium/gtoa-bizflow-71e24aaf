@@ -1,19 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { renderInvoiceEmail } from "@/lib/email-templates/invoice-html";
 
 /**
- * Stub para envío de factura por correo.
- *
- * Pendiente de configurar:
- *   - Dominio propio + registros DNS verificados
- *   - Cuenta Resend (https://resend.com) + API key como secreto RESEND_API_KEY
- *
- * Una vez configurado, este handler:
- *   1. Descarga el PDF desde el bucket `invoices` (admin client).
- *   2. Renderiza la plantilla HTML en src/lib/email-templates/invoice-html.ts
- *   3. Llama a Resend con el adjunto + HTML.
- *   4. Actualiza la fila `invoices` con sent_at / sent_to / send_count++.
+ * Envío de facturas por correo vía Resend.
+ * Dominio técnico: mail.grupogetova.com (verificado).
+ * Display: Grupo Getova <info@grupogetova.com>
  */
 export const sendInvoiceEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -23,14 +16,89 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
       to: z.string().email(),
     }).parse(input),
   )
-  .handler(async () => {
-    const hasKey = !!process.env.RESEND_API_KEY;
-    if (!hasKey) {
-      return {
-        status: "not_configured" as const,
-        message: "Configura RESEND_API_KEY y un dominio verificado para habilitar el envío.",
-      };
+  .handler(async ({ data, context }) => {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error("RESEND_API_KEY no está configurada.");
     }
-    // TODO: implementar envío real cuando esté el dominio + API key.
-    return { status: "not_implemented" as const };
+
+    const { supabase, userId } = context;
+
+    // Cargar factura + marca
+    const { data: invoice, error: invErr } = await supabase
+      .from("invoices")
+      .select("id, invoice_number, pdf_path, total_snapshot, balance_snapshot, customer_snapshot, brand_id, send_count")
+      .eq("id", data.invoice_id)
+      .single();
+    if (invErr || !invoice) throw new Error("Factura no encontrada.");
+
+    const { data: brand, error: brandErr } = await supabase
+      .from("brands")
+      .select("name, primary_color, email, phone")
+      .eq("id", invoice.brand_id)
+      .single();
+    if (brandErr || !brand) throw new Error("Marca no encontrada.");
+
+    // Descargar PDF
+    const { data: pdfBlob, error: dlErr } = await supabase.storage
+      .from("invoices")
+      .download(invoice.pdf_path);
+    if (dlErr || !pdfBlob) throw new Error("No se pudo descargar el PDF.");
+    const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer());
+
+    const customer = (invoice.customer_snapshot ?? {}) as { name?: string | null };
+    const fmt = (n: number) =>
+      new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(Number(n));
+
+    const html = renderInvoiceEmail({
+      customer_name: customer.name || "Cliente",
+      brand_name: brand.name,
+      invoice_number: invoice.invoice_number ?? "",
+      total_formatted: fmt(invoice.total_snapshot),
+      balance_formatted: fmt(invoice.balance_snapshot),
+      brand_color: brand.primary_color || undefined,
+      brand_email: brand.email,
+      brand_phone: brand.phone,
+    });
+
+    // Enviar vía Resend
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `${brand.name} <info@grupogetova.com>`,
+        to: [data.to],
+        reply_to: brand.email || "info@grupogetova.com",
+        subject: `Factura ${invoice.invoice_number} — ${brand.name}`,
+        html,
+        attachments: [
+          {
+            filename: `Factura-${invoice.invoice_number}.pdf`,
+            content: pdfBuffer.toString("base64"),
+          },
+        ],
+      }),
+    });
+
+    if (!resp.ok) {
+      const body = await resp.text();
+      throw new Error(`Resend ${resp.status}: ${body.slice(0, 300)}`);
+    }
+
+    const result = (await resp.json()) as { id?: string };
+
+    // Actualizar factura
+    await supabase
+      .from("invoices")
+      .update({
+        sent_at: new Date().toISOString(),
+        sent_to: data.to,
+        send_count: (invoice.send_count ?? 0) + 1,
+      })
+      .eq("id", invoice.id);
+
+    return { status: "sent" as const, message_id: result.id, to: data.to, sent_by: userId };
   });
