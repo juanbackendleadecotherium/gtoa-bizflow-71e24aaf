@@ -46,6 +46,31 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
     if (dlErr || !pdfBlob) throw new Error("No se pudo descargar el PDF.");
     const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer());
 
+    // Cargar términos y condiciones activos y generar PDF adjunto
+    const { data: terms } = await supabase
+      .from("terms_versions")
+      .select("title, content_html, version")
+      .eq("is_active", true)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let termsAttachment: { filename: string; content: string } | null = null;
+    if (terms) {
+      const { buildTermsPdf } = await import("@/lib/terms-pdf.server");
+      const termsBytes = await buildTermsPdf({
+        title: terms.title,
+        content: terms.content_html,
+        version: terms.version,
+        brand_name: brand.name,
+        brand_color: brand.primary_color,
+      });
+      termsAttachment = {
+        filename: `Terminos-y-Condiciones-v${terms.version}.pdf`,
+        content: Buffer.from(termsBytes).toString("base64"),
+      };
+    }
+
     const customer = (invoice.customer_snapshot ?? {}) as { name?: string | null };
     const fmt = (n: number) =>
       new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(Number(n));
@@ -61,6 +86,14 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
       brand_phone: brand.phone,
     });
 
+    const attachments: Array<{ filename: string; content: string }> = [
+      {
+        filename: `Factura-${invoice.invoice_number}.pdf`,
+        content: pdfBuffer.toString("base64"),
+      },
+    ];
+    if (termsAttachment) attachments.push(termsAttachment);
+
     // Enviar vía Resend
     const resp = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -71,15 +104,10 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
       body: JSON.stringify({
         from: `${brand.name} <info@mail.grupogetova.com>`,
         to: [data.to],
-        reply_to: brand.email || "info@grupogetova.com",
+        reply_to: "info@grupogetova.com",
         subject: `Factura ${invoice.invoice_number} — ${brand.name}`,
         html,
-        attachments: [
-          {
-            filename: `Factura-${invoice.invoice_number}.pdf`,
-            content: pdfBuffer.toString("base64"),
-          },
-        ],
+        attachments,
       }),
     });
 
