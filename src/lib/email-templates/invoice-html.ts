@@ -36,7 +36,7 @@ export function renderInvoiceEmail(d: InvoiceEmailData): string {
       </p>
     </td></tr>
     <tr><td style="padding:16px 24px;background:#f8fafc;font-size:12px;color:#94a3b8;text-align:center">
-      ${d.brand_name}${d.brand_email ? ` · ${d.brand_email}` : ""}
+      ${d.brand_name} · <a href="mailto:info@grupogetova.com" style="color:#94a3b8;text-decoration:none">info@grupogetova.com</a>
     </td></tr>
   </table>
 </body></html>`;
