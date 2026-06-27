@@ -388,20 +388,23 @@ export function InvoicePanel({ order }: { order: Order }) {
             </div>
           )}
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span tabIndex={0} className="block">
-                  <Button variant="outline" size="sm" className="w-full gap-2" disabled>
-                    <Mail className="h-4 w-4" /> Reenviar al cliente
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                Disponible cuando se configure el dominio + Resend
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Button
+            variant="outline" size="sm" className="w-full gap-2"
+            onClick={() => sendMutation.mutate()}
+            disabled={sendMutation.isPending || !order.customer_email}
+            title={!order.customer_email ? "El cliente no tiene correo registrado" : undefined}
+          >
+            {sendMutation.isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Enviando…</>
+            ) : (
+              <><Mail className="h-4 w-4" /> {issued.sent_at ? "Reenviar al cliente" : "Enviar al cliente"}</>
+            )}
+          </Button>
+          {issued.sent_at && (
+            <p className="text-[11px] text-muted-foreground text-center">
+              Último envío {new Date(issued.sent_at).toLocaleString("es-CO")} · {issued.send_count} envío{issued.send_count === 1 ? "" : "s"}
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
