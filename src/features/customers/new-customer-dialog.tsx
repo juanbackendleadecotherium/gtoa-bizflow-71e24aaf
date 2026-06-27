@@ -995,7 +995,7 @@ export function NewCustomerDialog({
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending}
+              disabled={saveMutation.isPending || !paymentBlockOk}
               className="gap-2"
             >
               {saveMutation.isPending ? (
