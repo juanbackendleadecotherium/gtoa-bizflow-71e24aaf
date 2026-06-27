@@ -69,7 +69,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: `${brand.name} <info@grupogetova.com>`,
+        from: `${brand.name} <info@mail.grupogetova.com>`,
         to: [data.to],
         reply_to: brand.email || "info@grupogetova.com",
         subject: `Factura ${invoice.invoice_number} — ${brand.name}`,
