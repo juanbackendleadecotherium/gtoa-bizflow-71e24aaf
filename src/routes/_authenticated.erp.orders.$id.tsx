@@ -543,7 +543,10 @@ function OrderDetail() {
 
         <aside className="space-y-5">
           <div className="rounded-xl border border-border bg-surface p-5 space-y-1.5">
-            <p className="text-sm font-medium mb-2">Cliente</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium">Cliente</p>
+              <EditCustomerButton order={o} onSaved={() => qc.invalidateQueries({ queryKey: ["order", id] })} />
+            </div>
             <p className="text-sm font-semibold">{o.customer_name ?? "—"}</p>
             {o.customer_company && <p className="text-xs text-muted-foreground">{o.customer_company}</p>}
             {o.customer_doc_number && (
@@ -552,7 +555,13 @@ function OrderDetail() {
               </p>
             )}
             {o.customer_phone && <p className="text-xs text-muted-foreground">{o.customer_phone}</p>}
-            {o.customer_email && <p className="text-xs text-muted-foreground">{o.customer_email}</p>}
+            {o.customer_email ? (
+              <p className="text-xs text-muted-foreground">{o.customer_email}</p>
+            ) : (
+              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Sin correo — requerido para enviar la factura
+              </p>
+            )}
             {(o.customer_address || o.customer_city || o.customer_department) && (
               <p className="text-xs text-muted-foreground">
                 {[o.customer_address, o.customer_city, o.customer_department].filter(Boolean).join(", ")}
