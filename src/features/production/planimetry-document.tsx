@@ -306,10 +306,11 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
               </View>
             </View>
 
-            {/* MAIN ROW — hero image LEFT, specs RIGHT */}
-            <View style={styles.mainRow} wrap={false}>
+            {/* MAIN ROW — LEFT: reference + planimetry stacked. RIGHT: specs/notes/refs */}
+            <View style={styles.mainRow}>
+              {/* LEFT COLUMN */}
               <View style={styles.mainLeft}>
-                <View style={styles.heroFrame}>
+                <View style={styles.imageFrame}>
                   {hero ? (
                     <Image src={hero} style={styles.heroImage} />
                   ) : (
@@ -318,10 +319,43 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                     </View>
                   )}
                 </View>
+                <Text style={styles.caption}>IMAGEN DE REFERENCIA</Text>
+
                 <Text style={styles.heroProductName}>{title}</Text>
-                <Text style={styles.heroProductCaption}>IMAGEN DE REFERENCIA</Text>
+
+                {(it.planimetryImages?.length ?? 0) > 0 ? (
+                  <View style={styles.planiBlock}>
+                    <Text style={styles.sectionLabel}>Planimetría del producto</Text>
+                    {it.planimetryImages!.length === 1 ? (
+                      <>
+                        <View style={styles.imageFrame}>
+                          <Image src={it.planimetryImages![0]} style={styles.planiImage} />
+                        </View>
+                        <Text style={styles.caption}>PLANIMETRÍA</Text>
+                      </>
+                    ) : (
+                      <View style={styles.planiGrid}>
+                        {it.planimetryImages!.map((url, i) => (
+                          <View key={i} style={styles.planiCellHalf} wrap={false}>
+                            <View style={styles.imageFrame}>
+                              <Image src={url} style={styles.planiImageHalf} />
+                            </View>
+                            <Text style={styles.caption}>PLANIMETRÍA {i + 1}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ) : null}
+
+                {it.planimetryPdfNames && it.planimetryPdfNames.length > 0 ? (
+                  <Text style={styles.planiPdfNote}>
+                    Planimetría adjunta en PDF: {it.planimetryPdfNames.join(", ")}
+                  </Text>
+                ) : null}
               </View>
 
+              {/* RIGHT COLUMN */}
               <View style={styles.mainRight}>
                 <View style={styles.specsTopRow}>
                   <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
@@ -343,69 +377,33 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                     Sin especificaciones adicionales.
                   </Text>
                 )}
+
+                {data.notes && idx === data.items.length - 1 ? (
+                  <View style={styles.rightBlock}>
+                    <Text style={styles.sectionLabel}>Notas de la venta</Text>
+                    <Text style={styles.notesBody}>{data.notes}</Text>
+                  </View>
+                ) : null}
+
+                {rest.length > 0 ? (
+                  <View style={styles.rightBlock}>
+                    <Text style={styles.sectionLabel}>Referencias adicionales</Text>
+                    <View style={styles.refGrid}>
+                      {rest.map((url, i) => (
+                        <View key={i} style={styles.refCell} wrap={false}>
+                          <View style={styles.imageFrame}>
+                            <Image src={url} style={styles.refImage} />
+                          </View>
+                          <Text style={styles.caption}>REF {i + 2}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
               </View>
             </View>
 
-            {/* REFERENCES — small thumbnails side by side */}
-            {rest.length > 0 ? (
-              <View style={styles.refSection}>
-                <Text style={styles.sectionLabel}>Referencias adicionales</Text>
-                <View style={styles.refGrid}>
-                  {rest.map((url, i) => (
-                    <View key={i} style={styles.refCell} wrap={false}>
-                      <View style={styles.refImageFrame}>
-                        <Image src={url} style={styles.refImage} />
-                      </View>
-                      <Text style={styles.refCaption}>REFERENCIA {i + 2}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : null}
 
-            {/* PLANIMETRY — seller-uploaded technical drawings (image files) */}
-            {(it.planimetryImages?.length ?? 0) > 0 || (it.planimetryPdfNames?.length ?? 0) > 0 ? (
-              <View style={styles.planiSection} break>
-                <Text style={styles.sectionLabel}>Planimetría del producto</Text>
-                {it.planimetryImages && it.planimetryImages.length > 0 ? (
-                  <View style={styles.planiGrid}>
-                    {it.planimetryImages.map((url, i) => {
-                      const single = it.planimetryImages!.length === 1;
-                      return (
-                        <View
-                          key={i}
-                          style={single ? styles.planiCellFull : styles.planiCellHalf}
-                          wrap={false}
-                        >
-                          <View style={styles.planiImageFrame}>
-                            <Image
-                              src={url}
-                              style={single ? styles.planiImageLarge : styles.planiImageMedium}
-                            />
-                          </View>
-                          <Text style={styles.planiCaption}>
-                            PLANIMETRÍA {it.planimetryImages!.length > 1 ? i + 1 : ""}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                ) : null}
-                {it.planimetryPdfNames && it.planimetryPdfNames.length > 0 ? (
-                  <Text style={styles.planiPdfNote}>
-                    Planimetría adjunta en PDF: {it.planimetryPdfNames.join(", ")}
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
-
-            {/* NOTES — only last item */}
-            {data.notes && idx === data.items.length - 1 ? (
-              <View style={styles.notesSection} wrap={false}>
-                <Text style={styles.sectionLabel}>Notas de la venta</Text>
-                <Text style={styles.notesBody}>{data.notes}</Text>
-              </View>
-            ) : null}
 
 
             {/* FOOTER */}
