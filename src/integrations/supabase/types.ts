@@ -1866,6 +1866,11 @@ export type Database = {
         Args: { _from: string; _n: number }
         Returns: string
       }
+      admin_preview_wipe_counts: { Args: never; Returns: Json }
+      admin_wipe_transactional_data: {
+        Args: { p_confirm: string }
+        Returns: Json
+      }
       can_finish_order_item: {
         Args: { _item_id: string; _user_id: string }
         Returns: boolean
