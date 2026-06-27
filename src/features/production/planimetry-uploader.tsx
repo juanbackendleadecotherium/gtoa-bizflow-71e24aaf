@@ -164,6 +164,16 @@ export function PlanimetryUploader({
                           </p>
                           {p.notes && <p className="text-xs text-muted-foreground italic mt-0.5 truncate">{p.notes}</p>}
                         </div>
+                        {p.mime_type === "application/pdf" && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setAnnotating(p)}
+                            title="Anotar planimetría"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button size="icon" variant="ghost" onClick={() => handleDownload(p)}>
                           <Download className="h-4 w-4" />
                         </Button>
@@ -172,6 +182,7 @@ export function PlanimetryUploader({
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
+
                       </li>
                     ))}
                   </ul>
