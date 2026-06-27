@@ -192,6 +192,23 @@ export function PlanimetryUploader({
           );
         })()
       )}
+
+      {annotating && (
+        <PlanimetryAnnotatorDialog
+          open={!!annotating}
+          onOpenChange={(o) => !o && setAnnotating(null)}
+          pdfUrl={annotating.file_url}
+          baseFileName={annotating.file_name}
+          productionOrderId={productionOrderId}
+          brandId={brandId}
+          orderItemId={annotating.order_item_id ?? null}
+          onSaved={() => {
+            setAnnotating(null);
+            onChange();
+          }}
+        />
+      )}
     </div>
   );
+
 }
