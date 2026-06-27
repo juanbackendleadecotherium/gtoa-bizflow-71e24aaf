@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { FileText, Download, Mail, Loader2, AlertTriangle, RefreshCw, History, Clock } from "lucide-react";
 
 import { toast } from "sonner";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { sendInvoiceEmail } from "@/lib/invoices.functions";
 import type { InvoiceDocumentData, InvoiceItemSnapshot } from "./invoice-document";
 import { formatMoney } from "@/features/orders/order-items-editor";
 
@@ -279,6 +281,21 @@ export function InvoicePanel({ order }: { order: Order }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const sendInvoiceFn = useServerFn(sendInvoiceEmail);
+  const sendMutation = useMutation({
+    mutationFn: async () => {
+      if (!invoiceQuery.data?.id) throw new Error("No hay factura emitida.");
+      if (!order.customer_email) throw new Error("El cliente no tiene correo registrado.");
+      return await sendInvoiceFn({ data: { invoice_id: invoiceQuery.data.id, to: order.customer_email } });
+    },
+    onSuccess: () => {
+      toast.success(`Factura enviada a ${order.customer_email}`);
+      qc.invalidateQueries({ queryKey: ["invoice", order.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const issued = invoiceQuery.data;
   const versions = versionsQuery.data || [];
 
@@ -388,20 +405,23 @@ export function InvoicePanel({ order }: { order: Order }) {
             </div>
           )}
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span tabIndex={0} className="block">
-                  <Button variant="outline" size="sm" className="w-full gap-2" disabled>
-                    <Mail className="h-4 w-4" /> Reenviar al cliente
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                Disponible cuando se configure el dominio + Resend
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Button
+            variant="outline" size="sm" className="w-full gap-2"
+            onClick={() => sendMutation.mutate()}
+            disabled={sendMutation.isPending || !order.customer_email}
+            title={!order.customer_email ? "El cliente no tiene correo registrado" : undefined}
+          >
+            {sendMutation.isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Enviando…</>
+            ) : (
+              <><Mail className="h-4 w-4" /> {issued.sent_at ? "Reenviar al cliente" : "Enviar al cliente"}</>
+            )}
+          </Button>
+          {issued.sent_at && (
+            <p className="text-[11px] text-muted-foreground text-center">
+              Último envío {new Date(issued.sent_at).toLocaleString("es-CO")} · {issued.send_count} envío{issued.send_count === 1 ? "" : "s"}
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
