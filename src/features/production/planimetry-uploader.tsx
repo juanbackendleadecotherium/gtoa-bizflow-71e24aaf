@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
-import { Upload, Loader2, Trash2, FileText, Download } from "lucide-react";
+import { Upload, Loader2, Trash2, FileText, Download, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { PlanimetryAnnotatorDialog } from "./planimetry-annotator";
+
 
 export type Planimetry = {
   id: string;
@@ -42,6 +44,8 @@ export function PlanimetryUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [note, setNote] = useState("");
+  const [annotating, setAnnotating] = useState<Planimetry | null>(null);
+
 
   const nextVersion = (items.reduce((m, i) => Math.max(m, i.version), 0) || 0) + 1;
 
@@ -160,6 +164,16 @@ export function PlanimetryUploader({
                           </p>
                           {p.notes && <p className="text-xs text-muted-foreground italic mt-0.5 truncate">{p.notes}</p>}
                         </div>
+                        {p.mime_type === "application/pdf" && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setAnnotating(p)}
+                            title="Anotar planimetría"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button size="icon" variant="ghost" onClick={() => handleDownload(p)}>
                           <Download className="h-4 w-4" />
                         </Button>
@@ -168,6 +182,7 @@ export function PlanimetryUploader({
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
+
                       </li>
                     ))}
                   </ul>
@@ -177,6 +192,23 @@ export function PlanimetryUploader({
           );
         })()
       )}
+
+      {annotating && (
+        <PlanimetryAnnotatorDialog
+          open={!!annotating}
+          onOpenChange={(o) => !o && setAnnotating(null)}
+          pdfUrl={annotating.file_url}
+          baseFileName={annotating.file_name}
+          productionOrderId={productionOrderId}
+          brandId={brandId}
+          orderItemId={annotating.order_item_id ?? null}
+          onSaved={() => {
+            setAnnotating(null);
+            onChange();
+          }}
+        />
+      )}
     </div>
   );
+
 }

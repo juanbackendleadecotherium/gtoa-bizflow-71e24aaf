@@ -107,24 +107,22 @@ const styles = StyleSheet.create({
   },
 
   // === MAIN TWO-COLUMN BLOCK ================================================
-  mainRow: { flexDirection: "row", gap: 14, marginBottom: 14 },
-  mainLeft: { width: "44%" },
-  mainRight: { width: "56%", flexDirection: "column" },
+  mainRow: { flexDirection: "row", gap: 12, marginBottom: 10 },
+  mainLeft: { width: "46%" },
+  mainRight: { width: "54%", flexDirection: "column" },
 
-  heroFrame: {
+  // --- LEFT: hero image + planimetry stacked with FIXED, STANDARD sizes ---
+  imageFrame: {
     borderWidth: 0.6,
     borderColor: LINE,
     borderStyle: "solid",
-    padding: 6,
+    padding: 4,
+    backgroundColor: PAPER,
   },
-  heroImage: {
-    width: "100%",
-    height: 230,
-    objectFit: "cover",
-  },
+  heroImage: { width: "100%", height: 200, objectFit: "contain" },
   heroNoImage: {
     width: "100%",
-    height: 230,
+    height: 200,
     borderWidth: 1,
     borderStyle: "dashed",
     borderColor: LINE,
@@ -132,21 +130,41 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   heroNoImageText: { fontSize: 9, color: MUTED, fontStyle: "italic" },
+  caption: {
+    fontSize: 7.5,
+    color: MUTED,
+    marginTop: 3,
+    textAlign: "center",
+    letterSpacing: 0.4,
+  },
   heroProductName: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: 700,
     color: INK,
-    marginTop: 8,
+    marginTop: 6,
+    marginBottom: 8,
   },
-  heroProductCaption: { fontSize: 8.5, color: MUTED, marginTop: 1, letterSpacing: 0.4 },
 
-  // Right column — specs / delivery
+  // Planimetry frame — same width as hero, fixed height, contain
+  planiBlock: { marginTop: 4 },
+  planiImage: { width: "100%", height: 200, objectFit: "contain" },
+  planiImageHalf: { width: "100%", height: 130, objectFit: "contain" },
+  planiGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -3 },
+  planiCellHalf: { width: "50%", paddingHorizontal: 3, paddingBottom: 6 },
+  planiPdfNote: {
+    marginTop: 4,
+    fontSize: 8,
+    color: SUB,
+    fontStyle: "italic",
+  },
+
+  // --- RIGHT: specs / delivery / notes / references ---
   specsTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 10,
-    paddingBottom: 8,
+    marginBottom: 8,
+    paddingBottom: 6,
     borderBottomWidth: 0.6,
     borderBottomColor: LINE,
     borderBottomStyle: "solid",
@@ -166,83 +184,20 @@ const styles = StyleSheet.create({
   deliveryLabel: { fontSize: 8, letterSpacing: 1.6, color: MUTED, textTransform: "uppercase" },
   deliveryValue: { fontSize: 13, fontWeight: 700, marginTop: 2 },
 
-  specsBody: { fontSize: 10, color: INK, lineHeight: 1.55 },
+  specsBody: { fontSize: 9.5, color: INK, lineHeight: 1.5 },
 
-  // === REFERENCES GRID — small thumbnails side by side ======================
-  refSection: {
-    marginBottom: 14,
-    paddingTop: 10,
+  rightBlock: {
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 0.6,
     borderTopColor: LINE,
     borderTopStyle: "solid",
   },
-  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
-  refCell: {
-    width: "33.333%",
-    paddingHorizontal: 5,
-    paddingBottom: 10,
-  },
-  refImageFrame: {
-    borderWidth: 0.6,
-    borderColor: LINE,
-    borderStyle: "solid",
-    padding: 4,
-  },
-  refImage: {
-    width: "100%",
-    height: 130,
-    objectFit: "cover",
-  },
-  refCaption: {
-    fontSize: 7.5,
-    color: MUTED,
-    marginTop: 4,
-    textAlign: "center",
-    letterSpacing: 0.4,
-  },
+  notesBody: { fontSize: 9.5, color: INK, lineHeight: 1.45 },
 
-  // === PLANIMETRY (seller-uploaded technical drawings) ======================
-  planiSection: {
-    marginBottom: 14,
-    paddingTop: 10,
-    borderTopWidth: 0.6,
-    borderTopColor: LINE,
-    borderTopStyle: "solid",
-  },
-  planiGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
-  planiCellFull: { width: "100%", paddingHorizontal: 5, paddingBottom: 10 },
-  planiCellHalf: { width: "50%", paddingHorizontal: 5, paddingBottom: 10 },
-  planiImageFrame: {
-    borderWidth: 0.6,
-    borderColor: INK,
-    borderStyle: "solid",
-    padding: 4,
-  },
-  planiImageLarge: { width: "75%", height: 260, objectFit: "contain", alignSelf: "center" },
-  planiImageMedium: { width: "100%", height: 180, objectFit: "contain" },
-  planiCaption: {
-    fontSize: 7.5,
-    color: MUTED,
-    marginTop: 4,
-    textAlign: "center",
-    letterSpacing: 0.4,
-  },
-  planiPdfNote: {
-    marginTop: 4,
-    fontSize: 8.5,
-    color: SUB,
-    fontStyle: "italic",
-  },
-
-  // === NOTES ================================================================
-  notesSection: {
-    marginBottom: 10,
-    paddingTop: 10,
-    borderTopWidth: 0.6,
-    borderTopColor: LINE,
-    borderTopStyle: "solid",
-  },
-  notesBody: { fontSize: 10, color: INK, lineHeight: 1.5 },
+  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -3 },
+  refCell: { width: "33.333%", paddingHorizontal: 3, paddingBottom: 6 },
+  refImage: { width: "100%", height: 70, objectFit: "cover" },
 
   // === FOOTER ===============================================================
   footer: {
@@ -351,10 +306,11 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
               </View>
             </View>
 
-            {/* MAIN ROW — hero image LEFT, specs RIGHT */}
-            <View style={styles.mainRow} wrap={false}>
+            {/* MAIN ROW — LEFT: reference + planimetry stacked. RIGHT: specs/notes/refs */}
+            <View style={styles.mainRow}>
+              {/* LEFT COLUMN */}
               <View style={styles.mainLeft}>
-                <View style={styles.heroFrame}>
+                <View style={styles.imageFrame}>
                   {hero ? (
                     <Image src={hero} style={styles.heroImage} />
                   ) : (
@@ -363,10 +319,43 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                     </View>
                   )}
                 </View>
+                <Text style={styles.caption}>IMAGEN DE REFERENCIA</Text>
+
                 <Text style={styles.heroProductName}>{title}</Text>
-                <Text style={styles.heroProductCaption}>IMAGEN DE REFERENCIA</Text>
+
+                {(it.planimetryImages?.length ?? 0) > 0 ? (
+                  <View style={styles.planiBlock}>
+                    <Text style={styles.sectionLabel}>Planimetría del producto</Text>
+                    {it.planimetryImages!.length === 1 ? (
+                      <>
+                        <View style={styles.imageFrame}>
+                          <Image src={it.planimetryImages![0]} style={styles.planiImage} />
+                        </View>
+                        <Text style={styles.caption}>PLANIMETRÍA</Text>
+                      </>
+                    ) : (
+                      <View style={styles.planiGrid}>
+                        {it.planimetryImages!.map((url, i) => (
+                          <View key={i} style={styles.planiCellHalf} wrap={false}>
+                            <View style={styles.imageFrame}>
+                              <Image src={url} style={styles.planiImageHalf} />
+                            </View>
+                            <Text style={styles.caption}>PLANIMETRÍA {i + 1}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ) : null}
+
+                {it.planimetryPdfNames && it.planimetryPdfNames.length > 0 ? (
+                  <Text style={styles.planiPdfNote}>
+                    Planimetría adjunta en PDF: {it.planimetryPdfNames.join(", ")}
+                  </Text>
+                ) : null}
               </View>
 
+              {/* RIGHT COLUMN */}
               <View style={styles.mainRight}>
                 <View style={styles.specsTopRow}>
                   <Text style={styles.qtyBadge}>CANT · {Number(it.quantity)}</Text>
@@ -388,69 +377,33 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                     Sin especificaciones adicionales.
                   </Text>
                 )}
+
+                {data.notes && idx === data.items.length - 1 ? (
+                  <View style={styles.rightBlock}>
+                    <Text style={styles.sectionLabel}>Notas de la venta</Text>
+                    <Text style={styles.notesBody}>{data.notes}</Text>
+                  </View>
+                ) : null}
+
+                {rest.length > 0 ? (
+                  <View style={styles.rightBlock}>
+                    <Text style={styles.sectionLabel}>Referencias adicionales</Text>
+                    <View style={styles.refGrid}>
+                      {rest.map((url, i) => (
+                        <View key={i} style={styles.refCell} wrap={false}>
+                          <View style={styles.imageFrame}>
+                            <Image src={url} style={styles.refImage} />
+                          </View>
+                          <Text style={styles.caption}>REF {i + 2}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
               </View>
             </View>
 
-            {/* REFERENCES — small thumbnails side by side */}
-            {rest.length > 0 ? (
-              <View style={styles.refSection}>
-                <Text style={styles.sectionLabel}>Referencias adicionales</Text>
-                <View style={styles.refGrid}>
-                  {rest.map((url, i) => (
-                    <View key={i} style={styles.refCell} wrap={false}>
-                      <View style={styles.refImageFrame}>
-                        <Image src={url} style={styles.refImage} />
-                      </View>
-                      <Text style={styles.refCaption}>REFERENCIA {i + 2}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : null}
 
-            {/* PLANIMETRY — seller-uploaded technical drawings (image files) */}
-            {(it.planimetryImages?.length ?? 0) > 0 || (it.planimetryPdfNames?.length ?? 0) > 0 ? (
-              <View style={styles.planiSection} break>
-                <Text style={styles.sectionLabel}>Planimetría del producto</Text>
-                {it.planimetryImages && it.planimetryImages.length > 0 ? (
-                  <View style={styles.planiGrid}>
-                    {it.planimetryImages.map((url, i) => {
-                      const single = it.planimetryImages!.length === 1;
-                      return (
-                        <View
-                          key={i}
-                          style={single ? styles.planiCellFull : styles.planiCellHalf}
-                          wrap={false}
-                        >
-                          <View style={styles.planiImageFrame}>
-                            <Image
-                              src={url}
-                              style={single ? styles.planiImageLarge : styles.planiImageMedium}
-                            />
-                          </View>
-                          <Text style={styles.planiCaption}>
-                            PLANIMETRÍA {it.planimetryImages!.length > 1 ? i + 1 : ""}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                ) : null}
-                {it.planimetryPdfNames && it.planimetryPdfNames.length > 0 ? (
-                  <Text style={styles.planiPdfNote}>
-                    Planimetría adjunta en PDF: {it.planimetryPdfNames.join(", ")}
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
-
-            {/* NOTES — only last item */}
-            {data.notes && idx === data.items.length - 1 ? (
-              <View style={styles.notesSection} wrap={false}>
-                <Text style={styles.sectionLabel}>Notas de la venta</Text>
-                <Text style={styles.notesBody}>{data.notes}</Text>
-              </View>
-            ) : null}
 
 
             {/* FOOTER */}
