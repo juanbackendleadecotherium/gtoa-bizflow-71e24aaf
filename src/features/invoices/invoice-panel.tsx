@@ -281,6 +281,21 @@ export function InvoicePanel({ order }: { order: Order }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const sendInvoiceFn = useServerFn(sendInvoiceEmail);
+  const sendMutation = useMutation({
+    mutationFn: async () => {
+      if (!invoiceQuery.data?.id) throw new Error("No hay factura emitida.");
+      if (!order.customer_email) throw new Error("El cliente no tiene correo registrado.");
+      return await sendInvoiceFn({ data: { invoice_id: invoiceQuery.data.id, to: order.customer_email } });
+    },
+    onSuccess: () => {
+      toast.success(`Factura enviada a ${order.customer_email}`);
+      qc.invalidateQueries({ queryKey: ["invoice", order.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const issued = invoiceQuery.data;
   const versions = versionsQuery.data || [];
 
