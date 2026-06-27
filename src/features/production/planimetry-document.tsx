@@ -107,24 +107,22 @@ const styles = StyleSheet.create({
   },
 
   // === MAIN TWO-COLUMN BLOCK ================================================
-  mainRow: { flexDirection: "row", gap: 14, marginBottom: 14 },
-  mainLeft: { width: "44%" },
-  mainRight: { width: "56%", flexDirection: "column" },
+  mainRow: { flexDirection: "row", gap: 12, marginBottom: 10 },
+  mainLeft: { width: "46%" },
+  mainRight: { width: "54%", flexDirection: "column" },
 
-  heroFrame: {
+  // --- LEFT: hero image + planimetry stacked with FIXED, STANDARD sizes ---
+  imageFrame: {
     borderWidth: 0.6,
     borderColor: LINE,
     borderStyle: "solid",
-    padding: 6,
+    padding: 4,
+    backgroundColor: PAPER,
   },
-  heroImage: {
-    width: "100%",
-    height: 230,
-    objectFit: "cover",
-  },
+  heroImage: { width: "100%", height: 200, objectFit: "contain" },
   heroNoImage: {
     width: "100%",
-    height: 230,
+    height: 200,
     borderWidth: 1,
     borderStyle: "dashed",
     borderColor: LINE,
@@ -132,21 +130,41 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   heroNoImageText: { fontSize: 9, color: MUTED, fontStyle: "italic" },
+  caption: {
+    fontSize: 7.5,
+    color: MUTED,
+    marginTop: 3,
+    textAlign: "center",
+    letterSpacing: 0.4,
+  },
   heroProductName: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: 700,
     color: INK,
-    marginTop: 8,
+    marginTop: 6,
+    marginBottom: 8,
   },
-  heroProductCaption: { fontSize: 8.5, color: MUTED, marginTop: 1, letterSpacing: 0.4 },
 
-  // Right column — specs / delivery
+  // Planimetry frame — same width as hero, fixed height, contain
+  planiBlock: { marginTop: 4 },
+  planiImage: { width: "100%", height: 200, objectFit: "contain" },
+  planiImageHalf: { width: "100%", height: 130, objectFit: "contain" },
+  planiGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -3 },
+  planiCellHalf: { width: "50%", paddingHorizontal: 3, paddingBottom: 6 },
+  planiPdfNote: {
+    marginTop: 4,
+    fontSize: 8,
+    color: SUB,
+    fontStyle: "italic",
+  },
+
+  // --- RIGHT: specs / delivery / notes / references ---
   specsTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 10,
-    paddingBottom: 8,
+    marginBottom: 8,
+    paddingBottom: 6,
     borderBottomWidth: 0.6,
     borderBottomColor: LINE,
     borderBottomStyle: "solid",
@@ -166,83 +184,20 @@ const styles = StyleSheet.create({
   deliveryLabel: { fontSize: 8, letterSpacing: 1.6, color: MUTED, textTransform: "uppercase" },
   deliveryValue: { fontSize: 13, fontWeight: 700, marginTop: 2 },
 
-  specsBody: { fontSize: 10, color: INK, lineHeight: 1.55 },
+  specsBody: { fontSize: 9.5, color: INK, lineHeight: 1.5 },
 
-  // === REFERENCES GRID — small thumbnails side by side ======================
-  refSection: {
-    marginBottom: 14,
-    paddingTop: 10,
+  rightBlock: {
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 0.6,
     borderTopColor: LINE,
     borderTopStyle: "solid",
   },
-  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
-  refCell: {
-    width: "33.333%",
-    paddingHorizontal: 5,
-    paddingBottom: 10,
-  },
-  refImageFrame: {
-    borderWidth: 0.6,
-    borderColor: LINE,
-    borderStyle: "solid",
-    padding: 4,
-  },
-  refImage: {
-    width: "100%",
-    height: 130,
-    objectFit: "cover",
-  },
-  refCaption: {
-    fontSize: 7.5,
-    color: MUTED,
-    marginTop: 4,
-    textAlign: "center",
-    letterSpacing: 0.4,
-  },
+  notesBody: { fontSize: 9.5, color: INK, lineHeight: 1.45 },
 
-  // === PLANIMETRY (seller-uploaded technical drawings) ======================
-  planiSection: {
-    marginBottom: 14,
-    paddingTop: 10,
-    borderTopWidth: 0.6,
-    borderTopColor: LINE,
-    borderTopStyle: "solid",
-  },
-  planiGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
-  planiCellFull: { width: "100%", paddingHorizontal: 5, paddingBottom: 10 },
-  planiCellHalf: { width: "50%", paddingHorizontal: 5, paddingBottom: 10 },
-  planiImageFrame: {
-    borderWidth: 0.6,
-    borderColor: INK,
-    borderStyle: "solid",
-    padding: 4,
-  },
-  planiImageLarge: { width: "75%", height: 260, objectFit: "contain", alignSelf: "center" },
-  planiImageMedium: { width: "100%", height: 180, objectFit: "contain" },
-  planiCaption: {
-    fontSize: 7.5,
-    color: MUTED,
-    marginTop: 4,
-    textAlign: "center",
-    letterSpacing: 0.4,
-  },
-  planiPdfNote: {
-    marginTop: 4,
-    fontSize: 8.5,
-    color: SUB,
-    fontStyle: "italic",
-  },
-
-  // === NOTES ================================================================
-  notesSection: {
-    marginBottom: 10,
-    paddingTop: 10,
-    borderTopWidth: 0.6,
-    borderTopColor: LINE,
-    borderTopStyle: "solid",
-  },
-  notesBody: { fontSize: 10, color: INK, lineHeight: 1.5 },
+  refGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -3 },
+  refCell: { width: "33.333%", paddingHorizontal: 3, paddingBottom: 6 },
+  refImage: { width: "100%", height: 70, objectFit: "cover" },
 
   // === FOOTER ===============================================================
   footer: {
