@@ -44,6 +44,8 @@ export function PlanimetryUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [note, setNote] = useState("");
+  const [annotating, setAnnotating] = useState<Planimetry | null>(null);
+
 
   const nextVersion = (items.reduce((m, i) => Math.max(m, i.version), 0) || 0) + 1;
 
