@@ -29,6 +29,7 @@ import { Route as AuthenticatedErpSettingsUsersRouteImport } from './routes/_aut
 import { Route as AuthenticatedErpSettingsTermsRouteImport } from './routes/_authenticated.erp.settings.terms'
 import { Route as AuthenticatedErpSettingsSuppliersRouteImport } from './routes/_authenticated.erp.settings.suppliers'
 import { Route as AuthenticatedErpSettingsStatusesRouteImport } from './routes/_authenticated.erp.settings.statuses'
+import { Route as AuthenticatedErpSettingsDatabaseRouteImport } from './routes/_authenticated.erp.settings.database'
 import { Route as AuthenticatedErpSettingsBrandBillingRouteImport } from './routes/_authenticated.erp.settings.brand-billing'
 import { Route as AuthenticatedErpRealProductionProduccionRouteImport } from './routes/_authenticated.erp.real-production.produccion'
 import { Route as AuthenticatedErpRealProductionLogisticaRouteImport } from './routes/_authenticated.erp.real-production.logistica'
@@ -152,6 +153,12 @@ const AuthenticatedErpSettingsStatusesRoute =
     path: '/settings/statuses',
     getParentRoute: () => AuthenticatedErpRoute,
   } as any)
+const AuthenticatedErpSettingsDatabaseRoute =
+  AuthenticatedErpSettingsDatabaseRouteImport.update({
+    id: '/settings/database',
+    path: '/settings/database',
+    getParentRoute: () => AuthenticatedErpRoute,
+  } as any)
 const AuthenticatedErpSettingsBrandBillingRoute =
   AuthenticatedErpSettingsBrandBillingRouteImport.update({
     id: '/settings/brand-billing',
@@ -241,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/erp/real-production/logistica': typeof AuthenticatedErpRealProductionLogisticaRoute
   '/erp/real-production/produccion': typeof AuthenticatedErpRealProductionProduccionRoute
   '/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
+  '/erp/settings/database': typeof AuthenticatedErpSettingsDatabaseRoute
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/erp/settings/suppliers': typeof AuthenticatedErpSettingsSuppliersRoute
   '/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
@@ -269,6 +277,7 @@ export interface FileRoutesByTo {
   '/erp/real-production/logistica': typeof AuthenticatedErpRealProductionLogisticaRoute
   '/erp/real-production/produccion': typeof AuthenticatedErpRealProductionProduccionRoute
   '/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
+  '/erp/settings/database': typeof AuthenticatedErpSettingsDatabaseRoute
   '/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/erp/settings/suppliers': typeof AuthenticatedErpSettingsSuppliersRoute
   '/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
@@ -303,6 +312,7 @@ export interface FileRoutesById {
   '/_authenticated/erp/real-production/logistica': typeof AuthenticatedErpRealProductionLogisticaRoute
   '/_authenticated/erp/real-production/produccion': typeof AuthenticatedErpRealProductionProduccionRoute
   '/_authenticated/erp/settings/brand-billing': typeof AuthenticatedErpSettingsBrandBillingRoute
+  '/_authenticated/erp/settings/database': typeof AuthenticatedErpSettingsDatabaseRoute
   '/_authenticated/erp/settings/statuses': typeof AuthenticatedErpSettingsStatusesRoute
   '/_authenticated/erp/settings/suppliers': typeof AuthenticatedErpSettingsSuppliersRoute
   '/_authenticated/erp/settings/terms': typeof AuthenticatedErpSettingsTermsRoute
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/erp/real-production/logistica'
     | '/erp/real-production/produccion'
     | '/erp/settings/brand-billing'
+    | '/erp/settings/database'
     | '/erp/settings/statuses'
     | '/erp/settings/suppliers'
     | '/erp/settings/terms'
@@ -365,6 +376,7 @@ export interface FileRouteTypes {
     | '/erp/real-production/logistica'
     | '/erp/real-production/produccion'
     | '/erp/settings/brand-billing'
+    | '/erp/settings/database'
     | '/erp/settings/statuses'
     | '/erp/settings/suppliers'
     | '/erp/settings/terms'
@@ -398,6 +410,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/real-production/logistica'
     | '/_authenticated/erp/real-production/produccion'
     | '/_authenticated/erp/settings/brand-billing'
+    | '/_authenticated/erp/settings/database'
     | '/_authenticated/erp/settings/statuses'
     | '/_authenticated/erp/settings/suppliers'
     | '/_authenticated/erp/settings/terms'
@@ -557,6 +570,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpSettingsStatusesRouteImport
       parentRoute: typeof AuthenticatedErpRoute
     }
+    '/_authenticated/erp/settings/database': {
+      id: '/_authenticated/erp/settings/database'
+      path: '/settings/database'
+      fullPath: '/erp/settings/database'
+      preLoaderRoute: typeof AuthenticatedErpSettingsDatabaseRouteImport
+      parentRoute: typeof AuthenticatedErpRoute
+    }
     '/_authenticated/erp/settings/brand-billing': {
       id: '/_authenticated/erp/settings/brand-billing'
       path: '/settings/brand-billing'
@@ -711,6 +731,7 @@ interface AuthenticatedErpRouteChildren {
   AuthenticatedErpProductionApprovalsRoute: typeof AuthenticatedErpProductionApprovalsRoute
   AuthenticatedErpProductionTrackingRoute: typeof AuthenticatedErpProductionTrackingRoute
   AuthenticatedErpSettingsBrandBillingRoute: typeof AuthenticatedErpSettingsBrandBillingRoute
+  AuthenticatedErpSettingsDatabaseRoute: typeof AuthenticatedErpSettingsDatabaseRoute
   AuthenticatedErpSettingsStatusesRoute: typeof AuthenticatedErpSettingsStatusesRoute
   AuthenticatedErpSettingsSuppliersRoute: typeof AuthenticatedErpSettingsSuppliersRoute
   AuthenticatedErpSettingsTermsRoute: typeof AuthenticatedErpSettingsTermsRoute
@@ -735,6 +756,7 @@ const AuthenticatedErpRouteChildren: AuthenticatedErpRouteChildren = {
     AuthenticatedErpProductionTrackingRoute,
   AuthenticatedErpSettingsBrandBillingRoute:
     AuthenticatedErpSettingsBrandBillingRoute,
+  AuthenticatedErpSettingsDatabaseRoute: AuthenticatedErpSettingsDatabaseRoute,
   AuthenticatedErpSettingsStatusesRoute: AuthenticatedErpSettingsStatusesRoute,
   AuthenticatedErpSettingsSuppliersRoute:
     AuthenticatedErpSettingsSuppliersRoute,
