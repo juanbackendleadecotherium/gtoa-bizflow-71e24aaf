@@ -1,35 +1,80 @@
-## Notificar al vendedor cuando la factura pasa a "Pendiente por logística"
+# Planimetría: layout eficiente + editor de anotaciones
 
-### Problema
+Dos cambios independientes sobre el flujo actual de planimetría.
 
-Hoy la tarea `invoice_ready_for_collection` solo se crea dentro del trigger `on_order_item_finished` (cuando el último `order_item` queda terminado). Si un admin cambia el estado a "Pendiente por logística" manualmente desde la UI, no se dispara ningún trigger que genere la notificación, así que el vendedor no ve nada en **Mis tareas**.
+## 1) Layout del PDF más denso y estandarizado
 
-La UI de `/erp/my-tasks` ya sabe pintar este tipo de tarea (icono `$` verde, CTA "Gestionar cobro") — el problema es 100% en backend: la tarea no se está creando en el caso manual.
+Hoy la planimetría del producto ocupa una página completa nueva (`break`) con la imagen subida muy grande. Se rediseña la página para que **una sola hoja** contenga todo lo posible:
 
-### Plan
+```text
+┌──────────────────────────────────────────────────────────┐
+│  HEADER (igual que hoy)                                  │
+├───────────────────────────┬──────────────────────────────┤
+│  IMAGEN DE REFERENCIA     │  CANT · Fecha de entrega     │
+│  (44% ancho, altura fija) │  Especificaciones (texto)    │
+│  Nombre producto          │                              │
+│                           │                              │
+│  PLANIMETRÍA DEL VENDEDOR │  Notas de la venta           │
+│  (mismo 44%, altura fija) │  (si hay)                    │
+│  Caption                  │                              │
+│                           │  Referencias adicionales     │
+│                           │  (mini-thumbs 3 por fila)    │
+└───────────────────────────┴──────────────────────────────┘
+                  FOOTER (igual que hoy)
+```
 
-1. **Nueva función SQL** `public.notify_seller_invoice_ready(_order_id uuid, _note text)` (SECURITY DEFINER):
-   - Lee `seller_id`, `brand_id`, `invoice_number`, `order_number` de la orden.
-   - Si el vendedor existe y no hay ya una tarea `invoice_ready_for_collection` pendiente para esa orden → la inserta con el mismo título/razón unificado que usa hoy `on_order_item_finished` ("Factura lista — pendiente por logística y cobro del saldo …").
-   - Idempotente: nunca duplica.
+Cambios concretos en `src/features/production/planimetry-document.tsx`:
+- Mover el bloque `PLANIMETRÍA DEL VENDEDOR` dentro de la columna izquierda, debajo del hero, **eliminando el `break` que la mandaba a página nueva**.
+- Estandarizar tamaños del frame para que toda imagen entre se redimensione a un cuadro fijo (`width: 100%`, `height: 220 pt`, `objectFit: contain`, fondo blanco). Esto garantiza misma altura sin importar la resolución original (la compresión a 1400 px ya existe en `send-to-production-button.tsx`).
+- Mover "Referencias adicionales" y "Notas" a la columna derecha, debajo de Especificaciones, con thumbnails más pequeños (3 por fila, altura 90 pt).
+- Si hay múltiples planimetrías del vendedor, mostrarlas en grilla 2 columnas dentro de la columna izquierda (altura 130 pt cada una) en lugar de stack vertical.
+- Si hay >1 PDF adjunto, mantener el aviso de "Planimetría adjunta en PDF: ..." al pie de la columna izquierda.
+- Eliminar la sección `planiSection` con `break`. El segundo page break solo ocurre si el contenido realmente no cabe (let `@react-pdf` decida).
 
-2. **Nuevo trigger** `trg_orders_notify_logistica` en `orders` (AFTER INSERT OR UPDATE OF status_id):
-   - Si el `status_id` nuevo corresponde a `order_statuses.slug = 'pendiente-por-logistica'` → llama a `notify_seller_invoice_ready(NEW.id, ...)`.
-   - Cubre tanto el cambio manual desde la UI/orden como cualquier otro flujo futuro (incluido `update_order_status`).
+Resultado: cada producto = 1 hoja en la mayoría de casos (vs 2 hoy).
 
-3. **Refactor de `on_order_item_finished`**: reemplazar el bloque `INSERT INTO seller_tasks(... invoice_ready_for_collection ...)` por una llamada a la nueva función, para que la lógica de creación de la tarea viva en un solo lugar y el mensaje siempre coincida.
+## 2) Editor de anotaciones después de generada
 
-4. **Sin cambios en el front**:
-   - `src/routes/_authenticated.erp.my-tasks.tsx` ya renderiza `invoice_ready_for_collection` con estilo verde y CTA correcto.
-   - `seller-tasks-panel.tsx` no se toca (filtra solo `fix_planimetry`, que es lo que pidió el usuario en mensajes previos).
+Botón nuevo **"Anotar"** junto a cada versión de planimetría ya generada (en el panel donde hoy se ve el PDF y se descarga). Al pulsarlo abre un modal a pantalla casi completa con el PDF rasterizado como fondo y herramientas de marcado encima.
 
-### Archivos
+### Herramientas
+- **Lápiz a mano alzada** (grosor 2 px)
+- **Resaltador** (grosor 14 px, opacidad 0.35)
+- **Flecha recta** (click-drag, punta de flecha al soltar)
+- **Nota memo** (cuadro amarillo con texto editable, draggable, posición libre)
+- **Borrar último trazo** (undo) + **Limpiar todo**
 
-- Migración SQL (función + trigger + reemplazo del bloque dentro de `on_order_item_finished`).
-- Sin cambios en TS/TSX.
+### Paleta
+3 colores fijos pensados para impresión: **rojo (#D32F2F)**, **azul (#1565C0)**, **negro (#111)**. El resaltador usa una versión clara automática del color seleccionado.
 
-### Qué NO cambia
+### Guardado
+Al confirmar:
+1. Renderiza cada página: PDF original → canvas + overlay de anotaciones → flatten a JPEG.
+2. Compone un nuevo PDF con esas páginas (vía `@react-pdf/renderer` usando solo `<Image>` por página).
+3. Sube el nuevo PDF al bucket `production-planimetries` como **nueva versión** (`vN+1`) usando el mismo flujo de `production_planimetries.insert` que ya existe.
+4. Notas: `"Versión con anotaciones del vendedor"`.
 
-- La tarea sigue siendo una sola por factura (no se duplica ni se separa en dos avisos).
-- El flujo automático "todos los productos terminados → pendiente por logística + novedad en producción" se mantiene exactamente igual; solo se centraliza la creación de la tarea.
-- No se modifican policies ni se crean tablas, por lo que no hay GRANTs nuevos.
+Así la versión anotada queda visible para producción exactamente igual que cualquier otra, sin tocar la versión original.
+
+### Archivos involucrados
+- `src/features/production/planimetry-document.tsx` — rediseño del layout.
+- `src/features/production/planimetry-annotator.tsx` *(nuevo)* — modal con canvas + herramientas.
+- `src/lib/planimetry-annotate.ts` *(nuevo)* — utilidades: PDF → imágenes (pdfjs-dist), flatten canvas, build new PDF, upload + insertar versión.
+- Punto de entrada del botón "Anotar": componente que lista versiones de planimetría en el detalle de la orden de producción (lo localizaré en build mode dentro de `src/routes/_authenticated.erp.production.$id.tsx` o el componente que ya lista las versiones).
+
+### Dependencias nuevas
+- `pdfjs-dist` para rasterizar páginas del PDF generado dentro del navegador.
+
+## Detalles técnicos
+
+- El editor trabaja siempre en cliente; el resultado se sube ya aplanado, así producción no necesita un visor con capas.
+- Cada página del PDF original se renderiza a 150 dpi al canvas base, las marcas se dibujan en un canvas overlay y se aplanan en un único JPEG por página antes de re-empaquetar.
+- Las notas memo son `<div>` HTML mientras se edita; al guardar se "imprimen" sobre el canvas usando `fillRect` (fondo) + `fillText` (texto multilínea con `measureText`).
+- El versionado reutiliza la lógica existente de `production_planimetries.version` (next = max+1 por `order_item_id`).
+- No se cambia el flujo "Enviar a producción"; el editor se activa **después** de generar.
+
+## Fuera de alcance
+
+- Reordenar el módulo de producción o cambiar permisos.
+- Anotaciones colaborativas o multi-usuario.
+- Edición de la planimetría original (no se reemplaza, se versiona).
