@@ -408,7 +408,7 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
 
   const handleConfirm = () => {
     const ids = Array.from(selectedItems);
-    if (ids.length === 0) return;
+    if (ids.length === 0 || !acknowledged) return;
     if (selectedTarget === "new") {
       createNew.mutate(ids);
     } else {
@@ -416,6 +416,16 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
       if (target) regenerate.mutate({ target, selectedItemIds: ids });
     }
   };
+
+  const goToPreview = () => {
+    if (selectedItems.size === 0) return;
+    setAcknowledged(false);
+    setStep("preview");
+  };
+
+  const selectedItemsList = allItems.filter((i) => selectedItems.has(i.id));
+  const fmtDate = (d: string | null | undefined) =>
+    d ? new Date(d).toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" }) : "—";
 
   const toggleItem = (id: string) => {
     const it = allItems.find((x) => x.id === id);
