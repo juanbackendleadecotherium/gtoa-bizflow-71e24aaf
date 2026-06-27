@@ -864,7 +864,7 @@ function EditCustomerButton({ order, onSaved }: { order: any; onSaved: () => voi
         const trimmed = (v ?? "").trim();
         payload[k] = trimmed === "" ? null : trimmed;
       }
-      const { error } = await supabase.from("orders").update(payload).eq("id", order.id);
+      const { error } = await supabase.from("orders").update(payload as never).eq("id", order.id);
       if (error) throw error;
     },
     onSuccess: () => {
