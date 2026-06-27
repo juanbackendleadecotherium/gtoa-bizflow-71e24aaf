@@ -290,6 +290,19 @@ export function NewCustomerDialog({
       if (draft.items.length === 0)
         throw new Error("Agrega al menos un producto para crear el pedido");
 
+      const _subtotal = draft.items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0);
+      const _advance = draft.order.advance_amount || 0;
+      if (!draft.order.payment_method) throw new Error("Selecciona la modalidad de pago");
+      if (_subtotal <= 0) throw new Error("El subtotal de la venta debe ser mayor a cero");
+      if (_advance < _subtotal * 0.5 - 0.01) {
+        throw new Error(
+          `El abono debe ser mínimo el 50% del total (${formatMoney(_subtotal * 0.5)}).`,
+        );
+      }
+      if (!draft.order.advance_deposit_account)
+        throw new Error("Indica a qué cuenta llegó el abono del 50%");
+
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -446,7 +459,13 @@ export function NewCustomerDialog({
 
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
   const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
+  const minAdvance = subtotal * 0.5;
+  const advanceOk = subtotal > 0 && (draft.order.advance_amount || 0) >= minAdvance - 0.01;
+  const paymentMethodOk = !!draft.order.payment_method;
+  const depositAccountOk = !!draft.order.advance_deposit_account;
+  const paymentBlockOk = subtotal > 0 && advanceOk && paymentMethodOk && depositAccountOk;
   const isJuridica = draft.customer.person_type === "juridica";
+
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -832,10 +851,10 @@ export function NewCustomerDialog({
           <SectionCard
             icon={<CreditCard className="h-4 w-4" />}
             title="Pago"
-            subtitle="Modalidad y abono inicial."
+            subtitle="Modalidad y abono inicial (mínimo 50% del total)."
           >
             <div className="grid sm:grid-cols-2 gap-4">
-              <FieldBlock label="Modalidad de pago">
+              <FieldBlock label="Modalidad de pago *">
                 <Select
                   value={draft.order.payment_method || undefined}
                   onValueChange={(v) => setO("payment_method", v)}
@@ -852,32 +871,37 @@ export function NewCustomerDialog({
                   </SelectContent>
                 </Select>
               </FieldBlock>
-              <FieldBlock label="Abono">
+              <FieldBlock label={`Abono * (mín. ${subtotal > 0 ? formatMoney(minAdvance) : "50% del total"})`}>
                 <MoneyInput
                   value={draft.order.advance_amount}
                   onValueChange={(n) => setO("advance_amount", n)}
                 />
             </FieldBlock>
             </div>
-            {(draft.order.advance_amount || 0) > 0 && (
-              <div className="mt-3">
-                <FieldBlock label="Cuenta destino del abono">
-                  <Select
-                    value={draft.order.advance_deposit_account || undefined}
-                    onValueChange={(v) => setO("advance_deposit_account", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="¿A qué cuenta llegó el abono?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEPOSIT_ACCOUNTS.map((a) => (
-                        <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FieldBlock>
+            <div className="mt-3">
+              <FieldBlock label="Cuenta destino del abono *">
+                <Select
+                  value={draft.order.advance_deposit_account || undefined}
+                  onValueChange={(v) => setO("advance_deposit_account", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="¿A qué cuenta llegó el abono?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPOSIT_ACCOUNTS.map((a) => (
+                      <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldBlock>
+            </div>
+            {subtotal > 0 && !advanceOk && (
+              <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
+                El abono debe ser mínimo el 50% del total ({formatMoney(minAdvance)}). Faltan{" "}
+                <span className="font-medium">{formatMoney(Math.max(0, minAdvance - (draft.order.advance_amount || 0)))}</span>.
               </div>
             )}
+
             {subtotal > 0 && (
               <div className="mt-3 space-y-2">
                 <div className="grid grid-cols-3 gap-2 text-xs rounded-lg border border-border bg-surface p-3">
@@ -971,7 +995,7 @@ export function NewCustomerDialog({
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending}
+              disabled={saveMutation.isPending || !paymentBlockOk}
               className="gap-2"
             >
               {saveMutation.isPending ? (
