@@ -39,7 +39,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
       .single();
     if (brandErr || !brand) throw new Error("Marca no encontrada.");
 
-    // Descargar PDF
+    if (!invoice.pdf_path) throw new Error("La factura no tiene PDF generado.");
     const { data: pdfBlob, error: dlErr } = await supabase.storage
       .from("invoices")
       .download(invoice.pdf_path);
