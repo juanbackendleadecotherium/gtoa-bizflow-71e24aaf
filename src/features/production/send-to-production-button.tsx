@@ -493,112 +493,192 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
             </DialogDescription>
           </DialogHeader>
 
-          {existing.length > 0 && (
-            <p className="text-[11px] text-muted-foreground rounded-lg border border-border bg-muted/30 p-2.5">
-              Se creará una <span className="font-medium text-foreground">nueva orden de producción</span> con los productos que elijas. Las órdenes ya enviadas no se pueden modificar — si necesitas cambiar algo en una orden existente, recházala primero desde su detalle.
-            </p>
+          {step === "select" && (
+            <>
+              {existing.length > 0 && (
+                <p className="text-[11px] text-muted-foreground rounded-lg border border-border bg-muted/30 p-2.5">
+                  Se creará una <span className="font-medium text-foreground">nueva orden de producción</span> con los productos que elijas. Si re-envías un producto que ya estaba en otra orden, la nueva orden la reemplaza — no necesitas rechazar nada manualmente.
+                </p>
+              )}
+
+              {/* Items */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                    <Package className="h-3.5 w-3.5" /> Productos a incluir
+                    <span className="text-muted-foreground/80 normal-case tracking-normal">
+                      ({selectedItems.size} de {allItems.length})
+                    </span>
+                  </p>
+                  <div className="flex gap-2 text-[11px]">
+                    <button type="button" onClick={selectAll} className="text-primary hover:underline">Todos</button>
+                    <span className="text-muted-foreground">·</span>
+                    <button type="button" onClick={selectUnsent} className="text-primary hover:underline">Solo no enviados</button>
+                    <span className="text-muted-foreground">·</span>
+                    <button type="button" onClick={selectNone} className="text-primary hover:underline">Ninguno</button>
+                  </div>
+                </div>
+
+                {items.isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : allItems.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Esta venta no tiene productos.</p>
+                ) : (
+                  <ul className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                    {allItems.map((it) => {
+                      const checked = selectedItems.has(it.id);
+                      const sentCode = it.production_order_id ? codeById.get(it.production_order_id) : null;
+                      const lock = getItemLock(it);
+                      return (
+                        <li key={it.id}>
+                          <Label htmlFor={`item-${it.id}`}
+                            title={lock.disabled ? lock.reason : undefined}
+                            className={`flex items-center gap-3 rounded-lg border border-border p-2.5 transition-colors overflow-hidden ${
+                              lock.disabled
+                                ? "opacity-60 cursor-not-allowed bg-muted/30"
+                                : "cursor-pointer hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                            }`}>
+                            <Checkbox
+                              id={`item-${it.id}`}
+                              checked={checked}
+                              disabled={lock.disabled}
+                              onCheckedChange={() => toggleItem(it.id)}
+                              className="shrink-0"
+                            />
+                            {it.images[0] ? (
+                              <img src={it.images[0]} alt="" className="h-10 w-10 rounded object-cover border border-border shrink-0" />
+                            ) : (
+                              <div className="h-10 w-10 rounded bg-muted shrink-0 grid place-content-center">
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate" title={it.description || ""}>
+                                {(() => {
+                                  const words = (it.description || "(sin descripción)").trim().split(/\s+/);
+                                  const short = words.slice(0, 3).join(" ");
+                                  return words.length > 3 ? `${short}…` : short;
+                                })()}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <span className="text-[11px] text-muted-foreground shrink-0">Cant: {it.quantity}</span>
+                                {lock.disabled ? (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 font-medium">
+                                    {lock.reason}
+                                  </span>
+                                ) : sentCode ? (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono truncate" title={`Ya enviado en ${sentCode} — se reemplazará por la nueva orden`}>
+                                    Re-envío de {sentCode}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">
+                                    Nuevo
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </Label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={busy}>
+                  Cancelar
+                </Button>
+                <Button onClick={goToPreview} disabled={busy || selectedItems.size === 0} className="gap-1">
+                  Continuar a previsualización ({selectedItems.size})
+                </Button>
+              </DialogFooter>
+            </>
           )}
 
-
-          {/* Items */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                <Package className="h-3.5 w-3.5" /> Productos a incluir
-                <span className="text-muted-foreground/80 normal-case tracking-normal">
-                  ({selectedItems.size} de {allItems.length})
-                </span>
-              </p>
-              <div className="flex gap-2 text-[11px]">
-                <button type="button" onClick={selectAll} className="text-primary hover:underline">Todos</button>
-                <span className="text-muted-foreground">·</span>
-                <button type="button" onClick={selectUnsent} className="text-primary hover:underline">Solo no enviados</button>
-                <span className="text-muted-foreground">·</span>
-                <button type="button" onClick={selectNone} className="text-primary hover:underline">Ninguno</button>
+          {step === "preview" && (
+            <>
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-[12px] text-amber-900 dark:text-amber-200">
+                Esta es la información exacta que recibirá el equipo de producción. Revísala con cuidado: una vez confirmada, la orden se envía y <span className="font-semibold">la responsabilidad de su contenido es del vendedor</span>.
               </div>
-            </div>
 
-            {items.isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : allItems.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Esta venta no tiene productos.</p>
-            ) : (
-              <ul className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                {allItems.map((it) => {
-                  const checked = selectedItems.has(it.id);
-                  const sentCode = it.production_order_id ? codeById.get(it.production_order_id) : null;
-                  const lock = getItemLock(it);
-                  return (
-                    <li key={it.id}>
-                      <Label htmlFor={`item-${it.id}`}
-                        title={lock.disabled ? lock.reason : undefined}
-                        className={`flex items-center gap-3 rounded-lg border border-border p-2.5 transition-colors overflow-hidden ${
-                          lock.disabled
-                            ? "opacity-60 cursor-not-allowed bg-muted/30"
-                            : "cursor-pointer hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-primary/5"
-                        }`}>
-                        <Checkbox
-                          id={`item-${it.id}`}
-                          checked={checked}
-                          disabled={lock.disabled}
-                          onCheckedChange={() => toggleItem(it.id)}
-                          className="shrink-0"
-                        />
-                        {it.images[0] ? (
-                          <img src={it.images[0]} alt="" className="h-10 w-10 rounded object-cover border border-border shrink-0" />
-                        ) : (
-                          <div className="h-10 w-10 rounded bg-muted shrink-0 grid place-content-center">
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate" title={it.description || ""}>
-                            {(() => {
-                              const words = (it.description || "(sin descripción)").trim().split(/\s+/);
-                              const short = words.slice(0, 3).join(" ");
-                              return words.length > 3 ? `${short}…` : short;
-                            })()}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className="text-[11px] text-muted-foreground shrink-0">Cant: {it.quantity}</span>
-                            {lock.disabled ? (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 font-medium">
-                                {lock.reason}
-                              </span>
-                            ) : sentCode ? (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono truncate">
-                                {sentCode}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">
-                                Nuevo
-                              </span>
-                            )}
-                          </div>
+              <div className="rounded-lg border border-border bg-background p-3 space-y-2 text-sm">
+                <div className="grid grid-cols-2 gap-2 text-[12px]">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Cliente</p>
+                    <p className="font-medium">{previewMeta.data?.customer_name ?? "—"}</p>
+                    {previewMeta.data?.customer_phone && (
+                      <p className="text-muted-foreground">{previewMeta.data.customer_phone}</p>
+                    )}
+                    {previewMeta.data?.customer_city && (
+                      <p className="text-muted-foreground">{previewMeta.data.customer_city}</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Entrega al cliente</p>
+                    <p className="font-medium">{fmtDate(previewMeta.data?.estimated_delivery_date)}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Producción tendrá fecha límite 3 días hábiles antes.</p>
+                  </div>
+                </div>
+                {previewMeta.data?.notes && (
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Notas de la venta</p>
+                    <p className="text-[12px] whitespace-pre-wrap">{previewMeta.data.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                  <Package className="h-3.5 w-3.5" /> Productos ({selectedItemsList.length})
+                </p>
+                <ul className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {selectedItemsList.map((it) => (
+                    <li key={it.id} className="flex gap-3 rounded-lg border border-border bg-background p-3">
+                      {it.images[0] ? (
+                        <img src={it.images[0]} alt="" className="h-16 w-16 rounded object-cover border border-border shrink-0" />
+                      ) : (
+                        <div className="h-16 w-16 rounded bg-muted shrink-0 grid place-content-center">
+                          <Package className="h-5 w-5 text-muted-foreground" />
                         </div>
-                      </Label>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-medium whitespace-pre-wrap break-words">
+                          {it.description || "(sin descripción)"}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px] text-muted-foreground">
+                          <span>Cant: <span className="font-medium text-foreground">{it.quantity}</span></span>
+                          <span>·</span>
+                          <span>{it.planimetry_files.length} planimetría{it.planimetry_files.length === 1 ? "" : "s"} adjunta{it.planimetry_files.length === 1 ? "" : "s"}</span>
+                        </div>
+                      </div>
                     </li>
-                  );
-                })}
-              </ul>
-            )}
-            {selectedTarget === "new" && freeItemsCount === 0 && allItems.length > 0 && (
-              <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                Todos los productos ya están en una orden de producción activa. Para crear otra orden, primero libera alguno rechazando la orden actual.
-              </p>
-            )}
-          </div>
+                  ))}
+                </ul>
+              </div>
 
+              <Label className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 cursor-pointer">
+                <Checkbox
+                  checked={acknowledged}
+                  onCheckedChange={(v) => setAcknowledged(v === true)}
+                  className="mt-0.5"
+                />
+                <span className="text-[12px] leading-snug">
+                  He revisado la previsualización y confirmo que la información es correcta. Entiendo que, al enviarla, <span className="font-semibold">asumo la responsabilidad</span> del contenido de esta orden de producción.
+                </span>
+              </Label>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={busy}>
-              Cancelar
-            </Button>
-            <Button onClick={handleConfirm} disabled={busy || selectedItems.size === 0} className="gap-1">
-              {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              Confirmar ({selectedItems.size})
-            </Button>
-          </DialogFooter>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setStep("select")} disabled={busy}>
+                  Volver
+                </Button>
+                <Button onClick={handleConfirm} disabled={busy || !acknowledged || selectedItems.size === 0} className="gap-1">
+                  {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Enviar a producción ({selectedItems.size})
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </section>
