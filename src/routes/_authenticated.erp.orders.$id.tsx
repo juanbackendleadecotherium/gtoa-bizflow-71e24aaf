@@ -823,3 +823,103 @@ function OrderItemReadCard({
     </div>
   );
 }
+
+function EditCustomerButton({ order, onSaved }: { order: any; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    customer_name: "",
+    customer_company: "",
+    customer_doc_type: "",
+    customer_doc_number: "",
+    customer_phone: "",
+    customer_email: "",
+    customer_address: "",
+    customer_city: "",
+    customer_department: "",
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    setForm({
+      customer_name: order.customer_name ?? "",
+      customer_company: order.customer_company ?? "",
+      customer_doc_type: order.customer_doc_type ?? "",
+      customer_doc_number: order.customer_doc_number ?? "",
+      customer_phone: order.customer_phone ?? "",
+      customer_email: order.customer_email ?? "",
+      customer_address: order.customer_address ?? "",
+      customer_city: order.customer_city ?? "",
+      customer_department: order.customer_department ?? "",
+    });
+  }, [open, order]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const email = form.customer_email.trim();
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error("Correo electrónico inválido");
+      }
+      const payload: Record<string, string | null> = {};
+      for (const [k, v] of Object.entries(form)) {
+        const trimmed = (v ?? "").trim();
+        payload[k] = trimmed === "" ? null : trimmed;
+      }
+      const { error } = await supabase.from("orders").update(payload).eq("id", order.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Cliente actualizado");
+      setOpen(false);
+      onSaved();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const field = (key: keyof typeof form, label: string, type = "text", placeholder?: string) => (
+    <div>
+      <Label className="text-xs mb-1.5 block text-muted-foreground">{label}</Label>
+      <Input
+        type={type}
+        value={form[key]}
+        placeholder={placeholder}
+        onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+      />
+    </div>
+  );
+
+  return (
+    <>
+      <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => setOpen(true)}>
+        <Pencil className="h-3 w-3" /> Editar
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+            {field("customer_name", "Nombre")}
+            {field("customer_company", "Empresa")}
+            <div className="grid grid-cols-2 gap-3">
+              {field("customer_doc_type", "Tipo doc.", "text", "CC, NIT…")}
+              {field("customer_doc_number", "N° documento")}
+            </div>
+            {field("customer_phone", "Teléfono", "tel")}
+            {field("customer_email", "Correo electrónico", "email", "cliente@ejemplo.com")}
+            {field("customer_address", "Dirección")}
+            <div className="grid grid-cols-2 gap-3">
+              {field("customer_city", "Ciudad")}
+              {field("customer_department", "Departamento")}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending ? "Guardando…" : "Guardar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
