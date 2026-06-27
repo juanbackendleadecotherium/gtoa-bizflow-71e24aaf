@@ -268,6 +268,8 @@ export async function generatePlanimetryForOrder(opts: {
 export function ProductionSection({ orderId, brandId }: { orderId: string; brandId: string }) {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [step, setStep] = useState<"select" | "preview">("select");
+  const [acknowledged, setAcknowledged] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<string>("new");
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
@@ -300,49 +302,48 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
     },
   });
 
+  // Preview meta (customer + delivery) shown in the double-check step.
+  const previewMeta = useQuery({
+    queryKey: ["order-preview-meta", orderId],
+    enabled: dialogOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("customer_name, customer_phone, customer_city, estimated_delivery_date, notes")
+        .eq("id", orderId).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const codeById = useMemo(() => {
     const m = new Map<string, string>();
     (list.data ?? []).forEach((p) => m.set(p.id, p.code));
     return m;
   }, [list.data]);
 
-  const ownerById = useMemo(() => {
-    const m = new Map<string, ProdRow>();
-    (list.data ?? []).forEach((p) => m.set(p.id, p));
-    return m;
-  }, [list.data]);
-
-  // An item is "locked" for the current destination when it already belongs to
-  // a non-rejected production order that's different from the chosen target,
-  // OR when it doesn't have planimetry uploaded yet.
+  // Only block items without planimetry. Items already in another production
+  // order can still be re-sent — se crea una nueva orden que reemplaza el
+  // envío previo, sin requerir rechazo manual.
   const getItemLock = (it: ItemRow): { disabled: boolean; reason?: string } => {
-    if ((it.planimetry_files?.length ?? 0) === 0 && !it.production_order_id) {
+    if ((it.planimetry_files?.length ?? 0) === 0) {
       return { disabled: true, reason: "Sin planimetría" };
     }
-    if (!it.production_order_id) return { disabled: false };
-    const owner = ownerById.get(it.production_order_id);
-    if (!owner || owner.status === "rechazada") return { disabled: false };
-    if (selectedTarget === owner.id) return { disabled: false };
-    if (selectedTarget === "new") return { disabled: true, reason: `Ya en ${owner.code}` };
-    return { disabled: true, reason: `Pertenece a ${owner.code}` };
+    return { disabled: false };
   };
 
-  // Re-seed selection when dialog opens or destination changes.
+  // Re-seed selection when dialog opens.
   useEffect(() => {
     if (!dialogOpen || !items.data) return;
-    if (selectedTarget === "new") {
-      const unsent = items.data
-        .filter((i) => !getItemLock(i).disabled && !i.production_order_id)
-        .map((i) => i.id);
-      setSelectedItems(new Set(unsent));
-    } else {
-      const owned = items.data
-        .filter((i) => i.production_order_id === selectedTarget)
-        .map((i) => i.id);
-      setSelectedItems(new Set(owned));
-    }
+    const unsent = items.data
+      .filter((i) => !getItemLock(i).disabled && !i.production_order_id)
+      .map((i) => i.id);
+    setSelectedItems(new Set(unsent));
+    setStep("select");
+    setAcknowledged(false);
+    setSelectedTarget("new");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogOpen, items.data, selectedTarget, list.data]);
+  }, [dialogOpen, items.data]);
 
   const createNew = useMutation({
     mutationFn: async (selectedItemIds: string[]) => {
