@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { FileText, Download, Mail, Loader2, AlertTriangle, RefreshCw, History, Clock } from "lucide-react";
 
 import { toast } from "sonner";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { sendInvoiceEmail } from "@/lib/invoices.functions";
 import type { InvoiceDocumentData, InvoiceItemSnapshot } from "./invoice-document";
 import { formatMoney } from "@/features/orders/order-items-editor";
 
