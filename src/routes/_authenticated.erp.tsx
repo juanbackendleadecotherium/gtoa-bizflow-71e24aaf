@@ -51,6 +51,7 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   exact?: boolean;
   adminOnly?: boolean;
+  logisticsOnly?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -58,6 +59,7 @@ const NAV: NavItem[] = [
   { label: "Ventas", to: "/erp/orders", icon: ClipboardList },
   { label: "Producción", to: "/erp/production", icon: Factory },
   { label: "Bodega", to: "/erp/warehouse", icon: Boxes },
+  { label: "Logística", to: "/erp/logistics/pickups", icon: Truck, logisticsOnly: true },
   { label: "Gráficas ERP", to: "/erp/analytics", icon: BarChart3, adminOnly: true },
   { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo },
   { label: "Finanzas", to: "/erp/finance", icon: Wallet, adminOnly: true },
