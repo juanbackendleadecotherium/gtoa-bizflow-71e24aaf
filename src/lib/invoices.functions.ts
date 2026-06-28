@@ -88,7 +88,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
 
     const attachments: Array<{ filename: string; content: string }> = [
       {
-        filename: `Cuenta de cobro-${invoice.invoice_number}.pdf`,
+        filename: `Cuenta-de-cobro-${invoice.invoice_number}.pdf`,
         content: pdfBuffer.toString("base64"),
       },
     ];
