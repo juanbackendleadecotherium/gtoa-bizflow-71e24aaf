@@ -2,10 +2,11 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import {
   LayoutDashboard, ClipboardList, Settings,
   LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft, Menu,
-  FileText, Receipt, Wallet, Factory, BarChart3, Users, ListTodo, Boxes, UserCog, Database,
+  FileText, Receipt, Wallet, Factory, BarChart3, Users, ListTodo, Boxes, UserCog, Database, Truck,
 } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
@@ -21,6 +22,8 @@ import {
 import { toast } from "sonner";
 import { BrandProvider, useBrand } from "@/features/brands/brand-context";
 import { useMyPendingTasksCount } from "@/features/seller-tasks/seller-tasks-panel";
+import { countActivePickups } from "@/lib/pickup-orders.functions";
+import { usePickupCountRealtime } from "@/features/logistics/use-logistics-realtime";
 
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
@@ -48,6 +51,7 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   exact?: boolean;
   adminOnly?: boolean;
+  logisticsOnly?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -55,6 +59,7 @@ const NAV: NavItem[] = [
   { label: "Ventas", to: "/erp/orders", icon: ClipboardList },
   { label: "Producción", to: "/erp/production", icon: Factory },
   { label: "Bodega", to: "/erp/warehouse", icon: Boxes },
+  { label: "Logística", to: "/erp/logistics/pickups", icon: Truck, logisticsOnly: true },
   { label: "Gráficas ERP", to: "/erp/analytics", icon: BarChart3, adminOnly: true },
   { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo },
   { label: "Finanzas", to: "/erp/finance", icon: Wallet, adminOnly: true },
@@ -71,12 +76,22 @@ function Shell() {
   const session = useSession();
   const navigate = useNavigate();
   const userId = session.session?.user.id;
-  const { brands, selectedBrand, setSelectedBrandId, isAdmin } = useBrand();
+  const { brands, selectedBrand, setSelectedBrandId, isAdmin, roles } = useBrand();
+  const isLogistics = isAdmin || roles.includes("logistica");
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
   const [mobileOpen, setMobileOpen] = useState(false);
   const pendingTasksQuery = useMyPendingTasksCount(userId);
   const pendingTasks = pendingTasksQuery.data ?? 0;
+
+  usePickupCountRealtime();
+  const pickupCountFn = useServerFn(countActivePickups);
+  const pickupCountQuery = useQuery({
+    queryKey: ["pickup-orders-count"],
+    enabled: isLogistics,
+    queryFn: () => pickupCountFn(),
+  });
+  const pickupCount = pickupCountQuery.data ?? 0;
 
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
@@ -122,10 +137,12 @@ function Shell() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
+          {NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics)).map((item) => {
             const Icon = item.icon;
             const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
-            const showBadge = item.to === "/erp/my-tasks" && pendingTasks > 0;
+            const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
+            const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
+            const badge = taskBadge || pickupBadge;
             return (
               <Link
                 key={item.to}
@@ -138,9 +155,9 @@ function Shell() {
               >
                 <Icon className="h-4 w-4" />
                 <span className="flex-1">{item.label}</span>
-                {showBadge && (
+                {badge > 0 && (
                   <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold animate-pulse">
-                    {pendingTasks}
+                    {badge}
                   </span>
                 )}
               </Link>
@@ -228,10 +245,12 @@ function Shell() {
                 </div>
 
                 <nav className="px-3 py-4 space-y-1">
-                  {NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
+                  {NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics)).map((item) => {
                     const Icon = item.icon;
                     const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
-                    const showBadge = item.to === "/erp/my-tasks" && pendingTasks > 0;
+                    const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
+                    const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
+                    const badge = taskBadge || pickupBadge;
                     return (
                       <Link
                         key={item.to}
@@ -245,9 +264,9 @@ function Shell() {
                       >
                         <Icon className="h-4 w-4" />
                         <span className="flex-1">{item.label}</span>
-                        {showBadge && (
+                        {badge > 0 && (
                           <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold animate-pulse">
-                            {pendingTasks}
+                            {badge}
                           </span>
                         )}
                       </Link>
