@@ -137,10 +137,12 @@ function Shell() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
+          {NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics)).map((item) => {
             const Icon = item.icon;
             const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
-            const showBadge = item.to === "/erp/my-tasks" && pendingTasks > 0;
+            const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
+            const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
+            const badge = taskBadge || pickupBadge;
             return (
               <Link
                 key={item.to}
@@ -153,9 +155,9 @@ function Shell() {
               >
                 <Icon className="h-4 w-4" />
                 <span className="flex-1">{item.label}</span>
-                {showBadge && (
+                {badge > 0 && (
                   <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold animate-pulse">
-                    {pendingTasks}
+                    {badge}
                   </span>
                 )}
               </Link>
