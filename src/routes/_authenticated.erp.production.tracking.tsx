@@ -333,7 +333,7 @@ function TrackingPage() {
           {/* Encabezado de columnas */}
           <div className="hidden xl:grid grid-cols-[1px_180px_120px_1fr_1.4fr_120px_90px_110px_32px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground font-semibold border-b border-border">
             <span />
-            <span>Factura / OP</span>
+            <span>Cuenta de cobro / OP</span>
             <span>Novedad</span>
             <span>Cliente / vend.</span>
             <span>Productos</span>
@@ -414,7 +414,7 @@ function TrackingRow({
         className="w-full text-left px-3 py-2.5 pl-4 grid grid-cols-[180px_120px_1fr_1.4fr_120px_90px_110px_32px] gap-2 items-center"
         style={{ minHeight: 56 }}
       >
-        {/* Factura / OP */}
+        {/* Cuenta de cobro / OP */}
         <div className="min-w-0">
           <Link
             to="/erp/production/$id"
@@ -469,7 +469,7 @@ function TrackingRow({
         <div className="text-right">
           <p className="font-bold tabular-nums text-sm">{fmtMoneyShort(saleTotal)}</p>
           {isPartial && (
-            <p className="text-[10px] text-muted-foreground tabular-nums" title={`Factura total: ${fmtMoney(invoiceTotal)}`}>
+            <p className="text-[10px] text-muted-foreground tabular-nums" title={`Cuenta de cobro total: ${fmtMoney(invoiceTotal)}`}>
               de {fmtMoneyShort(invoiceTotal)}
             </p>
           )}
@@ -767,7 +767,7 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
             <CalendarDays className="h-3.5 w-3.5" /> Hitos de la orden
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-            <DateField label="Factura" value={r.invoice_date} onSave={(v) => onPatch({ invoice_date: v })} />
+            <DateField label="Cuenta de cobro" value={r.invoice_date} onSave={(v) => onPatch({ invoice_date: v })} />
             <DateField label="Planimetría" value={r.planimetry_sent_date} onSave={(v) => onPatch({ planimetry_sent_date: v })} />
           </div>
         </div>

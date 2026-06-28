@@ -404,7 +404,7 @@ function ProductionDetail() {
               </div>
               <div />
               <div>
-                <Label className="text-xs">Fecha factura</Label>
+                <Label className="text-xs">Fecha cuenta de cobro</Label>
                 <Input type="date" value={form.invoice_date} onChange={(e) => update("invoice_date", e.target.value)} />
               </div>
               <div>

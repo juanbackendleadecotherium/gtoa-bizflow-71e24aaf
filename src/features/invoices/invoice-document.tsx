@@ -197,7 +197,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
   const totalWords = numberToSpanishWords(Math.round(Number(data.total) || 0));
 
   return (
-    <Document title={`Factura ${data.invoice_number}`}>
+    <Document title={`Cuenta de cobro ${data.invoice_number}`}>
       <Page size="LETTER" style={styles.page}>
         {/* Accent stripe */}
         <View style={[styles.accent, { backgroundColor: accent }]} fixed />
@@ -227,7 +227,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             </View>
 
             <View style={styles.metaCol}>
-              <Text style={styles.metaTag}>Factura de venta</Text>
+              <Text style={styles.metaTag}>Cuenta de cobro de venta</Text>
               <Text style={[styles.invoiceNumber, { color: accent }]}>{data.invoice_number}</Text>
 
               <View style={styles.metaPair}>
@@ -259,7 +259,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         {/* Parties */}
         <View style={styles.partiesWrap}>
           <View style={styles.partyCard}>
-            <Text style={styles.partyTag}>Facturar a</Text>
+            <Text style={styles.partyTag}>Cobrar a</Text>
             <Text style={styles.partyName}>{data.customer.name || "—"}</Text>
             {data.customer.company ? <Text style={styles.partyLine}>{data.customer.company}</Text> : null}
             {data.customer.doc_number ? (
@@ -284,7 +284,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             {data.seller_name ? (
               <Text style={styles.partyLine}>Asesor: {data.seller_name}</Text>
             ) : null}
-            <Text style={styles.partyLine}>Tipo: Factura de venta</Text>
+            <Text style={styles.partyLine}>Tipo: Cuenta de cobro de venta</Text>
             <Text style={styles.partyLine}>{data.items.length} producto{data.items.length === 1 ? "" : "s"}</Text>
           </View>
         </View>
@@ -382,7 +382,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         <View style={styles.footerBlock} fixed>
           <View style={styles.footerTop}>
             <Text style={styles.footerMeta}>
-              {data.brand.legal_name || data.brand.name} · Factura {data.invoice_number}
+              {data.brand.legal_name || data.brand.name} · Cuenta de cobro {data.invoice_number}
               {data.version_number && data.version_number > 1 ? ` · v${data.version_number}` : ""}
             </Text>
             <Text style={styles.footerMeta} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />

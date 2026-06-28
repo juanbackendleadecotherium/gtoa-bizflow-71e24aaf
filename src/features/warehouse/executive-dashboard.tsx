@@ -302,7 +302,7 @@ function ZoneDashboardCard({ zone, threshold }: { zone: any; threshold: number }
           )}
 
           <div className="mt-3 space-y-1 text-[11px] text-muted-foreground">
-            <p className="font-medium text-foreground/80 uppercase text-[9px]">Facturas</p>
+            <p className="font-medium text-foreground/80 uppercase text-[9px]">Cuentas de cobro</p>
             <p className="truncate">{invoices.length ? invoices.join(", ") : "—"}</p>
             <p className="font-medium text-foreground/80 uppercase text-[9px] mt-1">Cédulas</p>
             <p className="truncate">{cedulas.length ? cedulas.join(", ") : "—"}</p>
@@ -356,7 +356,7 @@ function ZoneDetailList({ items, threshold }: { items: any[]; threshold: number 
               </Badge>
             </div>
             <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-              <p><span className="text-foreground/70">Factura:</span> {it.invoice_number || it.order_number || "—"}</p>
+              <p><span className="text-foreground/70">Cuenta de cobro:</span> {it.invoice_number || it.order_number || "—"}</p>
               <p><span className="text-foreground/70">Cédula:</span> {it.customer_doc_number || "—"}</p>
               <p className="col-span-2 truncate"><span className="text-foreground/70">Cliente:</span> {it.customer_name || "—"}</p>
               {it.supplier_name && (

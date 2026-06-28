@@ -79,7 +79,7 @@ function LandingPage() {
               <span className="text-accent">un solo backoffice.</span>
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Centralizamos pedidos, producción, ventas y facturación de las marcas de Grupo Getova en una sola plataforma.
+              Centralizamos pedidos, producción, ventas y cuentas de cobro de las marcas de Grupo Getova en una sola plataforma.
             </p>
           </div>
 
@@ -97,7 +97,7 @@ function LandingPage() {
               </div>
               <h2 className="font-display text-2xl font-semibold mb-2">Ingresar al ERP</h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Pedidos, flujo de producción, ventas, dashboard operativo y facturación interna multi-marca.
+                Pedidos, flujo de producción, ventas, dashboard operativo y cuentas de cobro interna multi-marca.
               </p>
             </Link>
 

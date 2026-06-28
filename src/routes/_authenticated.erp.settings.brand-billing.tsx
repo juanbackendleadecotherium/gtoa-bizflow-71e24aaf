@@ -82,7 +82,7 @@ function BrandBillingPage() {
           <Building2 className="h-6 w-6" /> Datos fiscales · {selectedBrand?.name}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Estos datos aparecen en el encabezado de cada factura emitida por esta marca.
+          Estos datos aparecen en el encabezado de cada cuenta de cobro emitida por esta marca.
         </p>
       </div>
 
@@ -126,7 +126,7 @@ function BrandBillingPage() {
         </div>
 
         <div>
-          <Label className="text-xs mb-1.5 block text-muted-foreground">Nota al pie de factura (opcional)</Label>
+          <Label className="text-xs mb-1.5 block text-muted-foreground">Nota al pie de cuenta de cobro (opcional)</Label>
           <Textarea rows={2} value={form.invoice_footer_note ?? ""} onChange={set("invoice_footer_note")} placeholder="Ej. Gracias por su compra. Servicio postventa: …" />
         </div>
 

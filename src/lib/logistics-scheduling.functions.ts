@@ -95,18 +95,18 @@ export const scheduleInvoiceLogistics = createServerFn({ method: "POST" })
     // Autorización: vendedor de la orden, admin o logística
     const { data: order, error: oErr } = await context.supabase
       .from("orders").select("id, seller_id, brand_id").eq("id", data.orderId).single();
-    if (oErr || !order) throw new Error("Factura no encontrada");
+    if (oErr || !order) throw new Error("Cuenta de cobro no encontrada");
 
     const isMine = order.seller_id === context.userId;
     const elevated = await isLogisticsOrAdmin(context.supabase, context.userId);
     if (!isMine && !elevated) throw new Error("No autorizado");
 
-    // Elegibilidad de la factura (estado + saldo) — función centralizada
+    // Elegibilidad de la cuenta de cobro (estado + saldo) — función centralizada
     const { data: canSchedule, error: eErr } = await context.supabase
       .rpc("invoice_can_schedule_logistics", { _order_id: data.orderId });
     if (eErr) throw eErr;
     if (canSchedule !== true) {
-      throw new Error("La factura aún no cumple las condiciones para agendar logística");
+      throw new Error("La cuenta de cobro aún no cumple las condiciones para agendar logística");
     }
 
     // Validar disponibilidad del día seleccionado
@@ -135,7 +135,7 @@ export const clearInvoiceLogisticsSchedule = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: order, error: oErr } = await context.supabase
       .from("orders").select("seller_id").eq("id", data.orderId).single();
-    if (oErr || !order) throw new Error("Factura no encontrada");
+    if (oErr || !order) throw new Error("Cuenta de cobro no encontrada");
     const isMine = order.seller_id === context.userId;
     const elevated = await isLogisticsOrAdmin(context.supabase, context.userId);
     if (!isMine && !elevated) throw new Error("No autorizado");

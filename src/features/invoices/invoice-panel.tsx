@@ -119,8 +119,8 @@ export function InvoicePanel({ order }: { order: Order }) {
 
   const issueMutation = useMutation({
     mutationFn: async () => {
-      if (!order.invoice_number) throw new Error("Esta venta no tiene número de factura asignado.");
-      if (!order.items?.length) throw new Error("Agrega al menos un producto antes de facturar.");
+      if (!order.invoice_number) throw new Error("Esta venta no tiene número de cuenta de cobro asignado.");
+      if (!order.items?.length) throw new Error("Agrega al menos un producto antes de emitir la cuenta de cobro.");
       if (Number(order.total) <= 0) throw new Error("El total de la venta debe ser mayor a cero.");
       if (!order.customer_name) throw new Error("El cliente debe tener al menos un nombre.");
 
@@ -264,7 +264,7 @@ export function InvoicePanel({ order }: { order: Order }) {
       return { regenerated: !!existingRes.data, version: nextVersionNumber };
     },
     onSuccess: ({ regenerated, version }) => {
-      toast.success(regenerated ? `Factura regenerada (v${version})` : "Factura emitida");
+      toast.success(regenerated ? `Cuenta de cobro regenerada (v${version})` : "Cuenta de cobro emitida");
       qc.invalidateQueries({ queryKey: ["invoice", order.id] });
       qc.invalidateQueries({ queryKey: ["invoice-versions"] });
       qc.invalidateQueries({ queryKey: ["order-audit", order.id] });
@@ -284,12 +284,12 @@ export function InvoicePanel({ order }: { order: Order }) {
   const sendInvoiceFn = useServerFn(sendInvoiceEmail);
   const sendMutation = useMutation({
     mutationFn: async () => {
-      if (!invoiceQuery.data?.id) throw new Error("No hay factura emitida.");
+      if (!invoiceQuery.data?.id) throw new Error("No hay cuenta de cobro emitida.");
       if (!order.customer_email) throw new Error("El cliente no tiene correo registrado.");
       return await sendInvoiceFn({ data: { invoice_id: invoiceQuery.data.id, to: order.customer_email } });
     },
     onSuccess: () => {
-      toast.success(`Factura enviada a ${order.customer_email}`);
+      toast.success(`Cuenta de cobro enviada a ${order.customer_email}`);
       qc.invalidateQueries({ queryKey: ["invoice", order.id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -303,7 +303,7 @@ export function InvoicePanel({ order }: { order: Order }) {
     <div className="rounded-xl border border-border bg-surface p-5">
       <div className="flex items-center gap-2 mb-3">
         <FileText className="h-4 w-4 text-muted-foreground" />
-        <p className="text-sm font-medium">Facturación</p>
+        <p className="text-sm font-medium">Cuentas de cobro</p>
       </div>
 
       {invoiceQuery.isLoading ? (
@@ -311,7 +311,7 @@ export function InvoicePanel({ order }: { order: Order }) {
       ) : issued ? (
         <div className="space-y-3 text-sm">
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Factura vigente</p>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Cuenta de cobro vigente</p>
             <p className="font-semibold text-base">{issued.invoice_number}</p>
             <p className="text-xs text-muted-foreground mt-1">
               Última emisión {new Date(issued.issued_at).toLocaleString("es-CO")}
@@ -428,11 +428,11 @@ export function InvoicePanel({ order }: { order: Order }) {
           {!order.invoice_number && (
             <div className="flex gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5 text-xs text-amber-700 dark:text-amber-400">
               <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <span>Asigna un número de factura a esta venta antes de emitir.</span>
+              <span>Asigna un número de cuenta de cobro a esta venta antes de emitir.</span>
             </div>
           )}
           <p className="text-xs text-muted-foreground">
-            Genera el PDF de factura con el detalle actual. Cada regeneración queda guardada como una nueva versión descargable.
+            Genera el PDF de cuenta de cobro con el detalle actual. Cada regeneración queda guardada como una nueva versión descargable.
           </p>
           <Button
             size="sm" className="w-full gap-2"
@@ -442,7 +442,7 @@ export function InvoicePanel({ order }: { order: Order }) {
             {issueMutation.isPending ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> Emitiendo…</>
             ) : (
-              <><FileText className="h-4 w-4" /> Emitir factura</>
+              <><FileText className="h-4 w-4" /> Emitir cuenta de cobro</>
             )}
           </Button>
         </div>

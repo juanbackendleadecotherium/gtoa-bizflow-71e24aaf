@@ -133,7 +133,7 @@ function TermsPage() {
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       ) : (termsQuery.data ?? []).length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-surface/50 p-8 text-center text-sm text-muted-foreground">
-          Aún no hay términos publicados. Publica la primera versión para empezar a emitir facturas.
+          Aún no hay términos publicados. Publica la primera versión para empezar a emitir cuentas de cobro.
         </div>
       ) : (
         <div className="space-y-3">

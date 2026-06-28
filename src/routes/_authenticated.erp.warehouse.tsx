@@ -294,7 +294,7 @@ function IntakeForm({ prefillItemId }: { prefillItemId?: string }) {
         <div className="relative">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cliente, factura, descripción…" className="pl-9" />
+            placeholder="Cliente, cuenta de cobro, descripción…" className="pl-9" />
         </div>
         <p className="text-[11px] text-muted-foreground">Marca uno o varios productos. Solo aparecen productos con producción terminada que no están en bodega.</p>
         <div className="max-h-[28rem] overflow-y-auto space-y-3">
@@ -517,7 +517,7 @@ function DispatchForm() {
         <div className="relative">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cliente, factura, descripción…" className="pl-9" />
+            placeholder="Cliente, cuenta de cobro, descripción…" className="pl-9" />
         </div>
         <div className="max-h-96 overflow-y-auto space-y-1.5">
           {itemsQ.isLoading ? <Loader2 className="h-4 w-4 animate-spin inline" /> :
@@ -568,7 +568,7 @@ function DispatchForm() {
         {reason === "entrega_cliente" && (
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label>Factura cliente</Label>
+              <Label>Cuenta de cobro cliente</Label>
               <Input value={clientInvoice} onChange={(e) => setClientInvoice(e.target.value)} />
             </div>
             <div>

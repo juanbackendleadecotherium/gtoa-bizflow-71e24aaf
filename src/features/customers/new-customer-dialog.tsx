@@ -210,7 +210,7 @@ export function NewCustomerDialog({
   };
 
 
-  // Prefilled defaults: empresa = marca activa, nro factura = consecutivo por marca
+  // Prefilled defaults: empresa = marca activa, nro cuenta de cobro = consecutivo por marca
   useEffect(() => {
     if (!open || !selectedBrand || !selectedBrandId) return;
     setDraft((d) => ({
@@ -709,14 +709,14 @@ export function NewCustomerDialog({
             </div>
           </SectionCard>
 
-          {/* Facturación */}
+          {/* Cuentas de cobro */}
           <SectionCard
             icon={<Receipt className="h-4 w-4" />}
-            title="Facturación y fechas"
-            subtitle="Número de factura y fechas clave."
+            title="Cuentas de cobro y fechas"
+            subtitle="Número de cuenta de cobro y fechas clave."
           >
             <div className="grid sm:grid-cols-3 gap-4">
-              <FieldBlock label="Nro Factura">
+              <FieldBlock label="Nro Cuenta de cobro">
                 <Input
                   value={draft.order.invoice_number}
                   onChange={(e) => setO("invoice_number", e.target.value)}
