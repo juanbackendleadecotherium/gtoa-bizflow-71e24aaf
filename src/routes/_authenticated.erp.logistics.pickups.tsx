@@ -42,6 +42,7 @@ function LogisticsPickupsPage() {
           <TabsTrigger value="active">Activas</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
           <TabsTrigger value="drivers">Conductores</TabsTrigger>
+          <TabsTrigger value="availability">Disponibilidad</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="mt-4">
