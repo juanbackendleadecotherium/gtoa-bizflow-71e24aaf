@@ -1,33 +1,23 @@
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Loader2, RotateCcw } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { markOrderItemFinished, unmarkOrderItemFinished } from "@/lib/order-items-finish.functions";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { markOrderItemFinished } from "@/lib/order-items-finish.functions";
 
 export function FinishItemButton({
   itemId,
   finishedAt,
   finishedByEmail,
   canFinish,
-  isAdmin,
 }: {
   itemId: string;
   finishedAt: string | null;
   finishedByEmail: string | null;
   canFinish: boolean;
-  isAdmin: boolean;
+  isAdmin?: boolean;
 }) {
   const qc = useQueryClient();
   const mark = useServerFn(markOrderItemFinished);
-  const unmark = useServerFn(unmarkOrderItemFinished);
-  const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("");
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
@@ -39,12 +29,6 @@ export function FinishItemButton({
   const markMut = useMutation({
     mutationFn: () => mark({ data: { itemId } }),
     onSuccess: () => { toast.success("Producto marcado como terminado"); refresh(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const unmarkMut = useMutation({
-    mutationFn: () => unmark({ data: { itemId, reason: reason.trim() } }),
-    onSuccess: () => { toast.success("Estado revertido"); setOpen(false); setReason(""); refresh(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
