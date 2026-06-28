@@ -62,6 +62,9 @@ function LogisticsPickupsPage() {
         <TabsContent value="drivers" className="mt-4">
           <DriversPanel canManage />
         </TabsContent>
+        <TabsContent value="availability" className="mt-4">
+          <AvailabilityCalendar />
+        </TabsContent>
       </Tabs>
     </div>
   );
