@@ -76,12 +76,22 @@ function Shell() {
   const session = useSession();
   const navigate = useNavigate();
   const userId = session.session?.user.id;
-  const { brands, selectedBrand, setSelectedBrandId, isAdmin } = useBrand();
+  const { brands, selectedBrand, setSelectedBrandId, isAdmin, roles } = useBrand();
+  const isLogistics = isAdmin || roles.includes("logistica");
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
   const [mobileOpen, setMobileOpen] = useState(false);
   const pendingTasksQuery = useMyPendingTasksCount(userId);
   const pendingTasks = pendingTasksQuery.data ?? 0;
+
+  usePickupCountRealtime();
+  const pickupCountFn = useServerFn(countActivePickups);
+  const pickupCountQuery = useQuery({
+    queryKey: ["pickup-orders-count"],
+    enabled: isLogistics,
+    queryFn: () => pickupCountFn(),
+  });
+  const pickupCount = pickupCountQuery.data ?? 0;
 
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
