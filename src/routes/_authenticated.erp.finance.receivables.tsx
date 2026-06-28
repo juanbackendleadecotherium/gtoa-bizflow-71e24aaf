@@ -94,7 +94,7 @@ function Receivables() {
   const exportCSV = () => {
     const csv = Papa.unparse(
       filtered.map((r) => ({
-        Factura: r.invoice_number || r.order_number,
+        "Cuenta de cobro": r.invoice_number || r.order_number,
         Cliente: r.customer_name || "",
         Telefono: r.customer_phone || "",
         Email: r.customer_email || "",
@@ -128,7 +128,7 @@ function Receivables() {
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por cliente, factura, teléfono…" className="pl-9" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por cliente, cuenta de cobro, teléfono…" className="pl-9" />
           </div>
           <Select value={bucket} onValueChange={(v: any) => setBucket(v)}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
@@ -146,13 +146,13 @@ function Receivables() {
         </div>
 
         {filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">Sin facturas pendientes con estos filtros.</p>
+          <p className="text-sm text-muted-foreground py-8 text-center">Sin cuentas de cobro pendientes con estos filtros.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">
-                  <th className="py-2 pr-3">Factura</th>
+                  <th className="py-2 pr-3">Cuenta de cobro</th>
                   <th className="py-2 pr-3">Cliente</th>
                   <th className="py-2 pr-3">Vendedor</th>
                   <th className="py-2 pr-3 text-right">Total</th>

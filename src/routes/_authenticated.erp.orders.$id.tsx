@@ -560,7 +560,7 @@ function OrderDetail() {
               <p className="text-xs text-muted-foreground">{o.customer_email}</p>
             ) : (
               <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" /> Sin correo — requerido para enviar la factura
+                <AlertTriangle className="h-3 w-3" /> Sin correo — requerido para enviar la cuenta de cobro
               </p>
             )}
             {(o.customer_address || o.customer_city || o.customer_department) && (

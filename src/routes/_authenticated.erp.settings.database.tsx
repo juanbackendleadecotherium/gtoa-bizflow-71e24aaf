@@ -95,7 +95,7 @@ function DatabaseAdminPage() {
             Limpiar base de datos
           </CardTitle>
           <CardDescription>
-            Elimina <strong>todas</strong> las ventas, productos, pagos, facturas, órdenes de
+            Elimina <strong>todas</strong> las ventas, productos, pagos, cuentas de cobro, órdenes de
             producción, planimetrías, movimientos de bodega, tareas y clientes.
             <br />
             <span className="text-foreground">Se conservan:</span> usuarios, roles, marcas,

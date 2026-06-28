@@ -93,7 +93,7 @@ function OrdersPage() {
       <div className="mb-4 flex gap-2 flex-wrap">
         <Input
           className="max-w-xs"
-          placeholder="Buscar por número, factura, cliente, teléfono o documento…"
+          placeholder="Buscar por número, cuenta de cobro, cliente, teléfono o documento…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -121,7 +121,7 @@ function OrdersPage() {
             <table className="hidden md:table w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="text-left px-4 py-3">Factura</th>
+                  <th className="text-left px-4 py-3">Cuenta de cobro</th>
                   <th className="text-left px-4 py-3">Producto</th>
                   <th className="text-left px-4 py-3">Estado</th>
                   <th className="text-right px-4 py-3">Total</th>

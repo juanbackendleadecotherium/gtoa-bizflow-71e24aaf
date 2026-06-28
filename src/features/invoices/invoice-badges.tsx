@@ -27,7 +27,7 @@ export function PaymentBadge({ total, advance }: { total: number; advance: numbe
 export function InvoicedBadge() {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/30 px-2 py-0.5 text-[11px] font-medium">
-      <FileText className="h-3 w-3" /> Facturada
+      <FileText className="h-3 w-3" /> Emitida
     </span>
   );
 }

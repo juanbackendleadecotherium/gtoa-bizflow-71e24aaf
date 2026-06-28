@@ -73,7 +73,7 @@ function FinanceDashboard() {
     },
   });
 
-  // Recaudado por cuenta bancaria (mes seleccionado) — con desglose por factura
+  // Recaudado por cuenta bancaria (mes seleccionado) — con desglose por cuenta de cobro
   const accountsQuery = useQuery({
     queryKey: ["finance-accounts", selectedBrandId, monthOffset],
     enabled: !!selectedBrandId,
@@ -108,7 +108,7 @@ function FinanceDashboard() {
         const o = (p as any).orders ?? {};
         push(k, {
           label: o.invoice_number ?? o.order_number ?? "—",
-          ref: o.invoice_number ? "Factura" : "Orden",
+          ref: o.invoice_number ? "Cuenta de cobro" : "Orden",
           customer: o.customer_name ?? "—",
           amount: Number((p as any).amount),
           kind: "pago",
@@ -119,7 +119,7 @@ function FinanceDashboard() {
         const k = (o as any).advance_deposit_account || "__sin_asignar__";
         push(k, {
           label: (o as any).invoice_number ?? (o as any).order_number ?? "—",
-          ref: (o as any).invoice_number ? "Factura" : "Orden",
+          ref: (o as any).invoice_number ? "Cuenta de cobro" : "Orden",
           customer: (o as any).customer_name ?? "—",
           amount: Number((o as any).advance_amount),
           kind: "abono",
@@ -140,7 +140,7 @@ function FinanceDashboard() {
   const totalVendido = monthRows.reduce((s, r) => s + Number(r.total), 0);
   const totalRecaudado = monthRows.reduce((s, r) => s + Number(r.paid_total), 0);
   const ventasCount = monthRows.length;
-  const facturadas = monthRows.filter((r) => r.invoice_number).length;
+  const emitidas = monthRows.filter((r) => r.invoice_number).length;
 
   const carteraTotal = (carteraQuery.data ?? []).reduce((s, r: any) => s + Number(r.balance), 0);
   const carteraCount = (carteraQuery.data ?? []).filter((r: any) => Number(r.balance) > 0).length;
@@ -171,13 +171,13 @@ function FinanceDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi icon={TrendingUp} label="Total vendido" value={formatMoney(totalVendido)} sub={`${ventasCount} venta${ventasCount === 1 ? "" : "s"}`} accent="text-emerald-600 dark:text-emerald-400" />
         <Kpi icon={Wallet} label="Recaudado" value={formatMoney(totalRecaudado)} sub={`${Math.round(totalVendido ? (totalRecaudado / totalVendido) * 100 : 0)}% del vendido`} accent="text-sky-600 dark:text-sky-400" />
-        <Kpi icon={Receipt} label="Facturadas" value={`${facturadas} / ${ventasCount}`} sub="Con factura emitida" accent="text-violet-600 dark:text-violet-400" />
+        <Kpi icon={Receipt} label="Emitidas" value={`${emitidas} / ${ventasCount}`} sub="Con cuenta de cobro emitida" accent="text-violet-600 dark:text-violet-400" />
         <Kpi icon={AlertCircle} label="Cartera total" value={formatMoney(carteraTotal)} sub={`${carteraCount} con saldo`} accent="text-amber-600 dark:text-amber-400" />
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-5">
         <p className="text-sm font-medium mb-1">Recaudado por cuenta</p>
-        <p className="text-xs text-muted-foreground mb-3">Suma de abonos iniciales y pagos del mes seleccionado. Haz clic en una cuenta para ver el detalle por factura.</p>
+        <p className="text-xs text-muted-foreground mb-3">Suma de abonos iniciales y pagos del mes seleccionado. Haz clic en una cuenta para ver el detalle por cuenta de cobro.</p>
         {(accountsQuery.data ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin movimientos registrados este mes.</p>
         ) : (
@@ -347,7 +347,7 @@ function SaleRow({ row: r }: { row: Row }) {
                           <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${a.kind === "abono" ? "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"}`}>
                             {a.kind === "abono" ? "Abono inicial" : "Pago"}
                           </span>
-                          <span className="font-medium">Factura {r.invoice_number ?? r.order_number}</span>
+                          <span className="font-medium">Cuenta de cobro {r.invoice_number ?? r.order_number}</span>
                           <span className="text-muted-foreground">· {a.date}</span>
                         </span>
                         <span className="tabular-nums font-semibold">{formatMoney(a.amount)}</span>

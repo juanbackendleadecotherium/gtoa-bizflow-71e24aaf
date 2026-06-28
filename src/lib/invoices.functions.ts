@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { renderInvoiceEmail } from "@/lib/email-templates/invoice-html";
 
 /**
- * Envío de facturas por correo vía Resend.
+ * Envío de cuentas de cobro por correo vía Resend.
  * Dominio técnico: mail.grupogetova.com (verificado).
  * Display: Grupo Getova <info@grupogetova.com>
  */
@@ -24,13 +24,13 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
 
     const { supabase, userId } = context;
 
-    // Cargar factura + marca
+    // Cargar cuenta de cobro + marca
     const { data: invoice, error: invErr } = await supabase
       .from("invoices")
       .select("id, invoice_number, pdf_path, total_snapshot, balance_snapshot, customer_snapshot, brand_id, send_count")
       .eq("id", data.invoice_id)
       .single();
-    if (invErr || !invoice) throw new Error("Factura no encontrada.");
+    if (invErr || !invoice) throw new Error("Cuenta de cobro no encontrada.");
 
     const { data: brand, error: brandErr } = await supabase
       .from("brands")
@@ -39,7 +39,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
       .single();
     if (brandErr || !brand) throw new Error("Marca no encontrada.");
 
-    if (!invoice.pdf_path) throw new Error("La factura no tiene PDF generado.");
+    if (!invoice.pdf_path) throw new Error("La cuenta de cobro no tiene PDF generado.");
     const { data: pdfBlob, error: dlErr } = await supabase.storage
       .from("invoices")
       .download(invoice.pdf_path);
@@ -88,7 +88,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
 
     const attachments: Array<{ filename: string; content: string }> = [
       {
-        filename: `Factura-${invoice.invoice_number}.pdf`,
+        filename: `Cuenta-de-cobro-${invoice.invoice_number}.pdf`,
         content: pdfBuffer.toString("base64"),
       },
     ];
@@ -105,7 +105,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
         from: `${brand.name} <info@mail.grupogetova.com>`,
         to: [data.to],
         reply_to: "info@grupogetova.com",
-        subject: `Factura ${invoice.invoice_number} — ${brand.name}`,
+        subject: `Cuenta de cobro ${invoice.invoice_number} — ${brand.name}`,
         html,
         attachments,
       }),
@@ -118,7 +118,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
 
     const result = (await resp.json()) as { id?: string };
 
-    // Actualizar factura
+    // Actualizar cuenta de cobro
     await supabase
       .from("invoices")
       .update({

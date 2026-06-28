@@ -171,7 +171,7 @@ export const parseWhatsAppOrder = createServerFn({ method: "POST" })
           "payment_method: una de efectivo, transferencia, tarjeta, nequi, daviplata, credito, cheque, otro. " +
           "advance_amount, unit_price: enteros en pesos COP, sin separadores ni símbolos. " +
           "sale_date y estimated_delivery_date en formato YYYY-MM-DD si se mencionan. " +
-          "invoice_number: si el vendedor menciona un número de factura/remisión, cópialo tal cual. " +
+          "invoice_number: si el vendedor menciona un número de cuenta de cobro/remisión, cópialo tal cual. " +
           "needs_summary: una frase breve (máx 200 caracteres) que explique qué necesita el cliente. " +
           "references: medidas, materiales, colores, acabados o enlaces que mencione el cliente. " +
           "urgency: si menciona urgencia o fechas clave, resume en una frase.\n\n" +

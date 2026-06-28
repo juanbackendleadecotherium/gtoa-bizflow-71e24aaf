@@ -139,7 +139,7 @@ export function ScheduleLogisticsCard({ orderId }: { orderId: string }) {
             <Button
               className="w-full"
               disabled={!s.canSchedule}
-              title={!s.canSchedule ? "La factura aún no cumple las condiciones" : undefined}
+              title={!s.canSchedule ? "La cuenta de cobro aún no cumple las condiciones" : undefined}
             >
               <CalendarDays className="h-4 w-4 mr-2" />
               Agendar fecha de logística
