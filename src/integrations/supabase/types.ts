@@ -166,6 +166,45 @@ export type Database = {
           },
         ]
       }
+      drivers: {
+        Row: {
+          active: boolean
+          availability: Database["public"]["Enums"]["driver_availability"]
+          created_at: string
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+          vehicle_label: string | null
+          vehicle_type: Database["public"]["Enums"]["driver_vehicle_type"]
+        }
+        Insert: {
+          active?: boolean
+          availability?: Database["public"]["Enums"]["driver_availability"]
+          created_at?: string
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          vehicle_label?: string | null
+          vehicle_type?: Database["public"]["Enums"]["driver_vehicle_type"]
+        }
+        Update: {
+          active?: boolean
+          availability?: Database["public"]["Enums"]["driver_availability"]
+          created_at?: string
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          vehicle_label?: string | null
+          vehicle_type?: Database["public"]["Enums"]["driver_vehicle_type"]
+        }
+        Relationships: []
+      }
       invoice_versions: {
         Row: {
           advance_snapshot: number
@@ -996,6 +1035,139 @@ export type Database = {
             columns: ["status_id"]
             isOneToOne: false
             referencedRelation: "order_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pickup_orders: {
+        Row: {
+          assigned_at: string | null
+          brand_id: string
+          cancel_reason: string | null
+          cancelled_at: string | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          delivered_at: string | null
+          destination: Database["public"]["Enums"]["pickup_destination"]
+          destination_address_snapshot: string | null
+          destination_warehouse_id: string | null
+          driver_id: string | null
+          external_transport_cost: number | null
+          external_transport_currency: string
+          external_transport_notes: string | null
+          id: string
+          notes: string | null
+          order_id: string
+          order_item_id: string
+          picked_up_at: string | null
+          pickup_address_snapshot: string | null
+          product_description_snapshot: string | null
+          production_order_id: string | null
+          status: Database["public"]["Enums"]["pickup_status"]
+          supplier_id: string | null
+          supplier_name_snapshot: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          brand_id: string
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          delivered_at?: string | null
+          destination?: Database["public"]["Enums"]["pickup_destination"]
+          destination_address_snapshot?: string | null
+          destination_warehouse_id?: string | null
+          driver_id?: string | null
+          external_transport_cost?: number | null
+          external_transport_currency?: string
+          external_transport_notes?: string | null
+          id?: string
+          notes?: string | null
+          order_id: string
+          order_item_id: string
+          picked_up_at?: string | null
+          pickup_address_snapshot?: string | null
+          product_description_snapshot?: string | null
+          production_order_id?: string | null
+          status?: Database["public"]["Enums"]["pickup_status"]
+          supplier_id?: string | null
+          supplier_name_snapshot?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          brand_id?: string
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          delivered_at?: string | null
+          destination?: Database["public"]["Enums"]["pickup_destination"]
+          destination_address_snapshot?: string | null
+          destination_warehouse_id?: string | null
+          driver_id?: string | null
+          external_transport_cost?: number | null
+          external_transport_currency?: string
+          external_transport_notes?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string
+          order_item_id?: string
+          picked_up_at?: string | null
+          pickup_address_snapshot?: string | null
+          product_description_snapshot?: string | null
+          production_order_id?: string | null
+          status?: Database["public"]["Enums"]["pickup_status"]
+          supplier_id?: string | null
+          supplier_name_snapshot?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pickup_orders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pickup_orders_destination_warehouse_id_fkey"
+            columns: ["destination_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pickup_orders_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pickup_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "pickup_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pickup_orders_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: true
+            referencedRelation: "order_items"
             referencedColumns: ["id"]
           },
         ]
@@ -1930,6 +2102,10 @@ export type Database = {
         Args: { p_item_id: string; p_started_at?: string }
         Returns: undefined
       }
+      sum_external_logistics_cost: {
+        Args: { _brand_id?: string; _from: string; _to: string }
+        Returns: number
+      }
       unmark_order_item_finished: {
         Args: { _item_id: string; _reason: string }
         Returns: undefined
@@ -1947,6 +2123,16 @@ export type Database = {
         | "ventas"
         | "vendedor"
         | "logistica"
+      driver_availability: "disponible" | "en_ruta" | "no_disponible"
+      driver_vehicle_type: "propio" | "externo"
+      pickup_destination: "bodega" | "cliente"
+      pickup_status:
+        | "pendiente"
+        | "asignada"
+        | "en_camino"
+        | "recogida"
+        | "entregada"
+        | "cancelada"
       production_novedad:
         | "pendiente"
         | "cotizando"
@@ -2089,6 +2275,17 @@ export const Constants = {
         "ventas",
         "vendedor",
         "logistica",
+      ],
+      driver_availability: ["disponible", "en_ruta", "no_disponible"],
+      driver_vehicle_type: ["propio", "externo"],
+      pickup_destination: ["bodega", "cliente"],
+      pickup_status: [
+        "pendiente",
+        "asignada",
+        "en_camino",
+        "recogida",
+        "entregada",
+        "cancelada",
       ],
       production_novedad: [
         "pendiente",
