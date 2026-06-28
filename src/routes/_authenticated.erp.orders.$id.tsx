@@ -29,6 +29,7 @@ import { formatDepositAccount } from "@/features/finance/deposit-accounts";
 import { DeleteOrderDialog } from "@/features/orders/delete-order-dialog";
 import { ProductionSection } from "@/features/production/send-to-production-button";
 import { OrderSellerTasksBadge } from "@/features/seller-tasks/seller-tasks-panel";
+import { ScheduleLogisticsCard } from "@/features/orders/schedule-logistics-card";
 import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/features/orders/delivery-urgency";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
