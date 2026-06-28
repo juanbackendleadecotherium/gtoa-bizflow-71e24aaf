@@ -1,33 +1,23 @@
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Loader2, RotateCcw } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { markOrderItemFinished, unmarkOrderItemFinished } from "@/lib/order-items-finish.functions";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { markOrderItemFinished } from "@/lib/order-items-finish.functions";
 
 export function FinishItemButton({
   itemId,
   finishedAt,
   finishedByEmail,
   canFinish,
-  isAdmin,
 }: {
   itemId: string;
   finishedAt: string | null;
   finishedByEmail: string | null;
   canFinish: boolean;
-  isAdmin: boolean;
+  isAdmin?: boolean;
 }) {
   const qc = useQueryClient();
   const mark = useServerFn(markOrderItemFinished);
-  const unmark = useServerFn(unmarkOrderItemFinished);
-  const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("");
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
@@ -42,12 +32,6 @@ export function FinishItemButton({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const unmarkMut = useMutation({
-    mutationFn: () => unmark({ data: { itemId, reason: reason.trim() } }),
-    onSuccess: () => { toast.success("Estado revertido"); setOpen(false); setReason(""); refresh(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   if (finishedAt) {
     return (
       <div className="flex items-center gap-2 flex-wrap">
@@ -55,38 +39,6 @@ export function FinishItemButton({
           <CheckCircle2 className="h-3 w-3" /> Terminado · {new Date(finishedAt).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
           {finishedByEmail ? ` · ${finishedByEmail}` : ""}
         </span>
-        {isAdmin && (
-          <AlertDialog open={open} onOpenChange={setOpen}>
-            <AlertDialogTrigger asChild>
-              <button className="text-[10px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-                <RotateCcw className="h-3 w-3" /> Revertir
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Revertir producto terminado</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Indica un motivo (mínimo 10 caracteres). Esto deshabilita el ingreso a bodega de este producto.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <Textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Razón de la reversión…"
-                rows={3}
-              />
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  disabled={reason.trim().length < 10 || unmarkMut.isPending}
-                  onClick={(e) => { e.preventDefault(); unmarkMut.mutate(); }}
-                >
-                  {unmarkMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Revertir"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
       </div>
     );
   }

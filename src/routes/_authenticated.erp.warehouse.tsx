@@ -218,7 +218,7 @@ function IntakeForm() {
   const registerFn = useServerFn(registerWarehouseMovement);
 
   const [search, setSearch] = useState("");
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [zoneId, setZoneId] = useState("");
   const [reason, setReason] = useState("");
   const [movedAt, setMovedAt] = useState(() => new Date().toISOString().slice(0, 10));
@@ -236,25 +236,42 @@ function IntakeForm() {
     [zonesQ.data],
   );
 
-  const selected = (itemsQ.data ?? []).find((i: any) => i.id === selectedItemId);
+  const toggleItem = (id: string) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedItems = (itemsQ.data ?? []).filter((i: any) => selectedItemIds.has(i.id));
 
   const submit = useMutation({
     mutationFn: async () => {
-      if (!selectedItemId) throw new Error("Selecciona un producto");
+      if (selectedItemIds.size === 0) throw new Error("Selecciona al menos un producto");
       if (!zoneId) throw new Error("Selecciona una zona");
-      return registerFn({
-        data: {
-          itemId: selectedItemId,
-          zoneId,
-          movementType: "in",
-          movedAt: new Date(movedAt + "T00:00:00").toISOString(),
-          reason: reason || undefined,
-        },
-      });
+      const ids = Array.from(selectedItemIds);
+      const results = await Promise.allSettled(
+        ids.map((itemId) =>
+          registerFn({
+            data: {
+              itemId,
+              zoneId,
+              movementType: "in",
+              movedAt: new Date(movedAt + "T00:00:00").toISOString(),
+              reason: reason || undefined,
+            },
+          }),
+        ),
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      return { ok: ids.length - failed, failed };
     },
-    onSuccess: () => {
-      toast.success("Ingreso registrado");
-      setSelectedItemId(null);
+    onSuccess: ({ ok, failed }) => {
+      if (failed === 0) toast.success(`${ok} ${ok === 1 ? "ingreso registrado" : "ingresos registrados"}`);
+      else toast.warning(`${ok} registrados, ${failed} con error`);
+      setSelectedItemIds(new Set());
       setZoneId("");
       setReason("");
       qc.invalidateQueries({ queryKey: ["warehouse"] });
@@ -265,13 +282,13 @@ function IntakeForm() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
-        <h3 className="text-sm font-semibold flex items-center gap-2"><PackagePlus className="h-4 w-4" /> Buscar producto</h3>
+        <h3 className="text-sm font-semibold flex items-center gap-2"><PackagePlus className="h-4 w-4" /> Buscar productos</h3>
         <div className="relative">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Cliente, factura, descripción…" className="pl-9" />
         </div>
-        <p className="text-[11px] text-muted-foreground">Solo aparecen productos con producción terminada que no están en bodega.</p>
+        <p className="text-[11px] text-muted-foreground">Marca uno o varios productos. Solo aparecen productos con producción terminada que no están en bodega.</p>
         <div className="max-h-[28rem] overflow-y-auto space-y-3">
           {itemsQ.isLoading ? <Loader2 className="h-4 w-4 animate-spin inline" /> :
             (itemsQ.data ?? []).length === 0 ? (
@@ -291,17 +308,35 @@ function IntakeForm() {
                 const label = g.order?.invoice_number
                   ? `Fact. ${g.order.invoice_number}`
                   : g.order?.order_number ?? "Venta";
+                const groupIds = g.items.map((i: any) => i.id);
+                const allSelected = groupIds.every((id) => selectedItemIds.has(id));
+                const toggleGroup = () => {
+                  setSelectedItemIds((prev) => {
+                    const next = new Set(prev);
+                    if (allSelected) groupIds.forEach((id) => next.delete(id));
+                    else groupIds.forEach((id) => next.add(id));
+                    return next;
+                  });
+                };
                 return (
                   <div key={g.order?.id ?? "_"} className="rounded-lg border border-border bg-background overflow-hidden">
                     <div className="flex items-center justify-between gap-2 px-3 py-2 bg-muted/40 border-b border-border">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold truncate">{label} · {g.order?.customer_name ?? "—"}</p>
-                        {pending > 0 && (
-                          <p className="text-[10px] text-amber-700 dark:text-amber-300">
-                            {pending} {pending === 1 ? "producto sigue" : "productos siguen"} en producción
-                          </p>
-                        )}
-                      </div>
+                      <label className="flex items-center gap-2 min-w-0 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleGroup}
+                          className="h-4 w-4 accent-primary"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold truncate">{label} · {g.order?.customer_name ?? "—"}</p>
+                          {pending > 0 && (
+                            <p className="text-[10px] text-amber-700 dark:text-amber-300">
+                              {pending} {pending === 1 ? "producto sigue" : "productos siguen"} en producción
+                            </p>
+                          )}
+                        </div>
+                      </label>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                         finished === total
                           ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
@@ -311,20 +346,31 @@ function IntakeForm() {
                       </span>
                     </div>
                     <div className="p-1.5 space-y-1">
-                      {g.items.map((it: any) => (
-                        <button key={it.id} onClick={() => setSelectedItemId(it.id)}
-                          className={`w-full text-left rounded-md border p-2 transition-colors ${
-                            selectedItemId === it.id ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/40 hover:bg-muted/30"
-                          }`}>
-                          <p className="text-sm font-medium line-clamp-1">{it.description || "Producto"}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            Cant. {Number(it.quantity)}
-                            {it.production_finished_at && (
-                              <> · ✔ terminado {new Date(it.production_finished_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}</>
-                            )}
-                          </p>
-                        </button>
-                      ))}
+                      {g.items.map((it: any) => {
+                        const checked = selectedItemIds.has(it.id);
+                        return (
+                          <label key={it.id}
+                            className={`flex items-start gap-2 w-full text-left rounded-md border p-2 transition-colors cursor-pointer ${
+                              checked ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/40 hover:bg-muted/30"
+                            }`}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleItem(it.id)}
+                              className="h-4 w-4 mt-0.5 accent-primary"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium line-clamp-1">{it.description || "Producto"}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                Cant. {Number(it.quantity)}
+                                {it.production_finished_at && (
+                                  <> · ✔ terminado {new Date(it.production_finished_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}</>
+                                )}
+                              </p>
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -336,18 +382,32 @@ function IntakeForm() {
 
       <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
         <h3 className="text-sm font-semibold">Detalles del ingreso</h3>
-        {selected ? (
-          <div className="rounded-lg bg-muted/40 p-2 flex items-start justify-between gap-2">
-            <div className="min-w-0 text-sm">
-              <p className="font-medium line-clamp-1">{selected.description}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {selected.order?.customer_name} · {selected.order?.order_number}
+        {selectedItems.length > 0 ? (
+          <div className="rounded-lg bg-muted/40 p-2 space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold">
+                {selectedItems.length} {selectedItems.length === 1 ? "producto seleccionado" : "productos seleccionados"}
               </p>
+              <button onClick={() => setSelectedItemIds(new Set())} className="text-muted-foreground hover:text-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <button onClick={() => setSelectedItemId(null)} className="text-muted-foreground"><X className="h-3.5 w-3.5" /></button>
+            <div className="max-h-40 overflow-y-auto space-y-1">
+              {selectedItems.map((it: any) => (
+                <div key={it.id} className="flex items-start justify-between gap-2 text-xs">
+                  <div className="min-w-0">
+                    <p className="font-medium line-clamp-1">{it.description}</p>
+                    <p className="text-[10px] text-muted-foreground">{it.order?.customer_name}</p>
+                  </div>
+                  <button onClick={() => toggleItem(it.id)} className="text-muted-foreground hover:text-foreground shrink-0">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Selecciona un producto a la izquierda.</p>
+          <p className="text-xs text-muted-foreground">Selecciona uno o varios productos a la izquierda.</p>
         )}
 
         <div>
@@ -379,14 +439,15 @@ function IntakeForm() {
             placeholder="Ej: recepción de proveedor, devolución del cliente…" />
         </div>
 
-        <Button onClick={() => submit.mutate()} disabled={submit.isPending || !selectedItemId || !zoneId} className="w-full">
+        <Button onClick={() => submit.mutate()} disabled={submit.isPending || selectedItemIds.size === 0 || !zoneId} className="w-full">
           {submit.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          Registrar ingreso
+          Registrar ingreso{selectedItemIds.size > 1 ? `s (${selectedItemIds.size})` : ""}
         </Button>
       </div>
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Dispatch form
