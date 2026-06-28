@@ -28,6 +28,10 @@ import {
 
 export const Route = createFileRoute("/_authenticated/erp/warehouse")({
   head: () => ({ meta: [{ title: "Bodega — ERP" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: (search.tab as string | undefined) ?? undefined,
+    prefill_item: (search.prefill_item as string | undefined) ?? undefined,
+  }),
   component: WarehousePage,
 });
 
@@ -35,6 +39,8 @@ function WarehousePage() {
   useWarehouseRealtime();
   const { roles, isAdmin } = useBrand();
   const canOperate = isAdmin || roles.includes("operativo");
+  const search = Route.useSearch();
+  const defaultTab = search.tab === "intake" || search.prefill_item ? "intake" : "dashboard";
   return (
     <div className="space-y-4">
       <header>
@@ -48,7 +54,7 @@ function WarehousePage() {
         </p>
       </header>
 
-      <Tabs defaultValue="dashboard">
+      <Tabs defaultValue={defaultTab}>
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="summary">Resumen por zona</TabsTrigger>
@@ -57,7 +63,7 @@ function WarehousePage() {
         </TabsList>
         <TabsContent value="dashboard" className="mt-4"><ExecutiveDashboard /></TabsContent>
         <TabsContent value="summary" className="mt-4"><ZoneSummary /></TabsContent>
-        {canOperate && <TabsContent value="intake" className="mt-4"><IntakeForm /></TabsContent>}
+        {canOperate && <TabsContent value="intake" className="mt-4"><IntakeForm prefillItemId={search.prefill_item} /></TabsContent>}
         {canOperate && <TabsContent value="dispatch" className="mt-4"><DispatchForm /></TabsContent>}
       </Tabs>
     </div>
