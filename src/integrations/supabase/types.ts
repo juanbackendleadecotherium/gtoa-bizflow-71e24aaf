@@ -410,6 +410,33 @@ export type Database = {
           },
         ]
       }
+      logistics_availability: {
+        Row: {
+          available: boolean
+          created_at: string
+          date: string
+          note: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          available?: boolean
+          created_at?: string
+          date: string
+          note?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          available?: boolean
+          created_at?: string
+          date?: string
+          note?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       order_audit_log: {
         Row: {
           action: string
@@ -932,6 +959,9 @@ export type Database = {
           payment_method: string | null
           payment_proof_url: string | null
           sale_date: string | null
+          scheduled_logistics_at: string | null
+          scheduled_logistics_by: string | null
+          scheduled_logistics_date: string | null
           seller_id: string | null
           source: string
           status_id: string
@@ -969,6 +999,9 @@ export type Database = {
           payment_method?: string | null
           payment_proof_url?: string | null
           sale_date?: string | null
+          scheduled_logistics_at?: string | null
+          scheduled_logistics_by?: string | null
+          scheduled_logistics_date?: string | null
           seller_id?: string | null
           source?: string
           status_id: string
@@ -1006,6 +1039,9 @@ export type Database = {
           payment_method?: string | null
           payment_proof_url?: string | null
           sale_date?: string | null
+          scheduled_logistics_at?: string | null
+          scheduled_logistics_by?: string | null
+          scheduled_logistics_date?: string | null
           seller_id?: string | null
           source?: string
           status_id?: string
@@ -2072,6 +2108,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      invoice_can_schedule_logistics: {
+        Args: { _order_id: string }
         Returns: boolean
       }
       mark_order_item_finished: {
