@@ -6,6 +6,7 @@ import { useLogisticsRealtime } from "@/features/logistics/use-logistics-realtim
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PickupTable } from "@/features/logistics/pickup-table";
 import { DriversPanel } from "@/features/logistics/drivers-panel";
+import { AvailabilityCalendar } from "@/features/logistics/availability-calendar";
 
 export const Route = createFileRoute("/_authenticated/erp/logistics/pickups")({
   head: () => ({ meta: [{ title: "Logística — Recogidas" }] }),
@@ -41,6 +42,7 @@ function LogisticsPickupsPage() {
           <TabsTrigger value="active">Activas</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
           <TabsTrigger value="drivers">Conductores</TabsTrigger>
+          <TabsTrigger value="availability">Disponibilidad</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="mt-4">
@@ -59,6 +61,9 @@ function LogisticsPickupsPage() {
         </TabsContent>
         <TabsContent value="drivers" className="mt-4">
           <DriversPanel canManage />
+        </TabsContent>
+        <TabsContent value="availability" className="mt-4">
+          <AvailabilityCalendar />
         </TabsContent>
       </Tabs>
     </div>

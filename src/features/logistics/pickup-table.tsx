@@ -121,6 +121,11 @@ function PickupRow({ pickup, canManage }: { pickup: Pickup; canManage: boolean }
                 {invoiceLabel} <ExternalLink className="h-3 w-3" />
               </Link>
             )}
+            {order.scheduled_logistics_date && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                📅 Agendada {new Date(order.scheduled_logistics_date + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
+              </span>
+            )}
           </div>
           <h3 className="text-sm font-semibold truncate">{pickup.product_description_snapshot}</h3>
           <p className="text-xs text-muted-foreground">Cliente: {order.customer_name ?? "—"}</p>

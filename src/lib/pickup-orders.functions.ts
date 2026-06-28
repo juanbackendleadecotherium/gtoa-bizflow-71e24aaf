@@ -34,7 +34,8 @@ export const listPickupOrders = createServerFn({ method: "POST" })
                notes, created_at, updated_at,
                driver:drivers!driver_id(id, full_name, vehicle_label, vehicle_type, availability),
                order:orders!order_id(id, order_number, invoice_number, customer_name,
-                                     customer_address, customer_city, customer_phone, brand_id),
+                                     customer_address, customer_city, customer_phone, brand_id,
+                                     scheduled_logistics_date, scheduled_logistics_at),
                brand:brands!brand_id(id, name, primary_color)`)
       .order("created_at", { ascending: false })
       .limit(500);
