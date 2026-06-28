@@ -188,4 +188,4 @@ function ConditionRow({ ok, label, neutral }: { ok: boolean; label: string; neut
 }
 
 // silence unused
-void useServerFn; void TooltipProvider; void Tooltip; void TooltipContent; void TooltipTrigger; void subMonths;
+void useSrvFn; void TooltipProvider; void Tooltip; void TooltipContent; void TooltipTrigger; void subMonths;
