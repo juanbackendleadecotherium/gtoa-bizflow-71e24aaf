@@ -2,10 +2,11 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import {
   LayoutDashboard, ClipboardList, Settings,
   LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft, Menu,
-  FileText, Receipt, Wallet, Factory, BarChart3, Users, ListTodo, Boxes, UserCog, Database,
+  FileText, Receipt, Wallet, Factory, BarChart3, Users, ListTodo, Boxes, UserCog, Database, Truck,
 } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
@@ -21,6 +22,8 @@ import {
 import { toast } from "sonner";
 import { BrandProvider, useBrand } from "@/features/brands/brand-context";
 import { useMyPendingTasksCount } from "@/features/seller-tasks/seller-tasks-panel";
+import { countActivePickups } from "@/lib/pickup-orders.functions";
+import { usePickupCountRealtime } from "@/features/logistics/use-logistics-realtime";
 
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
