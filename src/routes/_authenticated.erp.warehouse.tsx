@@ -216,7 +216,7 @@ function ZoneContents({ zoneId }: { zoneId: string }) {
 // ---------------------------------------------------------------------------
 // Intake form
 // ---------------------------------------------------------------------------
-function IntakeForm() {
+function IntakeForm({ prefillItemId }: { prefillItemId?: string }) {
   const { selectedBrandId } = useBrand();
   const qc = useQueryClient();
   const listFn = useServerFn(listItemsAvailableForIntake);
@@ -224,7 +224,9 @@ function IntakeForm() {
   const registerFn = useServerFn(registerWarehouseMovement);
 
   const [search, setSearch] = useState("");
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
+    () => (prefillItemId ? new Set([prefillItemId]) : new Set()),
+  );
   const [zoneId, setZoneId] = useState("");
   const [reason, setReason] = useState("");
   const [movedAt, setMovedAt] = useState(() => new Date().toISOString().slice(0, 10));
