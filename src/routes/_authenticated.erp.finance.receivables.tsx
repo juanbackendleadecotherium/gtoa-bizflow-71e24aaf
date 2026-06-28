@@ -94,7 +94,7 @@ function Receivables() {
   const exportCSV = () => {
     const csv = Papa.unparse(
       filtered.map((r) => ({
-        Cuenta de cobro: r.invoice_number || r.order_number,
+        "Cuenta de cobro": r.invoice_number || r.order_number,
         Cliente: r.customer_name || "",
         Telefono: r.customer_phone || "",
         Email: r.customer_email || "",
