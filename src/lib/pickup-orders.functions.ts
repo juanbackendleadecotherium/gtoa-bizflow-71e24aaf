@@ -159,7 +159,6 @@ export const updatePickupStatus = createServerFn({ method: "POST" })
     if (data.status === "recogida") patch.picked_up_at = now;
     if (data.status === "entregada") {
       patch.delivered_at = now;
-      if (!patch.picked_up_at && !pick["picked_up_at" as any]) patch.picked_up_at = patch.picked_up_at ?? now;
       const vt = (pick as any).driver?.vehicle_type as string | undefined;
       if (vt === "externo") {
         if (data.externalCost == null || data.externalCost <= 0) {
