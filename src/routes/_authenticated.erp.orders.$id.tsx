@@ -607,6 +607,9 @@ function OrderDetail() {
 
           <ProductionSection orderId={o.id} brandId={o.brand_id} />
 
+          <ScheduleLogisticsCard orderId={o.id} />
+
+
 
 
 
