@@ -1,112 +1,108 @@
-# Módulo Logística — Recogidas por ítem terminado
+# Agendamiento de logística por el vendedor
 
-Construye un flujo nuevo que se dispara **cuando un `order_item` se marca como terminado** (no cuando la factura entera pasa a "pendiente por logística"). Cada ítem genera su propia orden de recogida, gestionada por un nuevo rol `logistica`.
-
----
-
-## 1. Modelo de datos
-
-### Nuevo rol `logistica`
-El enum `app_role` actual es `('admin','operativo','finanzas','ventas','vendedor')` — **no existe** `logistica`. Migración:
-- `ALTER TYPE app_role ADD VALUE 'logistica'`.
-- Actualizar `can_finish_order_item`, vistas de tareas y sidebar para reconocerlo.
-
-### Tabla `drivers`
-Campos: `id`, `brand_id` (nullable — los conductores son compartidos), `full_name`, `phone`, `vehicle_label` (texto: "Camión propio NRX-123" o "Externo — moto de Carlos"), `vehicle_type` enum `('propio','externo')`, `availability` enum `('disponible','en_ruta','no_disponible')`, `notes`, `active bool default true`, timestamps.
-- RLS: SELECT para `authenticated`; INSERT/UPDATE/DELETE solo `admin` o `logistica` (`has_role`).
-- GRANTs explícitos a `authenticated` y `service_role`.
-- Realtime habilitado.
-
-### Tabla `pickup_orders`
-Campos:
-- `id`, `order_item_id` (FK único — un ítem = una recogida), `order_id`, `brand_id`, `production_order_id`.
-- `supplier_id`, `supplier_name_snapshot`, `pickup_address_snapshot` (copiada de `suppliers.address` al crearse).
-- `destination` enum `('bodega','cliente')` (default `bodega` — se puede editar antes de asignar).
-- `destination_warehouse_id` nullable, `destination_address_snapshot` nullable (cliente).
-- `product_description_snapshot`.
-- `status` enum `('pendiente','asignada','en_camino','recogida','entregada','cancelada')`.
-- `driver_id` nullable FK a `drivers`.
-- `assigned_at`, `picked_up_at`, `delivered_at`, `cancelled_at`, `cancel_reason`.
-- **Costo logístico externo**: `external_transport_cost numeric(14,2)` + `external_transport_notes text` + `external_transport_currency` (`COP` default). Solo se exige cuando `driver.vehicle_type='externo'` al marcar `entregada`. Esta misma forma (`external_transport_cost` en la tabla operativa del evento + función `sum_external_logistics_cost(_from,_to,_brand)`) queda disponible para el KPI ejecutivo y para futuros módulos de entregas (reutilizable).
-- `created_by`, `created_by_email`, timestamps.
-- RLS: SELECT para `logistica`, `admin`, y el vendedor del `order_id` (vía join). UPDATE solo `logistica`/`admin`. INSERT vía trigger (security definer).
-- GRANTs + Realtime.
-
-### Auto-creación
-Trigger `AFTER UPDATE OF production_finished_at ON order_items`: cuando pasa a `NOT NULL`, insertar `pickup_orders` (idempotente por `order_item_id` único). Al mismo tiempo crear un `seller_tasks` tipo nuevo `logistics_pickup_ready` dirigido a usuarios con rol `logistica` (severity `info`) — reutilizamos el patrón de tarea existente, solo agregamos un type nuevo y mostramos el badge en sidebar para esos usuarios.
-
-Nota: la tarea de logística va a una "bandeja" del rol, no a un seller_id individual. Para esto añadimos columna nullable `assignee_role app_role` en `seller_tasks` (la consulta de badge para `logistica` filtra por `assignee_role='logistica'`). No rompe la lógica del vendedor (sigue usando `seller_id`).
+Conecta la disponibilidad operativa del rol `logistica` con la programación de la fecha de logística de una factura, sin coordinación por WhatsApp.
 
 ---
 
-## 2. UI / Rutas
+## 1. Default seguro para días sin registro
 
-### `/erp/logistics/pickups` (rol `logistica` + `admin`)
-Layout con tabs:
-- **Pendientes** (default): tabla con producto, proveedor, dirección recogida, destino, fecha solicitada, estado, conductor asignado. Acciones inline: Asignar conductor → Marcar en camino → Recogida → Entregada. Filtros por marca, estado, proveedor.
-- **Conductores**: CRUD de `drivers` + toggle rápido de `availability`. Realtime. Al abrir el selector "Asignar conductor" en una orden, se ven badges de disponibilidad y se desactivan los que no estén `disponible`.
-- **Historial** (mes actual, filtrable por rango y marca): recogidas `entregada` o `cancelada`, con costo externo cuando aplica, total acumulado de costos externos arriba.
+**Por defecto un día sin registro = NO disponible.** Razón: evita que el vendedor agende en días en que logística no operará (festivos no marcados, fines de semana, vacaciones del conductor). Logística debe marcar explícitamente los días hábiles disponibles. Para no obligar a marcar día por día, el panel de logística incluye un botón **"Abrir próximos N días"** (default 30) que inserta registros `disponible=true` en bloque saltando domingos y festivos colombianos (usa `isBusinessDay` de `src/lib/business-days.ts` ya existente).
 
-### Integración con bodega
-Al marcar `entregada` con `destination='bodega'`, mostrar toast con acción **"Registrar ingreso a bodega"** que navega a `/erp/warehouse?tab=intake&prefill_item={id}`. Ajuste mínimo en `IntakeForm` existente: leer ese query param y pre-seleccionar el ítem. **No** se crea un formulario nuevo.
+## 2. Validación de las 3 condiciones (factura lista para agendar)
 
-### Sidebar
-Añadir entry "Logística" en `_authenticated.erp.tsx` visible cuando `has_role(logistica)` o `admin`. Badge con count de `pickup_orders` en estado `pendiente`/`asignada` (mismo patrón de `useMyPendingTasksCount`).
+Centralizada en una función SQL `public.invoice_can_schedule_logistics(_order_id uuid) returns boolean` para no duplicar la lógica entre UI y server function:
 
----
+- **Estado factura**: `orders.status_code IN ('terminado','pendiente_por_logistica')` — los `order_statuses` ya tienen ambos códigos.
+- **Saldo cobrado**: `orders.balance = 0` (la columna `balance` ya existe y se usa en cartera/finanzas).
+- **QA aprobado**: hoy **no existe** un estado/columna de QA en el sistema. La función deja el chequeo preparado: lee `orders.qa_passed_at` si la columna existe (`coalesce(qa_passed_at, now()) is not null`); como la columna no existe aún, la función simplemente la omite y queda documentado en comentario SQL. Cuando se construya QA en otra tanda, se agrega la columna y se actualiza la función — la UI no cambia.
 
-## 3. Server functions (`createServerFn` + `requireSupabaseAuth`)
+El selector de fecha en el vendedor está **deshabilitado** mientras la función devuelva `false`, con un tooltip explicando qué falta (estado, saldo, o QA cuando exista).
 
-`src/lib/pickup-orders.functions.ts`:
-- `listPickupOrders({ status?, brandId? })`
-- `assignDriver({ pickupId, driverId })` — valida disponibilidad, marca driver `en_ruta`.
-- `updatePickupStatus({ pickupId, status, externalCost?, externalNotes? })` — al pasar a `entregada` libera al driver (`disponible`) y exige costo si vehículo `externo`.
-- `cancelPickup({ pickupId, reason })`.
+## 3. UI
 
-`src/lib/drivers.functions.ts`:
-- `listDrivers`, `upsertDriver`, `setDriverAvailability`, `deactivateDriver`.
+### Panel logística (`/erp/logistics/pickups`)
+- Nueva pestaña **"Disponibilidad"**: calendario mensual donde logística marca/desmarca cada día (toggle), con nota opcional. Botón "Abrir próximos 30 días hábiles" para sembrar en bloque. Realtime.
+- Pestaña **"Activas"** existente: se agrega columna/badge "Agendada para: dd/mm" cuando la factura del ítem tiene `scheduled_logistics_date`. Se agrupa visualmente por factura+fecha.
 
-Todas con verificación `has_role(logistica|admin)` dentro del handler.
+### Vendedor — detalle de factura (`/erp/orders/$id`)
+- Tarjeta nueva **"Programar logística"** dentro del panel de factura. Muestra:
+  - Estado de las 3 condiciones (✓/✗ con label).
+  - Si todas se cumplen: botón "Agendar fecha de logística" → abre Popover con `Calendar` (shadcn) que sólo permite seleccionar días con `disponible=true` en `logistics_availability` (resto deshabilitado vía `disabled` prop). Realtime: si logística cambia disponibilidad mientras el popover está abierto, se refresca.
+  - Si ya está agendada: muestra fecha + botón "Reagendar" / "Cancelar agendamiento" (mismo rol que pudo agendar).
 
 ---
 
-## 4. Usuario de Jonathan
+## 4. Modelo de datos (una sola migración)
 
-Pasos exactos (usa el panel admin que **ya existe** en este proyecto, no Supabase directo):
+```sql
+-- 1. Disponibilidad por día
+create table public.logistics_availability (
+  date date primary key,
+  available boolean not null default true,
+  note text,
+  updated_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+grant select on public.logistics_availability to authenticated;
+grant all on public.logistics_availability to service_role;
+alter table public.logistics_availability enable row level security;
+-- SELECT: cualquier authenticated (vendedor necesita leer)
+-- INSERT/UPDATE/DELETE: solo admin o logistica
+create policy "read availability" on public.logistics_availability for select to authenticated using (true);
+create policy "manage availability" on public.logistics_availability for all to authenticated
+  using (has_role(auth.uid(),'admin') or has_role(auth.uid(),'logistica'))
+  with check (has_role(auth.uid(),'admin') or has_role(auth.uid(),'logistica'));
 
-1. Aplicar la migración (agrega rol `logistica` al enum).
-2. Iniciar sesión como admin → `/erp/settings/users`.
-3. Click **"Crear usuario"** → email de Jonathan + contraseña temporal + display name. Esto llama `createUserAccount` (admin API) que ya crea el `profiles`.
-4. En la fila de Jonathan, abrir **Roles** y asignar `logistica`. (El panel ya soporta multi-rol vía `user_roles`.)
-5. En **Marcas**, asignar las marcas en las que operará (Jonathan necesita ver pickups de todas las marcas que opere → asignar las 4 si aplica).
-6. Compartir credenciales y pedirle cambiar contraseña en el primer login.
+-- 2. Agendamiento sobre la factura
+alter table public.orders
+  add column scheduled_logistics_date date,
+  add column scheduled_logistics_by uuid references auth.users(id),
+  add column scheduled_logistics_at timestamptz;
+-- Política de UPDATE de estas columnas: se valida en la server function (vendedor dueño
+-- o admin/logistica), no se abre una policy nueva genérica.
 
-No se requiere tocar Supabase Auth directamente.
+-- 3. Función centralizada de elegibilidad
+create or replace function public.invoice_can_schedule_logistics(_order_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists(
+    select 1 from public.orders o
+    where o.id = _order_id
+      and o.status_code in ('terminado','pendiente_por_logistica')
+      and coalesce(o.balance,0) = 0
+    -- TODO: AND o.qa_passed_at is not null  -- cuando se construya QA
+  );
+$$;
 
----
+-- 4. Realtime
+alter publication supabase_realtime add table public.logistics_availability;
+```
 
-## 5. KPI de costos logísticos externos (reutilizable)
+## 5. Server functions (`src/lib/logistics-scheduling.functions.ts`)
 
-- Función SQL `sum_external_logistics_cost(_from date, _to date, _brand_id uuid default null)` que suma `external_transport_cost` de `pickup_orders` entregadas en el rango. Cuando exista módulo de entregas a cliente con su propia tabla, se extiende la función a un `UNION ALL` — la forma del API no cambia.
-- El dashboard ejecutivo de bodega ya tiene patrón de tarjetas; se agrega una tarjeta "Costos logísticos externos (mes)" llamando esa función. (Fuera del scope de implementación inicial — dejar la función creada y documentada.)
+Todas con `requireSupabaseAuth` y verificación de rol dentro del handler:
 
----
+- `listAvailability({ from, to })` — lectura para todos.
+- `setAvailability({ date, available, note? })` — solo `admin|logistica`.
+- `seedAvailableBusinessDays({ days })` — solo `admin|logistica`; inserta días hábiles próximos.
+- `scheduleInvoiceLogistics({ orderId, date })` — valida `invoice_can_schedule_logistics(orderId)` + valida que el `date` esté en `logistics_availability` con `available=true` + valida que el caller sea el vendedor de la orden o `admin|logistica`. Setea las 3 columnas en `orders`.
+- `clearInvoiceLogisticsSchedule({ orderId })` — mismas reglas de autorización.
 
-## Archivos a crear / modificar
+## 6. Archivos a crear / modificar
 
-**Migración nueva** (una sola, atómica):
-- Enum `logistica`, tablas `drivers` + `pickup_orders` con RLS/GRANTs/Realtime, columna `assignee_role` en `seller_tasks`, trigger `auto_create_pickup_on_item_finished`, función `sum_external_logistics_cost`.
+**Nuevos**
+- Migración con todo lo de §4.
+- `src/lib/logistics-scheduling.functions.ts`
+- `src/features/logistics/availability-calendar.tsx` (panel de logística)
+- `src/features/logistics/use-availability-realtime.ts`
+- `src/features/orders/schedule-logistics-card.tsx` (tarjeta vendedor)
 
-**Código**:
-- `src/lib/pickup-orders.functions.ts` (nuevo)
-- `src/lib/drivers.functions.ts` (nuevo)
-- `src/routes/_authenticated.erp.logistics.tsx` (layout)
-- `src/routes/_authenticated.erp.logistics.pickups.tsx` (bandeja con tabs)
-- `src/features/logistics/pickup-table.tsx`, `assign-driver-dialog.tsx`, `update-status-dialog.tsx`, `drivers-panel.tsx`, `pickup-history.tsx` (nuevos)
-- `src/features/logistics/use-pickups-realtime.ts`, `use-drivers-realtime.ts` (nuevos)
-- `src/routes/_authenticated.erp.tsx` — agregar item de nav "Logística" + badge.
-- `src/routes/_authenticated.erp.warehouse.tsx` — `IntakeForm` lee `prefill_item` del search.
-- `src/features/production/finish-item-button.tsx` — toast post-éxito menciona "Se creó orden de recogida".
-- `src/features/brands/brand-context.tsx` / `useBrand` — exponer `isLogistica`.
+**Modificados**
+- `src/routes/_authenticated.erp.logistics.pickups.tsx` — agregar pestaña "Disponibilidad" y mostrar `scheduled_logistics_date` en filas.
+- `src/features/logistics/pickup-table.tsx` — badge "Agendada dd/mm" cuando aplique.
+- `src/routes/_authenticated.erp.orders.$id.tsx` — montar `ScheduleLogisticsCard`.
+- `src/lib/pickup-orders.functions.ts` — `listPickupOrders` devuelve también `scheduled_logistics_date` de la orden.
+
+**No se toca**: lógica de creación de `pickup_orders` por ítem terminado (sigue igual); el agendamiento opera a nivel de factura y es información paralela visible para logística.
 
 ¿Apruebas para implementar?
