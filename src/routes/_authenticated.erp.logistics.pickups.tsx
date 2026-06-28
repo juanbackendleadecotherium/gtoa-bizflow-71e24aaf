@@ -6,6 +6,7 @@ import { useLogisticsRealtime } from "@/features/logistics/use-logistics-realtim
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PickupTable } from "@/features/logistics/pickup-table";
 import { DriversPanel } from "@/features/logistics/drivers-panel";
+import { AvailabilityCalendar } from "@/features/logistics/availability-calendar";
 
 export const Route = createFileRoute("/_authenticated/erp/logistics/pickups")({
   head: () => ({ meta: [{ title: "Logística — Recogidas" }] }),
