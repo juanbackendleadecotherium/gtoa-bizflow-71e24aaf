@@ -199,6 +199,8 @@ function ItemCard({
 }) {
   const [cost, setCost] = useState<number>(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
   const [hasCost, setHasCost] = useState<boolean>(item.manufacturing_cost != null);
+  const [negotiatedCost, setNegotiatedCost] = useState<number>(item.negotiated_cost != null ? Number(item.negotiated_cost) : 0);
+  const [hasNegotiated, setHasNegotiated] = useState<boolean>(item.negotiated_cost != null);
   const [supplierId, setSupplierId] = useState(item.supplier_id ?? "");
   const [quotationDate, setQuotationDate] = useState(item.quotation_date ?? "");
   const [dirty, setDirty] = useState(false);
@@ -206,16 +208,33 @@ function ItemCard({
   useEffect(() => {
     setCost(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
     setHasCost(item.manufacturing_cost != null);
+    setNegotiatedCost(item.negotiated_cost != null ? Number(item.negotiated_cost) : 0);
+    setHasNegotiated(item.negotiated_cost != null);
     setSupplierId(item.supplier_id ?? "");
     setQuotationDate(item.quotation_date ?? "");
     setDirty(false);
-  }, [item.id, item.manufacturing_cost, item.supplier_id, item.quotation_date]);
+  }, [item.id, item.manufacturing_cost, item.negotiated_cost, item.supplier_id, item.quotation_date]);
 
   const line = Number(item.line_total) || 0;
-  const livePct = useMemo(() => {
+  const originalPct = useMemo(() => {
     if (!hasCost || line <= 0) return null;
     return ((line - cost) / line) * 100;
   }, [cost, hasCost, line]);
+
+  // El negociado solo aplica cuando el original está por debajo del mínimo
+  const showNegotiation = hasCost && originalPct != null && originalPct < min;
+
+  const negotiatedPct = useMemo(() => {
+    if (!hasNegotiated || line <= 0) return null;
+    return ((line - negotiatedCost) / line) * 100;
+  }, [negotiatedCost, hasNegotiated, line]);
+
+  // El margen "real" toma negociado cuando existe
+  const livePct = hasNegotiated ? negotiatedPct : originalPct;
+
+  const savingsPct = (hasCost && hasNegotiated && cost > 0)
+    ? ((cost - negotiatedCost) / cost) * 100
+    : null;
 
   const tone = marginTone(livePct, min);
 
@@ -230,10 +249,14 @@ function ItemCard({
 
   const save = useMutation({
     mutationFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
       const { error } = await supabase
         .from("order_items")
         .update({
           manufacturing_cost: hasCost ? cost : null,
+          negotiated_cost: hasNegotiated ? negotiatedCost : null,
+          negotiated_at: hasNegotiated ? new Date().toISOString() : null,
+          negotiated_by: hasNegotiated ? (u.user?.id ?? null) : null,
           supplier_id: supplierId || null,
           quotation_date: quotationDate || null,
         })
