@@ -673,6 +673,9 @@ export type Database = {
           line_total: number
           manufacturing_cost: number | null
           margin_pct: number | null
+          negotiated_at: string | null
+          negotiated_by: string | null
+          negotiated_cost: number | null
           order_id: string
           planimetry_files: Json
           production_due_date: string | null
@@ -699,6 +702,9 @@ export type Database = {
           line_total?: number
           manufacturing_cost?: number | null
           margin_pct?: number | null
+          negotiated_at?: string | null
+          negotiated_by?: string | null
+          negotiated_cost?: number | null
           order_id: string
           planimetry_files?: Json
           production_due_date?: string | null
@@ -725,6 +731,9 @@ export type Database = {
           line_total?: number
           manufacturing_cost?: number | null
           margin_pct?: number | null
+          negotiated_at?: string | null
+          negotiated_by?: string | null
+          negotiated_cost?: number | null
           order_id?: string
           planimetry_files?: Json
           production_due_date?: string | null
