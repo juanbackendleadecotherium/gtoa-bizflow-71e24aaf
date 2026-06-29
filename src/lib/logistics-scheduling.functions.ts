@@ -164,7 +164,7 @@ export const getInvoiceSchedulingStatus = createServerFn({ method: "GET" })
     if (error) throw error;
     const status = order.order_statuses as any;
     const statusSlug: string = status?.slug ?? "";
-    const statusOk = ["terminado", "pendiente_por_logistica"].includes(statusSlug);
+    const statusOk = ["pendiente-por-logistica", "pendiente_por_logistica", "terminado"].includes(statusSlug);
     // Saldo: usar la view financiera para coincidir con cartera
     const { data: fin } = await context.supabase
       .from("order_financials").select("balance").eq("order_id", data.orderId).maybeSingle();
