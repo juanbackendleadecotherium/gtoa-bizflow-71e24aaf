@@ -97,8 +97,9 @@ export function ItemMarginsSection({
     let allHaveCost = list.length > 0;
     for (const it of list) {
       sale += Number(it.line_total) || 0;
-      if (it.manufacturing_cost == null) allHaveCost = false;
-      else cost += Number(it.manufacturing_cost);
+      const effective = it.negotiated_cost ?? it.manufacturing_cost;
+      if (effective == null) allHaveCost = false;
+      else cost += Number(effective);
     }
     const pct = allHaveCost && sale > 0 ? ((sale - cost) / sale) * 100 : null;
     return { sale, cost: allHaveCost ? cost : null, pct };
