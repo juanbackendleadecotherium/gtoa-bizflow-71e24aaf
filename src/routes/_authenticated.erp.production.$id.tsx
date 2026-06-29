@@ -11,8 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { PRODUCTION_STATUSES, PRIORITIES } from "@/features/production/production-meta";
-import { NOVEDADES } from "@/features/production/novedad-meta";
+import { PRODUCTION_STATUSES } from "@/features/production/production-meta";
 import { ProductionStatusBadge } from "@/features/production/status-badge";
 import { PlanimetryUploader, type Planimetry } from "@/features/production/planimetry-uploader";
 import { ReasonDialog } from "@/features/production/reason-dialog";
@@ -27,19 +26,10 @@ function ProductionDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { isAdmin, selectedBrandId } = useBrand();
+  const { isAdmin, roles } = useBrand();
+  const isProduction = isAdmin || roles.includes("operativo");
+  const isSellerOnly = !isProduction && roles.includes("ventas");
 
-  const suppliers = useQuery({
-    queryKey: ["suppliers-list", selectedBrandId],
-    enabled: !!selectedBrandId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("suppliers").select("id, name")
-        .eq("brand_id", selectedBrandId!).eq("is_active", true).order("name");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
 
   const prod = useQuery({
     queryKey: ["production-order", id],
@@ -78,11 +68,10 @@ function ProductionDetail() {
   });
 
   const [form, setForm] = useState({
-    status: "pendiente", priority: "normal", workshop: "", assigned_to_label: "",
-    start_date: "", due_date: "", notes: "",
-    novedad: "pendiente", supplier_id: "", manufacturing_cost: "",
-    invoice_date: "", planimetry_sent_date: "", quotation_date: "", production_start_date: "",
-    supplier_promised_date: "", supplier_actual_date: "", client_promised_date: "", client_actual_date: "",
+    status: "pendiente",
+    assigned_to_label: "",
+    due_date: "",
+    notes: "",
   });
   const [dirty, setDirty] = useState(false);
 
@@ -91,23 +80,9 @@ function ProductionDetail() {
       const d: any = prod.data;
       setForm({
         status: d.status ?? "pendiente",
-        priority: d.priority ?? "normal",
-        workshop: d.workshop ?? "",
         assigned_to_label: d.assigned_to_label ?? "",
-        start_date: d.start_date ?? "",
         due_date: d.due_date ?? "",
         notes: d.notes ?? "",
-        novedad: d.novedad ?? "pendiente",
-        supplier_id: d.supplier_id ?? "",
-        manufacturing_cost: d.manufacturing_cost != null ? String(d.manufacturing_cost) : "",
-        invoice_date: d.invoice_date ?? "",
-        planimetry_sent_date: d.planimetry_sent_date ?? "",
-        quotation_date: d.quotation_date ?? "",
-        production_start_date: d.production_start_date ?? "",
-        supplier_promised_date: d.supplier_promised_date ?? "",
-        supplier_actual_date: d.supplier_actual_date ?? "",
-        client_promised_date: d.client_promised_date ?? "",
-        client_actual_date: d.client_actual_date ?? "",
       });
       setDirty(false);
     }
@@ -115,26 +90,16 @@ function ProductionDetail() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("production_orders").update({
-        status: form.status,
-        priority: form.priority,
-        workshop: form.workshop || null,
-        assigned_to_label: form.assigned_to_label || null,
-        start_date: form.start_date || null,
-        due_date: form.due_date || null,
-        notes: form.notes || null,
-        novedad: form.novedad as any,
-        supplier_id: form.supplier_id || null,
-        manufacturing_cost: form.manufacturing_cost ? Number(form.manufacturing_cost) : null,
-        invoice_date: form.invoice_date || null,
-        planimetry_sent_date: form.planimetry_sent_date || null,
-        quotation_date: form.quotation_date || null,
-        production_start_date: form.production_start_date || null,
-        supplier_promised_date: form.supplier_promised_date || null,
-        supplier_actual_date: form.supplier_actual_date || null,
-        client_promised_date: form.client_promised_date || null,
-        client_actual_date: form.client_actual_date || null,
-      }).eq("id", id);
+      // El vendedor puro sólo puede modificar las notas internas.
+      const payload: Record<string, any> = isSellerOnly
+        ? { notes: form.notes || null }
+        : {
+            status: form.status,
+            assigned_to_label: form.assigned_to_label || null,
+            due_date: form.due_date || null,
+            notes: form.notes || null,
+          };
+      const { error } = await supabase.from("production_orders").update(payload as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -313,37 +278,34 @@ function ProductionDetail() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs">Estado</Label>
-                <Select value={form.status} onValueChange={(v) => update("status", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PRODUCTION_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Prioridad</Label>
-                <Select value={form.priority} onValueChange={(v) => update("priority", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PRIORITIES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Taller / planta</Label>
-                <Input value={form.workshop} onChange={(e) => update("workshop", e.target.value)} placeholder="Ej: Taller principal" />
+                {isSellerOnly ? (
+                  <Input value={PRODUCTION_STATUSES.find((s) => s.value === form.status)?.label ?? form.status} disabled />
+                ) : (
+                  <Select value={form.status} onValueChange={(v) => update("status", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PRODUCTION_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div>
                 <Label className="text-xs">Encargado</Label>
-                <Input value={form.assigned_to_label} onChange={(e) => update("assigned_to_label", e.target.value)} placeholder="Nombre del responsable" />
-              </div>
-              <div>
-                <Label className="text-xs">Inicio</Label>
-                <Input type="date" value={form.start_date ?? ""} onChange={(e) => update("start_date", e.target.value)} />
+                <Input
+                  value={form.assigned_to_label}
+                  onChange={(e) => update("assigned_to_label", e.target.value)}
+                  placeholder="Nombre del responsable"
+                  disabled={isSellerOnly}
+                />
               </div>
               <div>
                 <Label className="text-xs">Entrega estimada</Label>
-                <Input type="date" value={form.due_date ?? ""} onChange={(e) => update("due_date", e.target.value)} />
+                <Input
+                  type="date"
+                  value={form.due_date ?? ""}
+                  onChange={(e) => update("due_date", e.target.value)}
+                  disabled={isSellerOnly}
+                />
               </div>
             </div>
             <div>
@@ -352,7 +314,7 @@ function ProductionDetail() {
             </div>
           </section>
 
-          {p.order_id && (
+          {!isSellerOnly && p.order_id && (
             <ItemMarginsSection
               productionOrderId={p.id}
               orderId={p.order_id}
@@ -360,84 +322,6 @@ function ProductionDetail() {
             />
           )}
 
-          {p.status !== "pendiente" && (
-          <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <h2 className="text-sm font-medium text-muted-foreground">Seguimiento (Drive)</h2>
-              {form.manufacturing_cost && p.order && (() => {
-                const total = Number((p.order as any)?.total) || 0;
-                const cost = Number(form.manufacturing_cost);
-                const m = total > 0 ? ((total - cost) / total) * 100 : null;
-                if (m == null) return null;
-                const cls = m >= 45 ? "text-emerald-600 dark:text-emerald-400"
-                  : m >= 30 ? "text-amber-600 dark:text-amber-400"
-                  : "text-rose-600 dark:text-rose-400";
-                return <span className={`text-xs font-semibold ${cls}`}>Margen: {m.toFixed(1)}%</span>;
-              })()}
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs">Novedad</Label>
-                <Select value={form.novedad} onValueChange={(v) => update("novedad", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {NOVEDADES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Proveedor</Label>
-                <Select value={form.supplier_id || "__none__"} onValueChange={(v) => update("supplier_id", v === "__none__" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Sin proveedor" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin proveedor</SelectItem>
-                    {(suppliers.data ?? []).map((s: any) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Costo fabricación (COP)</Label>
-                <Input type="number" min="0" value={form.manufacturing_cost}
-                  onChange={(e) => update("manufacturing_cost", e.target.value)} placeholder="0" />
-              </div>
-              <div />
-              <div>
-                <Label className="text-xs">Fecha cuenta de cobro</Label>
-                <Input type="date" value={form.invoice_date} onChange={(e) => update("invoice_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Planimetría enviada</Label>
-                <Input type="date" value={form.planimetry_sent_date} onChange={(e) => update("planimetry_sent_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Cotización</Label>
-                <Input type="date" value={form.quotation_date} onChange={(e) => update("quotation_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Inicio producción</Label>
-                <Input type="date" value={form.production_start_date} onChange={(e) => update("production_start_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Entrega prometida proveedor</Label>
-                <Input type="date" value={form.supplier_promised_date} onChange={(e) => update("supplier_promised_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Entrega real proveedor</Label>
-                <Input type="date" value={form.supplier_actual_date} onChange={(e) => update("supplier_actual_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Promesa al cliente</Label>
-                <Input type="date" value={form.client_promised_date} onChange={(e) => update("client_promised_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Entrega real al cliente</Label>
-                <Input type="date" value={form.client_actual_date} onChange={(e) => update("client_actual_date", e.target.value)} />
-              </div>
-            </div>
-          </section>
-          )}
 
           <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
