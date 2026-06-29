@@ -80,11 +80,10 @@ function ProductionDetail() {
   });
 
   const [form, setForm] = useState({
-    status: "pendiente", priority: "normal", workshop: "", assigned_to_label: "",
-    start_date: "", due_date: "", notes: "",
-    novedad: "pendiente", supplier_id: "", manufacturing_cost: "",
-    invoice_date: "", planimetry_sent_date: "", quotation_date: "", production_start_date: "",
-    supplier_promised_date: "", supplier_actual_date: "", client_promised_date: "", client_actual_date: "",
+    status: "pendiente",
+    assigned_to_label: "",
+    due_date: "",
+    notes: "",
   });
   const [dirty, setDirty] = useState(false);
 
@@ -93,23 +92,9 @@ function ProductionDetail() {
       const d: any = prod.data;
       setForm({
         status: d.status ?? "pendiente",
-        priority: d.priority ?? "normal",
-        workshop: d.workshop ?? "",
         assigned_to_label: d.assigned_to_label ?? "",
-        start_date: d.start_date ?? "",
         due_date: d.due_date ?? "",
         notes: d.notes ?? "",
-        novedad: d.novedad ?? "pendiente",
-        supplier_id: d.supplier_id ?? "",
-        manufacturing_cost: d.manufacturing_cost != null ? String(d.manufacturing_cost) : "",
-        invoice_date: d.invoice_date ?? "",
-        planimetry_sent_date: d.planimetry_sent_date ?? "",
-        quotation_date: d.quotation_date ?? "",
-        production_start_date: d.production_start_date ?? "",
-        supplier_promised_date: d.supplier_promised_date ?? "",
-        supplier_actual_date: d.supplier_actual_date ?? "",
-        client_promised_date: d.client_promised_date ?? "",
-        client_actual_date: d.client_actual_date ?? "",
       });
       setDirty(false);
     }
@@ -117,26 +102,16 @@ function ProductionDetail() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("production_orders").update({
-        status: form.status,
-        priority: form.priority,
-        workshop: form.workshop || null,
-        assigned_to_label: form.assigned_to_label || null,
-        start_date: form.start_date || null,
-        due_date: form.due_date || null,
-        notes: form.notes || null,
-        novedad: form.novedad as any,
-        supplier_id: form.supplier_id || null,
-        manufacturing_cost: form.manufacturing_cost ? Number(form.manufacturing_cost) : null,
-        invoice_date: form.invoice_date || null,
-        planimetry_sent_date: form.planimetry_sent_date || null,
-        quotation_date: form.quotation_date || null,
-        production_start_date: form.production_start_date || null,
-        supplier_promised_date: form.supplier_promised_date || null,
-        supplier_actual_date: form.supplier_actual_date || null,
-        client_promised_date: form.client_promised_date || null,
-        client_actual_date: form.client_actual_date || null,
-      }).eq("id", id);
+      // El vendedor puro sólo puede modificar las notas internas.
+      const payload: Record<string, any> = isSellerOnly
+        ? { notes: form.notes || null }
+        : {
+            status: form.status,
+            assigned_to_label: form.assigned_to_label || null,
+            due_date: form.due_date || null,
+            notes: form.notes || null,
+          };
+      const { error } = await supabase.from("production_orders").update(payload).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
