@@ -1,56 +1,62 @@
-## 1. PDF de la cuenta de cobro — márgenes profesionales tipo APA
+## Cambios en la pantalla de la orden de producción (`/erp/production/:id`)
 
-**Archivo:** `src/features/invoices/invoice-document.tsx`
+### 1. Eliminar sección "Seguimiento (Drive)"
+Quitar por completo el bloque que muestra: Novedad, Proveedor, Costo fabricación, Fecha cuenta de cobro, Planimetría enviada, Cotización, Inicio producción, Entrega prometida/real proveedor, Promesa/entrega real al cliente. Esa información ya se maneja en otro lado (márgenes por ítem y seguimiento de producción real). Los campos quedan en la BD por compatibilidad histórica pero no se editan ni muestran aquí.
 
-- Subir los márgenes laterales y verticales a un estilo APA-like:
-  - `paddingHorizontal` global de la `Page`: **56pt** (~2 cm).
-  - `paddingTop`: **48pt**, `paddingBottom`: **130pt** (deja espacio al footer fijo).
-- Eliminar los `paddingHorizontal: 40` repetidos en headerWrap, partiesWrap, tableWrap, wordsRow y bottomRow (ahora hereda del page padding).
-- La banda de color (`accent`) se renderiza fuera del padding (full-bleed superior) usando `position: absolute; top: 0; left: 0; right: 0`.
-- Footer fijo: `left: 56, right: 56, bottom: 36`, con `borderTopColor` y el mismo respeto de márgenes.
-- Garantizar que la tabla de ítems use `wrap` por fila y agregar `break` lógico (ya está `wrap={false}` por fila); añadir cabecera repetida con `fixed` en el `<View>` de `th` para que el header de la tabla se repita en cada página.
-- En la sección de totales/notas (`bottomRow`) marcarla como `wrap={false}` (ya está) — verificado.
+### 2. Simplificar "Detalles"
+Quitar **Prioridad**, **Taller / planta** e **Inicio**. La sección queda solo con:
+- Estado
+- Encargado (precargado por marca, ver §4)
+- Entrega estimada
+- Notas internas
+- (la sección de Planimetrías se conserva tal cual está debajo)
 
-Resultado: documento con respeto de márgenes consistente en todas las páginas, look más editorial / APA.
+## Vista por rol
 
----
+El perfil que tenga **a la vez** rol `ventas` y rol `operativo`/`admin` (caso actual de `xloko2759`) ve la versión completa de producción. La vista reducida aplica al usuario que **solo** tenga rol `ventas`:
 
-## 2. Costo proveedor con negociación (margen < 45%)
+| Sección | Vendedor (solo `ventas`) | Producción (`operativo`/`admin`) |
+| --- | --- | --- |
+| Estado | lectura | editable |
+| Encargado | lectura | editable |
+| Entrega estimada | lectura | editable |
+| Notas internas | **editable** | editable |
+| Planimetrías | ver + subir | ver + subir + eliminar (admin) |
+| Productos y márgenes (`ItemMarginsSection`) | **oculto** | visible |
+| Bloque de negociación | **oculto** | visible |
+| Bitácora completa | resumen | completa |
 
-### 2.1 Base de datos
-Migración Supabase:
+Detección: helper `useRoles()` que devuelve `{ isSeller, isProduction, isAdmin }` leyendo `user_roles`. La vista reducida se aplica cuando `isSeller && !isProduction && !isAdmin`.
 
-- `order_items`: agregar columnas
-  - `negotiated_cost numeric` (nullable) — costo después de negociar
-  - `negotiated_at timestamptz` — cuándo se registró
-  - `negotiated_by uuid` — quién lo negoció (referencia a `auth.users`)
-- Recalcular vistas/triggers de margen que usen `manufacturing_cost`:
-  - Si `negotiated_cost` no es null → `effective_cost = negotiated_cost`.
-  - Si es null → `effective_cost = manufacturing_cost`.
-- Actualizar el cálculo de `margin_pct` (trigger existente) para usar `effective_cost`.
-- Conservar siempre **ambos** valores (original + negociado) para auditoría y comisiones.
+## Auto-asignación del Encargado por marca
 
-### 2.2 UI — `src/features/production/item-margins-section.tsx`
+Por ahora, **texto fijo** mapeado por marca (sin vincular a usuarios reales todavía):
 
-En cada `ItemCard`:
+| Marca | Encargado |
+| --- | --- |
+| Espacio Inmobiliario | Alejandra |
+| Montenegro Design | Alejandra |
+| Getova | Alejandra |
+| Casa Diseño | Jonathan |
 
-1. Calcular margen "preliminar" con `manufacturing_cost` (costo original del proveedor).
-2. **Si margen < `min` (45%)**, mostrar bajo el input actual un nuevo bloque destacado en ámbar:
-   - Label: **"Costo proveedor con negociación (COP)"** + ícono `Handshake`.
-   - `MoneyInput` para `negotiated_cost`.
-   - Texto auxiliar: "Este será el costo real que tomará producción para el cálculo del margen final".
-3. El **MarginPill** principal cambia a usar `negotiated_cost` cuando existe; mostrar también un pequeño chip secundario con el margen original tachado para evidenciar el ahorro: `2.000.000 → 1.000.000 · ahorro 50%`.
-4. El KPI "Costo total" y "Margen global" del header usan el `effective_cost`.
-5. Persistir `negotiated_cost`, `negotiated_at = now()`, `negotiated_by = user.id` en el `save` mutation (junto a los campos existentes).
+Implementación: constante `BRAND_PRODUCTION_OWNER` en `src/features/production/brand-owners.ts`. Se aplica:
+- Al **crear** la production_order desde "Enviar a producción": si `assigned_to_label` viene vacío, se setea con el mapping.
+- Migración de back-fill: actualiza órdenes existentes que tengan `assigned_to_label` vacío/null. Cuando luego existan usuarios reales en el ERP, sustituiremos esta constante por una tabla `brand_production_owners` con FK a `profiles`.
 
-### 2.3 Visibilidad / auditoría
-- En `audit-timeline.tsx` de producción, registrar el evento `cost_negotiated` con `{original, negotiated, savings_pct}` para que quede traza de la negociación (útil para comisiones).
-- No requiere cambios en bodega ni en logística.
+## Auditoría
 
----
+El trigger `log_production_changes` ya audita cambios de `status`, `assigned_to_label`, `notes`, `due_date`. Se mantiene; no requiere cambios. Cualquier edición que haga el vendedor en Notas también queda registrada con su `auth.uid()`.
 
-## Notas técnicas
+## Archivos a tocar
 
-- El campo original `manufacturing_cost` se mantiene intacto — no se sobreescribe nunca con el negociado.
-- El input "Costo proveedor con negociación" sólo aparece cuando hay un `manufacturing_cost > 0` y el margen calculado con éste está por debajo del mínimo de la marca.
-- Si después de negociar el margen sigue por debajo del 45%, el pill queda en rojo pero ya queda registro de que sí se intentó negociar (importante para las comisiones).
+- `src/routes/_authenticated.erp.production.$id.tsx` — eliminar bloque "Seguimiento (Drive)" y campos Prioridad/Taller/Inicio; aplicar gating por rol; precargar encargado.
+- `src/features/production/send-to-production-button.tsx` — al crear la orden, setear `assigned_to_label` según marca.
+- `src/features/production/brand-owners.ts` — nuevo, mapping marca→encargado.
+- `src/hooks/use-roles.ts` — nuevo helper para distinguir vendedor puro vs producción.
+- Migración SQL — back-fill de `assigned_to_label` en órdenes existentes según marca.
+
+## Lo que NO cambia
+
+- Esquema de `production_orders` (las columnas eliminadas de la UI siguen en BD).
+- Módulo de márgenes (`ItemMarginsSection`) y negociación: intacto, solo se oculta para vendedor puro.
+- Planimetrías, flujo de envío a producción, finalización de ítems y logística: sin cambios.
