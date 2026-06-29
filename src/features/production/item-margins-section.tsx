@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays } from "lucide-react";
+import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays, Handshake } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
