@@ -297,7 +297,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
 
         {/* Items table */}
         <View style={styles.tableWrap}>
-          <View style={[styles.th, { borderBottomColor: accent, backgroundColor: SOFT }]}>
+          <View style={[styles.th, { borderBottomColor: accent, backgroundColor: SOFT }]} fixed>
             <Text style={[styles.thText, styles.cIdx, { color: SUB }]}>#</Text>
             <Text style={[styles.thText, styles.cItem, { color: SUB }]}>Descripción</Text>
             <Text style={[styles.thText, styles.cQty, { color: SUB }]}>Cant.</Text>
