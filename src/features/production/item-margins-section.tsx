@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays } from "lucide-react";
+import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays, Handshake } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ type Item = {
   unit_price: number;
   line_total: number;
   manufacturing_cost: number | null;
+  negotiated_cost: number | null;
   margin_pct: number | null;
   supplier_id: string | null;
   cost_notes: string | null;
@@ -79,7 +80,7 @@ export function ItemMarginsSection({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date")
+        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, negotiated_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date")
         .eq("production_order_id", productionOrderId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -96,8 +97,9 @@ export function ItemMarginsSection({
     let allHaveCost = list.length > 0;
     for (const it of list) {
       sale += Number(it.line_total) || 0;
-      if (it.manufacturing_cost == null) allHaveCost = false;
-      else cost += Number(it.manufacturing_cost);
+      const effective = it.negotiated_cost ?? it.manufacturing_cost;
+      if (effective == null) allHaveCost = false;
+      else cost += Number(effective);
     }
     const pct = allHaveCost && sale > 0 ? ((sale - cost) / sale) * 100 : null;
     return { sale, cost: allHaveCost ? cost : null, pct };
@@ -197,6 +199,8 @@ function ItemCard({
 }) {
   const [cost, setCost] = useState<number>(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
   const [hasCost, setHasCost] = useState<boolean>(item.manufacturing_cost != null);
+  const [negotiatedCost, setNegotiatedCost] = useState<number>(item.negotiated_cost != null ? Number(item.negotiated_cost) : 0);
+  const [hasNegotiated, setHasNegotiated] = useState<boolean>(item.negotiated_cost != null);
   const [supplierId, setSupplierId] = useState(item.supplier_id ?? "");
   const [quotationDate, setQuotationDate] = useState(item.quotation_date ?? "");
   const [dirty, setDirty] = useState(false);
@@ -204,16 +208,33 @@ function ItemCard({
   useEffect(() => {
     setCost(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
     setHasCost(item.manufacturing_cost != null);
+    setNegotiatedCost(item.negotiated_cost != null ? Number(item.negotiated_cost) : 0);
+    setHasNegotiated(item.negotiated_cost != null);
     setSupplierId(item.supplier_id ?? "");
     setQuotationDate(item.quotation_date ?? "");
     setDirty(false);
-  }, [item.id, item.manufacturing_cost, item.supplier_id, item.quotation_date]);
+  }, [item.id, item.manufacturing_cost, item.negotiated_cost, item.supplier_id, item.quotation_date]);
 
   const line = Number(item.line_total) || 0;
-  const livePct = useMemo(() => {
+  const originalPct = useMemo(() => {
     if (!hasCost || line <= 0) return null;
     return ((line - cost) / line) * 100;
   }, [cost, hasCost, line]);
+
+  // El negociado solo aplica cuando el original está por debajo del mínimo
+  const showNegotiation = hasCost && originalPct != null && originalPct < min;
+
+  const negotiatedPct = useMemo(() => {
+    if (!hasNegotiated || line <= 0) return null;
+    return ((line - negotiatedCost) / line) * 100;
+  }, [negotiatedCost, hasNegotiated, line]);
+
+  // El margen "real" toma negociado cuando existe
+  const livePct = hasNegotiated ? negotiatedPct : originalPct;
+
+  const savingsPct = (hasCost && hasNegotiated && cost > 0)
+    ? ((cost - negotiatedCost) / cost) * 100
+    : null;
 
   const tone = marginTone(livePct, min);
 
@@ -228,10 +249,14 @@ function ItemCard({
 
   const save = useMutation({
     mutationFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
       const { error } = await supabase
         .from("order_items")
         .update({
           manufacturing_cost: hasCost ? cost : null,
+          negotiated_cost: hasNegotiated ? negotiatedCost : null,
+          negotiated_at: hasNegotiated ? new Date().toISOString() : null,
+          negotiated_by: hasNegotiated ? (u.user?.id ?? null) : null,
           supplier_id: supplierId || null,
           quotation_date: quotationDate || null,
         })
@@ -314,8 +339,55 @@ function ItemCard({
           <div className="flex flex-col items-end gap-1.5">
             <span className="text-[11px] text-muted-foreground">Margen</span>
             <MarginPill pct={livePct} min={min} />
+            {hasNegotiated && originalPct != null && (
+              <span className="text-[10px] text-muted-foreground">
+                Original: <span className="line-through">{originalPct.toFixed(1)}%</span>
+              </span>
+            )}
           </div>
         </div>
+
+        {/* Bloque de negociación: aparece cuando el margen original está bajo el mínimo */}
+        {showNegotiation && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Handshake className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300" />
+              <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">
+                Negociación requerida — margen original {originalPct?.toFixed(1)}%
+              </p>
+            </div>
+            <p className="text-[11px] text-amber-700/90 dark:text-amber-200/80">
+              Negocia con el proveedor para alcanzar al menos {min}%. Este será el costo real que usará producción y queda registrado para evaluar tu gestión.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3 items-end">
+              <div>
+                <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                  Costo proveedor con negociación (COP)
+                </Label>
+                <MoneyInput
+                  value={negotiatedCost}
+                  onValueChange={(n) => {
+                    setNegotiatedCost(n);
+                    setHasNegotiated(n > 0);
+                    setDirty(true);
+                  }}
+                  placeholder="0"
+                  className="h-9 bg-background"
+                />
+              </div>
+              {hasNegotiated && savingsPct != null && (
+                <div className="text-[11px] space-y-0.5">
+                  <p className="text-muted-foreground">
+                    {fmtMoney(cost)} → <span className="font-semibold text-foreground">{fmtMoney(negotiatedCost)}</span>
+                  </p>
+                  <p className={savingsPct > 0 ? "text-emerald-700 dark:text-emerald-300 font-medium" : "text-muted-foreground"}>
+                    Ahorro: {savingsPct.toFixed(1)}% · Nuevo margen: {negotiatedPct?.toFixed(1)}%
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Per-item quotation date — supports cotizar cada producto en días distintos */}
         <div>
