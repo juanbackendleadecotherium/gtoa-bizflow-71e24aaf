@@ -339,8 +339,55 @@ function ItemCard({
           <div className="flex flex-col items-end gap-1.5">
             <span className="text-[11px] text-muted-foreground">Margen</span>
             <MarginPill pct={livePct} min={min} />
+            {hasNegotiated && originalPct != null && (
+              <span className="text-[10px] text-muted-foreground">
+                Original: <span className="line-through">{originalPct.toFixed(1)}%</span>
+              </span>
+            )}
           </div>
         </div>
+
+        {/* Bloque de negociación: aparece cuando el margen original está bajo el mínimo */}
+        {showNegotiation && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Handshake className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300" />
+              <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">
+                Negociación requerida — margen original {originalPct?.toFixed(1)}%
+              </p>
+            </div>
+            <p className="text-[11px] text-amber-700/90 dark:text-amber-200/80">
+              Negocia con el proveedor para alcanzar al menos {min}%. Este será el costo real que usará producción y queda registrado para evaluar tu gestión.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3 items-end">
+              <div>
+                <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                  Costo proveedor con negociación (COP)
+                </Label>
+                <MoneyInput
+                  value={negotiatedCost}
+                  onValueChange={(n) => {
+                    setNegotiatedCost(n);
+                    setHasNegotiated(n > 0);
+                    setDirty(true);
+                  }}
+                  placeholder="0"
+                  className="h-9 bg-background"
+                />
+              </div>
+              {hasNegotiated && savingsPct != null && (
+                <div className="text-[11px] space-y-0.5">
+                  <p className="text-muted-foreground">
+                    {fmtMoney(cost)} → <span className="font-semibold text-foreground">{fmtMoney(negotiatedCost)}</span>
+                  </p>
+                  <p className={savingsPct > 0 ? "text-emerald-700 dark:text-emerald-300 font-medium" : "text-muted-foreground"}>
+                    Ahorro: {savingsPct.toFixed(1)}% · Nuevo margen: {negotiatedPct?.toFixed(1)}%
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Per-item quotation date — supports cotizar cada producto en días distintos */}
         <div>
