@@ -398,34 +398,6 @@ function AdvanceStatusButton({ pickup, target }: { pickup: Pickup; target: "en_c
   );
 }
 
-function CancelPickupDialog({ pickup }: { pickup: Pickup }) {
-  const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("");
-  const fn = useServerFn(updatePickupStatus);
-  const qc = useQueryClient();
-  const mut = useMutation({
-    mutationFn: () => fn({ data: { pickupId: pickup.id, status: "cancelada", cancelReason: reason } }),
-    onSuccess: () => { toast.success("Recogida cancelada"); qc.invalidateQueries({ queryKey: ["pickup-orders"] }); setOpen(false); },
-    onError: (e: any) => toast.error(e?.message ?? "Error"),
-  });
+// CancelPickupDialog removed: la cancelación de recogidas se maneja como proceso
+// interno del negocio, no desde el software.
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">Cancelar</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Cancelar recogida</DialogTitle></DialogHeader>
-        <Textarea rows={3} placeholder="Motivo de la cancelación"
-          value={reason} onChange={(e) => setReason(e.target.value)} />
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Volver</Button>
-          <Button variant="destructive" onClick={() => mut.mutate()}
-            disabled={mut.isPending || reason.trim().length < 5}>
-            {mut.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Cancelar recogida
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
