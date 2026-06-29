@@ -27,7 +27,9 @@ function ProductionDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { isAdmin, selectedBrandId } = useBrand();
+  const { isAdmin, selectedBrandId, roles } = useBrand();
+  const isProduction = isAdmin || roles.includes("operativo");
+  const isSellerOnly = !isProduction && roles.includes("ventas");
 
   const suppliers = useQuery({
     queryKey: ["suppliers-list", selectedBrandId],
