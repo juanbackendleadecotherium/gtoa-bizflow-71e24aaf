@@ -17,6 +17,7 @@ type Item = {
   unit_price: number;
   line_total: number;
   manufacturing_cost: number | null;
+  negotiated_cost: number | null;
   margin_pct: number | null;
   supplier_id: string | null;
   cost_notes: string | null;
