@@ -290,37 +290,34 @@ function ProductionDetail() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs">Estado</Label>
-                <Select value={form.status} onValueChange={(v) => update("status", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PRODUCTION_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Prioridad</Label>
-                <Select value={form.priority} onValueChange={(v) => update("priority", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PRIORITIES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Taller / planta</Label>
-                <Input value={form.workshop} onChange={(e) => update("workshop", e.target.value)} placeholder="Ej: Taller principal" />
+                {isSellerOnly ? (
+                  <Input value={PRODUCTION_STATUSES.find((s) => s.value === form.status)?.label ?? form.status} disabled />
+                ) : (
+                  <Select value={form.status} onValueChange={(v) => update("status", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PRODUCTION_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div>
                 <Label className="text-xs">Encargado</Label>
-                <Input value={form.assigned_to_label} onChange={(e) => update("assigned_to_label", e.target.value)} placeholder="Nombre del responsable" />
-              </div>
-              <div>
-                <Label className="text-xs">Inicio</Label>
-                <Input type="date" value={form.start_date ?? ""} onChange={(e) => update("start_date", e.target.value)} />
+                <Input
+                  value={form.assigned_to_label}
+                  onChange={(e) => update("assigned_to_label", e.target.value)}
+                  placeholder="Nombre del responsable"
+                  disabled={isSellerOnly}
+                />
               </div>
               <div>
                 <Label className="text-xs">Entrega estimada</Label>
-                <Input type="date" value={form.due_date ?? ""} onChange={(e) => update("due_date", e.target.value)} />
+                <Input
+                  type="date"
+                  value={form.due_date ?? ""}
+                  onChange={(e) => update("due_date", e.target.value)}
+                  disabled={isSellerOnly}
+                />
               </div>
             </div>
             <div>
@@ -329,7 +326,7 @@ function ProductionDetail() {
             </div>
           </section>
 
-          {p.order_id && (
+          {!isSellerOnly && p.order_id && (
             <ItemMarginsSection
               productionOrderId={p.id}
               orderId={p.order_id}
@@ -337,84 +334,6 @@ function ProductionDetail() {
             />
           )}
 
-          {p.status !== "pendiente" && (
-          <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <h2 className="text-sm font-medium text-muted-foreground">Seguimiento (Drive)</h2>
-              {form.manufacturing_cost && p.order && (() => {
-                const total = Number((p.order as any)?.total) || 0;
-                const cost = Number(form.manufacturing_cost);
-                const m = total > 0 ? ((total - cost) / total) * 100 : null;
-                if (m == null) return null;
-                const cls = m >= 45 ? "text-emerald-600 dark:text-emerald-400"
-                  : m >= 30 ? "text-amber-600 dark:text-amber-400"
-                  : "text-rose-600 dark:text-rose-400";
-                return <span className={`text-xs font-semibold ${cls}`}>Margen: {m.toFixed(1)}%</span>;
-              })()}
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs">Novedad</Label>
-                <Select value={form.novedad} onValueChange={(v) => update("novedad", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {NOVEDADES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Proveedor</Label>
-                <Select value={form.supplier_id || "__none__"} onValueChange={(v) => update("supplier_id", v === "__none__" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Sin proveedor" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin proveedor</SelectItem>
-                    {(suppliers.data ?? []).map((s: any) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Costo fabricación (COP)</Label>
-                <Input type="number" min="0" value={form.manufacturing_cost}
-                  onChange={(e) => update("manufacturing_cost", e.target.value)} placeholder="0" />
-              </div>
-              <div />
-              <div>
-                <Label className="text-xs">Fecha cuenta de cobro</Label>
-                <Input type="date" value={form.invoice_date} onChange={(e) => update("invoice_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Planimetría enviada</Label>
-                <Input type="date" value={form.planimetry_sent_date} onChange={(e) => update("planimetry_sent_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Cotización</Label>
-                <Input type="date" value={form.quotation_date} onChange={(e) => update("quotation_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Inicio producción</Label>
-                <Input type="date" value={form.production_start_date} onChange={(e) => update("production_start_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Entrega prometida proveedor</Label>
-                <Input type="date" value={form.supplier_promised_date} onChange={(e) => update("supplier_promised_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Entrega real proveedor</Label>
-                <Input type="date" value={form.supplier_actual_date} onChange={(e) => update("supplier_actual_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Promesa al cliente</Label>
-                <Input type="date" value={form.client_promised_date} onChange={(e) => update("client_promised_date", e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Entrega real al cliente</Label>
-                <Input type="date" value={form.client_actual_date} onChange={(e) => update("client_actual_date", e.target.value)} />
-              </div>
-            </div>
-          </section>
-          )}
 
           <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
