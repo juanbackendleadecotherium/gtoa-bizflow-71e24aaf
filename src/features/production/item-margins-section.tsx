@@ -80,7 +80,7 @@ export function ItemMarginsSection({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date")
+        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, negotiated_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date")
         .eq("production_order_id", productionOrderId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
