@@ -137,7 +137,6 @@ function PickupRow({ pickup, canManage }: { pickup: Pickup; canManage: boolean }
             {next && (
               <AdvanceStatusButton pickup={pickup} target={next} />
             )}
-            <CancelPickupDialog pickup={pickup} />
           </div>
         )}
       </header>
