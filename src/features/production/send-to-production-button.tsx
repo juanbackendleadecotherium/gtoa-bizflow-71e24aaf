@@ -347,8 +347,13 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
 
   const createNew = useMutation({
     mutationFn: async (selectedItemIds: string[]) => {
+      const { data: brandRow } = await supabase
+        .from("brands").select("slug").eq("id", brandId).maybeSingle();
+      const { ownerForBrandSlug } = await import("./brand-owners");
+      const assigned_to_label = ownerForBrandSlug(brandRow?.slug ?? null);
       const { data: created, error } = await supabase.from("production_orders").insert({
         order_id: orderId, brand_id: brandId, code: "",
+        assigned_to_label,
       } as any).select("id, code").single();
       if (error) throw error;
 
