@@ -111,7 +111,7 @@ function ProductionDetail() {
             due_date: form.due_date || null,
             notes: form.notes || null,
           };
-      const { error } = await supabase.from("production_orders").update(payload).eq("id", id);
+      const { error } = await supabase.from("production_orders").update(payload as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
