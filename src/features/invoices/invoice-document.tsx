@@ -80,17 +80,23 @@ const LINE = "#e2e8f0";
 const SOFT = "#f8fafc";
 const ROW_ALT = "#fbfcfe";
 
+const PAGE_PX = 56; // ~2cm APA-style horizontal margin
+const PAGE_PY_TOP = 48;
+const PAGE_PY_BOTTOM = 130;
+
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 0, paddingBottom: 110, paddingHorizontal: 0,
+    paddingTop: PAGE_PY_TOP,
+    paddingBottom: PAGE_PY_BOTTOM,
+    paddingHorizontal: PAGE_PX,
     fontSize: 9.5, color: INK, fontFamily: "Helvetica",
   },
 
-  /* Accent bar */
-  accent: { height: 6, width: "100%" },
+  /* Accent bar — full-bleed above the page padding */
+  accent: { position: "absolute", top: 0, left: 0, right: 0, height: 6 },
 
   /* Header */
-  headerWrap: { paddingHorizontal: 40, paddingTop: 28, paddingBottom: 18 },
+  headerWrap: { paddingBottom: 18 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   brandCol: { maxWidth: "55%" },
   logoBox: {
@@ -117,7 +123,7 @@ const styles = StyleSheet.create({
   },
 
   /* Party cards */
-  partiesWrap: { paddingHorizontal: 40, marginTop: 4, marginBottom: 14, flexDirection: "row", gap: 12 },
+  partiesWrap: { marginTop: 4, marginBottom: 14, flexDirection: "row", gap: 12 },
   partyCard: {
     flex: 1, padding: 12, borderRadius: 6, backgroundColor: SOFT, borderWidth: 0.5, borderColor: LINE,
   },
@@ -129,7 +135,7 @@ const styles = StyleSheet.create({
   partyLine: { color: SUB, fontSize: 9, lineHeight: 1.45 },
 
   /* Items table */
-  tableWrap: { paddingHorizontal: 40 },
+  tableWrap: {},
   th: { flexDirection: "row", paddingVertical: 8, paddingHorizontal: 6, borderBottomWidth: 1 },
   thText: { fontSize: 7.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" },
   row: {
@@ -148,14 +154,14 @@ const styles = StyleSheet.create({
 
   /* Words bar */
   wordsRow: {
-    marginHorizontal: 40, marginTop: 14, paddingVertical: 10, paddingHorizontal: 12,
+    marginTop: 14, paddingVertical: 10, paddingHorizontal: 12,
     backgroundColor: SOFT, borderLeftWidth: 3, borderRadius: 2,
   },
   wordsLabel: { fontSize: 7.5, color: MUTED, letterSpacing: 1.2, fontWeight: 700, marginBottom: 2 },
   wordsText: { color: INK, fontSize: 10, fontStyle: "italic" },
 
   /* Totals */
-  bottomRow: { flexDirection: "row", paddingHorizontal: 40, marginTop: 16, marginBottom: 24, gap: 16 },
+  bottomRow: { flexDirection: "row", marginTop: 16, marginBottom: 24, gap: 16 },
   notesCol: { flex: 1.1 },
   totalsCol: { flex: 1 },
   notesTitle: { fontSize: 7.5, color: MUTED, fontWeight: 700, letterSpacing: 1.4, marginBottom: 6, textTransform: "uppercase" },
@@ -182,7 +188,7 @@ const styles = StyleSheet.create({
 
   /* Footer */
   footerBlock: {
-    position: "absolute", bottom: 30, left: 40, right: 40,
+    position: "absolute", bottom: 36, left: PAGE_PX, right: PAGE_PX,
     paddingTop: 8, borderTopWidth: 0.5, borderTopColor: LINE,
   },
   footerTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
