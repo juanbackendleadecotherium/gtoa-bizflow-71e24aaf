@@ -120,3 +120,54 @@ export const getSupplierAdvancePaymentForItem = createServerFn({ method: "POST" 
     }
     return { ...payment, receipt_signed_url };
   });
+
+const ConfirmFinalInput = z.object({
+  orderItemId: z.string().uuid(),
+  amount: z.number().positive(),
+  paidAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  reference: z.string().optional().nullable(),
+});
+
+export const confirmSupplierFinalPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => ConfirmFinalInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("confirm_supplier_final_payment", {
+      _item_id: data.orderItemId,
+      _amount: data.amount,
+      _paid_at: data.paidAt ?? new Date().toISOString().slice(0, 10),
+      _reference: data.reference ?? undefined,
+    });
+    if (error) throw error;
+    return { ok: true };
+  });
+
+const FinalPaymentMetaInput = z.object({ orderItemId: z.string().uuid() });
+
+export const getFinalPaymentMeta = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => FinalPaymentMetaInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const { data: item, error } = await context.supabase
+      .from("order_items")
+      .select("id, description, manufacturing_cost, negotiated_cost, supplier_id, quantity, unit_price")
+      .eq("id", data.orderItemId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!item) return null;
+    const { data: pays } = await context.supabase
+      .from("order_item_supplier_payments")
+      .select("amount, payment_type, supplier_name_snapshot")
+      .eq("order_item_id", data.orderItemId);
+    const advance = (pays ?? []).find((p: any) => p.payment_type === "advance");
+    const final = (pays ?? []).find((p: any) => p.payment_type === "final");
+    const cost = Number(item.negotiated_cost ?? item.manufacturing_cost ?? 0);
+    const paid = Number(advance?.amount ?? 0);
+    return {
+      supplierName: advance?.supplier_name_snapshot ?? null,
+      totalCost: cost,
+      paid,
+      remaining: Math.max(cost - paid, 0),
+      finalPaid: !!final,
+    };
+  });

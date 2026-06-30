@@ -184,3 +184,23 @@ export const getInvoiceSchedulingStatus = createServerFn({ method: "GET" })
       scheduledAt: order.scheduled_logistics_at as string | null,
     };
   });
+
+export const setAvailabilityBulk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      dates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1).max(366),
+      available: z.boolean(),
+      note: z.string().optional().nullable(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertLogisticsOrAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase.rpc("set_logistics_availability_bulk", {
+      _dates: data.dates,
+      _available: data.available,
+      _note: data.note ?? undefined,
+    });
+    if (error) throw error;
+    return { ok: true, count: data.dates.length };
+  });

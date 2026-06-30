@@ -9,9 +9,10 @@ import {
 import { toast } from "sonner";
 
 import {
-  listPickupOrders, updatePickupBasics, assignDriver, updatePickupStatus,
+  listPickupOrders, updatePickupBasics, assignDriver, updatePickupStatus, bulkAssignDriver,
 } from "@/lib/pickup-orders.functions";
 import { listDrivers } from "@/lib/drivers.functions";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,20 @@ export function PickupTable({
     [rows],
   );
 
+  const selectableRows = rows.filter((r: any) => !["entregada", "cancelada"].includes(r.status));
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const allSelected = canManage && selectableRows.length > 0 && selectableRows.every((r: any) => selected.has(r.id));
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(selectableRows.map((r: any) => r.id)));
+  };
+  const toggleOne = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
   return (
     <div className="space-y-3">
       {statuses.includes("entregada") && (
@@ -73,6 +88,21 @@ export function PickupTable({
         </div>
       )}
 
+      {canManage && selectableRows.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-3">
+          <label className="text-xs inline-flex items-center gap-2">
+            <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+            Seleccionar todas ({selectableRows.length})
+          </label>
+          {selected.size > 0 && (
+            <BulkAssignBar
+              selectedIds={Array.from(selected)}
+              onDone={() => setSelected(new Set())}
+            />
+          )}
+        </div>
+      )}
+
       {q.isLoading ? (
         <div className="p-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin" /></div>
       ) : rows.length === 0 ? (
@@ -81,16 +111,118 @@ export function PickupTable({
         </div>
       ) : (
         <div className="space-y-2">
-          {rows.map((p: Pickup) => (
-            <PickupRow key={p.id} pickup={p} canManage={canManage} />
-          ))}
+          {rows.map((p: Pickup) => {
+            const isSelectable = canManage && !["entregada", "cancelada"].includes(p.status);
+            return (
+              <PickupRow
+                key={p.id}
+                pickup={p}
+                canManage={canManage}
+                selectable={isSelectable}
+                selected={selected.has(p.id)}
+                onToggle={() => toggleOne(p.id)}
+              />
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
 
-function PickupRow({ pickup, canManage }: { pickup: Pickup; canManage: boolean }) {
+function BulkAssignBar({ selectedIds, onDone }: { selectedIds: string[]; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [driverId, setDriverId] = useState("");
+  const [destination, setDestination] = useState<"" | "bodega" | "cliente">("");
+  const driversFn = useServerFn(listDrivers);
+  const bulkFn = useServerFn(bulkAssignDriver);
+  const qc = useQueryClient();
+  const dQ = useQuery({ queryKey: ["drivers"], queryFn: () => driversFn(), enabled: open });
+  const mut = useMutation({
+    mutationFn: () =>
+      bulkFn({
+        data: {
+          pickupIds: selectedIds,
+          driverId,
+          destination: destination || undefined,
+        },
+      }),
+    onSuccess: (r: any) => {
+      toast.success(`${r.count} recogidas asignadas`);
+      qc.invalidateQueries({ queryKey: ["pickup-orders"] });
+      qc.invalidateQueries({ queryKey: ["drivers"] });
+      setOpen(false);
+      onDone();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Error"),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          Asignar conductor a {selectedIds.length} {selectedIds.length === 1 ? "recogida" : "recogidas"}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Asignación múltiple</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>Destino (se aplica a todas)</Label>
+            <Select value={destination} onValueChange={(v: any) => setDestination(v)}>
+              <SelectTrigger><SelectValue placeholder="Conservar destino actual" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bodega">Bodega</SelectItem>
+                <SelectItem value="cliente">Directamente a cliente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Conductor</Label>
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {(dQ.data ?? []).filter((d: any) => d.active).map((d: any) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setDriverId(d.id)}
+                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                    driverId === d.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-sm">{d.full_name}</span>
+                    <Badge variant="outline" className="text-[10px] capitalize">
+                      {String(d.availability).replace("_", " ")}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {d.vehicle_label ?? "—"} · {d.vehicle_type}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button onClick={() => mut.mutate()} disabled={!driverId || mut.isPending}>
+            {mut.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Asignar a {selectedIds.length}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PickupRow({
+  pickup, canManage, selectable, selected, onToggle,
+}: {
+  pickup: Pickup; canManage: boolean;
+  selectable?: boolean; selected?: boolean; onToggle?: () => void;
+}) {
   const meta = STATUS_META[pickup.status];
   const Icon = meta?.icon ?? AlertCircle;
   const next = NEXT_STATUS[pickup.status];
@@ -101,7 +233,15 @@ function PickupRow({ pickup, canManage }: { pickup: Pickup; canManage: boolean }
   return (
     <article className="rounded-xl border border-border bg-surface p-4 space-y-3">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1 min-w-0">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          {selectable && (
+            <Checkbox
+              className="mt-1"
+              checked={!!selected}
+              onCheckedChange={() => onToggle?.()}
+            />
+          )}
+          <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2">
             <span
               className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${meta?.tone}`}
@@ -129,6 +269,7 @@ function PickupRow({ pickup, canManage }: { pickup: Pickup; canManage: boolean }
           </div>
           <h3 className="text-sm font-semibold truncate">{pickup.product_description_snapshot}</h3>
           <p className="text-xs text-muted-foreground">Cliente: {order.customer_name ?? "—"}</p>
+          </div>
         </div>
         {canManage && pickup.status !== "entregada" && pickup.status !== "cancelada" && (
           <div className="flex flex-wrap items-center gap-2">

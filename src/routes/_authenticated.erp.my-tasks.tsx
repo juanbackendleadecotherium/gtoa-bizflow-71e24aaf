@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { computeDeadlineState } from "@/features/seller-tasks/planimetry-deadline";
+import { SupplierFinalPaymentCard } from "@/features/seller-tasks/supplier-final-payment-card";
 
 export const Route = createFileRoute("/_authenticated/erp/my-tasks")({
   head: () => ({ meta: [{ title: "Mis tareas — Grupo Getova" }] }),
@@ -25,6 +26,7 @@ type Task = {
   resolved_at: string | null;
   order_id: string | null;
   production_order_id: string | null;
+  order_item_id: string | null;
   brand_id: string;
   planimetry_due_at: string | null;
 };
@@ -41,7 +43,7 @@ function MyTasks() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("seller_tasks")
-        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, brand_id, planimetry_due_at")
+        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, order_item_id, brand_id, planimetry_due_at")
         .eq("seller_id", userId!)
         .eq("status", tab)
         .order("created_at", { ascending: false });
@@ -103,6 +105,18 @@ function MyTasks() {
           ) : (
             <ul className="space-y-2">
               {tasks.map((t) => {
+                if (t.type === "confirm_supplier_final_payment" && t.order_item_id && t.status === "pendiente") {
+                  return (
+                    <li key={t.id}>
+                      <SupplierFinalPaymentCard
+                        taskId={t.id}
+                        orderItemId={t.order_item_id}
+                        title={t.title}
+                        reason={t.reason}
+                      />
+                    </li>
+                  );
+                }
                 const isCollection = t.type === "invoice_ready_for_collection";
                 const isInfo = isCollection || t.severity === "info" || t.type === "production_started";
                 const isPlanimetry = t.type === "upload_planimetry";

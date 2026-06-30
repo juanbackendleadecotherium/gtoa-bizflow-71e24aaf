@@ -187,3 +187,63 @@ export const updatePickupStatus = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+const BulkAssignInput = z.object({
+  pickupIds: z.array(z.string().uuid()).min(1).max(50),
+  driverId: z.string().uuid(),
+  destination: z.enum(["bodega", "cliente"]).optional(),
+  destinationWarehouseId: z.string().uuid().optional().nullable(),
+});
+
+export const bulkAssignDriver = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => BulkAssignInput.parse(d))
+  .handler(async ({ data, context }) => {
+    await assertLogisticsRole(context.supabase, context.userId);
+
+    const { data: drv, error: dErr } = await context.supabase
+      .from("drivers").select("id, active").eq("id", data.driverId).single();
+    if (dErr) throw dErr;
+    if (!drv.active) throw new Error("Conductor inactivo");
+
+    const { data: picks, error: pErr } = await context.supabase
+      .from("pickup_orders")
+      .select("id, status, driver_id")
+      .in("id", data.pickupIds);
+    if (pErr) throw pErr;
+
+    const valid = (picks ?? []).filter((p: any) => !["entregada", "cancelada"].includes(p.status));
+    if (valid.length === 0) throw new Error("No hay recogidas válidas para asignar");
+
+    // Free previous drivers
+    const prevDriverIds = Array.from(new Set(
+      valid.map((p: any) => p.driver_id).filter((id: any) => id && id !== data.driverId),
+    ));
+    if (prevDriverIds.length) {
+      await context.supabase.from("drivers")
+        .update({ availability: "disponible" })
+        .in("id", prevDriverIds);
+    }
+
+    const patch: any = {
+      driver_id: data.driverId,
+      status: "asignada",
+      assigned_at: new Date().toISOString(),
+    };
+    if (data.destination) patch.destination = data.destination;
+    if (data.destination === "bodega" && data.destinationWarehouseId) {
+      patch.destination_warehouse_id = data.destinationWarehouseId;
+    }
+    if (data.destination === "cliente") patch.destination_warehouse_id = null;
+
+    const ids = valid.map((p: any) => p.id);
+    const { error: uErr } = await context.supabase
+      .from("pickup_orders").update(patch).in("id", ids);
+    if (uErr) throw uErr;
+
+    await context.supabase.from("drivers")
+      .update({ availability: "en_ruta" })
+      .eq("id", data.driverId);
+
+    return { ok: true, count: ids.length };
+  });
