@@ -2096,6 +2096,10 @@ export type Database = {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
       }
+      cancel_production_with_reason: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
       delete_order_with_reason: {
         Args: { p_order_id: string; p_reason: string }
         Returns: undefined
@@ -2150,6 +2154,10 @@ export type Database = {
       start_real_production: {
         Args: { p_item_id: string; p_started_at?: string }
         Returns: undefined
+      }
+      subtract_business_days: {
+        Args: { _from: string; _n: number }
+        Returns: string
       }
       sum_external_logistics_cost: {
         Args: { _brand_id?: string; _from: string; _to: string }

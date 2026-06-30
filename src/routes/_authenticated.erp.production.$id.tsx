@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, Save, Trash2, History, ExternalLink, ShieldAlert, RefreshCw, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, History, ExternalLink, ShieldAlert, RefreshCw, Check, XCircle } from "lucide-react";
 import { generatePlanimetryForOrder } from "@/features/production/send-to-production-button";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
@@ -114,6 +114,7 @@ function ProductionDetail() {
 
   const [delOpen, setDelOpen] = useState(false);
   const [rejOpen, setRejOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const remove = useMutation({
     mutationFn: async (reason: string) => {
@@ -156,6 +157,24 @@ function ProductionDetail() {
       qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
       qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
       qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
+  const cancelOrder = useMutation({
+    mutationFn: async (reason: string) => {
+      const { error } = await supabase.rpc("cancel_production_with_reason", { p_id: id, p_reason: reason });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Orden cancelada — los productos quedan liberados para reenviarse");
+      setCancelOpen(false);
+      qc.invalidateQueries({ queryKey: ["production-order", id] });
+      qc.invalidateQueries({ queryKey: ["production-audit", id] });
+      qc.invalidateQueries({ queryKey: ["production-orders"] });
+      qc.invalidateQueries({ queryKey: ["production-by-order"] });
+      qc.invalidateQueries({ queryKey: ["order-items-for-production"] });
+      if (prod.data?.order_id) navigate({ to: "/erp/orders/$id", params: { id: prod.data.order_id } });
     },
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
@@ -240,6 +259,11 @@ function ProductionDetail() {
               <ShieldAlert className="h-4 w-4" /> Rechazar
             </Button>
           )}
+          {p.status === "pendiente" && (
+            <Button variant="outline" size="sm" onClick={() => setCancelOpen(true)} className="gap-1 border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-500/10">
+              <XCircle className="h-4 w-4" /> Cancelar orden
+            </Button>
+          )}
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => setDelOpen(true)} className="text-destructive gap-1">
               <Trash2 className="h-4 w-4" /> Eliminar
@@ -269,6 +293,15 @@ function ProductionDetail() {
         confirmLabel="Rechazar"
         pending={reject.isPending}
         onConfirm={(r) => reject.mutate(r)}
+      />
+      <ReasonDialog
+        open={cancelOpen} onOpenChange={setCancelOpen}
+        title="Cancelar orden de producción"
+        description="Sólo puedes cancelar mientras la orden esté en estado Pendiente. Al cancelar, los productos quedan liberados para volver a enviarse desde la venta. Si producción ya aceptó la orden, comunícate con ellos por WhatsApp."
+        confirmLabel="Cancelar orden"
+        confirmVariant="destructive"
+        pending={cancelOrder.isPending}
+        onConfirm={(r) => cancelOrder.mutate(r)}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -312,6 +345,11 @@ function ProductionDetail() {
               <Label className="text-xs">Notas internas</Label>
               <Textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} placeholder="Especificaciones, materiales, observaciones…" />
             </div>
+            {isSellerOnly && p.status !== "pendiente" && p.status !== "cancelado" && p.status !== "rechazada" && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-[12px] text-amber-900 dark:text-amber-200">
+                Esta orden ya fue aceptada por producción. Para cualquier modificación o cancelación, comunícate directamente con producción por WhatsApp.
+              </div>
+            )}
           </section>
 
           {!isSellerOnly && p.order_id && (

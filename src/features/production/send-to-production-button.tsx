@@ -322,12 +322,17 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
     return m;
   }, [list.data]);
 
-  // Only block items without planimetry. Items already in another production
-  // order can still be re-sent — se crea una nueva orden que reemplaza el
-  // envío previo, sin requerir rechazo manual.
+  // Bloquea ítems sin planimetría y también los que ya están vinculados a una
+  // orden de producción activa. Para liberar un ítem ya enviado, el vendedor
+  // debe cancelar la orden de producción correspondiente (sólo posible mientras
+  // esté en estado "Pendiente", antes de que producción la acepte).
   const getItemLock = (it: ItemRow): { disabled: boolean; reason?: string } => {
     if ((it.planimetry_files?.length ?? 0) === 0) {
       return { disabled: true, reason: "Sin planimetría" };
+    }
+    if (it.production_order_id) {
+      const code = codeById.get(it.production_order_id);
+      return { disabled: true, reason: code ? `Ya en producción · ${code}` : "Ya en producción" };
     }
     return { disabled: false };
   };
@@ -502,7 +507,7 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
             <>
               {existing.length > 0 && (
                 <p className="text-[11px] text-muted-foreground rounded-lg border border-border bg-muted/30 p-2.5">
-                  Se creará una <span className="font-medium text-foreground">nueva orden de producción</span> con los productos que elijas. Si re-envías un producto que ya estaba en otra orden, la nueva orden la reemplaza — no necesitas rechazar nada manualmente.
+                  Se creará una <span className="font-medium text-foreground">nueva orden de producción</span> con los productos que elijas. Los productos que ya están en otra orden aparecen bloqueados — para reenviarlos, el vendedor primero debe cancelar esa orden (sólo mientras siga en estado <span className="font-medium">Pendiente</span>).
                 </p>
               )}
 
