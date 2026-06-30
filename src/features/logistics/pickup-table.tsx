@@ -9,9 +9,10 @@ import {
 import { toast } from "sonner";
 
 import {
-  listPickupOrders, updatePickupBasics, assignDriver, updatePickupStatus,
+  listPickupOrders, updatePickupBasics, assignDriver, updatePickupStatus, bulkAssignDriver,
 } from "@/lib/pickup-orders.functions";
 import { listDrivers } from "@/lib/drivers.functions";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
