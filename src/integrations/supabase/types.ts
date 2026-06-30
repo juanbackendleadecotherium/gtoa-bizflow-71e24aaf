@@ -574,6 +574,7 @@ export type Database = {
           order_id: string
           order_item_id: string
           paid_at: string
+          payment_type: string
           production_order_id: string | null
           receipt_mime: string | null
           receipt_path: string | null
@@ -592,6 +593,7 @@ export type Database = {
           order_id: string
           order_item_id: string
           paid_at: string
+          payment_type?: string
           production_order_id?: string | null
           receipt_mime?: string | null
           receipt_path?: string | null
@@ -610,6 +612,7 @@ export type Database = {
           order_id?: string
           order_item_id?: string
           paid_at?: string
+          payment_type?: string
           production_order_id?: string | null
           receipt_mime?: string | null
           receipt_path?: string | null
@@ -643,7 +646,7 @@ export type Database = {
           {
             foreignKeyName: "order_item_supplier_payments_order_item_id_fkey"
             columns: ["order_item_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "order_items"
             referencedColumns: ["id"]
           },
@@ -2100,6 +2103,15 @@ export type Database = {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
+      confirm_supplier_final_payment: {
+        Args: {
+          _amount: number
+          _item_id: string
+          _paid_at?: string
+          _reference?: string
+        }
+        Returns: string
+      }
       delete_order_with_reason: {
         Args: { p_order_id: string; p_reason: string }
         Returns: undefined
@@ -2150,6 +2162,10 @@ export type Database = {
       reject_production_with_reason: {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
+      }
+      set_logistics_availability_bulk: {
+        Args: { _available: boolean; _dates: string[]; _note?: string }
+        Returns: number
       }
       start_real_production: {
         Args: { p_item_id: string; p_started_at?: string }
