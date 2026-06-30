@@ -136,7 +136,7 @@ export const confirmSupplierFinalPayment = createServerFn({ method: "POST" })
       _item_id: data.orderItemId,
       _amount: data.amount,
       _paid_at: data.paidAt ?? new Date().toISOString().slice(0, 10),
-      _reference: data.reference ?? null,
+      _reference: data.reference ?? undefined,
     });
     if (error) throw error;
     return { ok: true };

@@ -199,7 +199,7 @@ export const setAvailabilityBulk = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("set_logistics_availability_bulk", {
       _dates: data.dates,
       _available: data.available,
-      _note: data.note ?? null,
+      _note: data.note ?? undefined,
     });
     if (error) throw error;
     return { ok: true, count: data.dates.length };
