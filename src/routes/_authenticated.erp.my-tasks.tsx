@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { computeDeadlineState } from "@/features/seller-tasks/planimetry-deadline";
+import { SupplierFinalPaymentCard } from "@/features/seller-tasks/supplier-final-payment-card";
 
 export const Route = createFileRoute("/_authenticated/erp/my-tasks")({
   head: () => ({ meta: [{ title: "Mis tareas — Grupo Getova" }] }),
