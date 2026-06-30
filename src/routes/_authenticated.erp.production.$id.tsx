@@ -161,6 +161,24 @@ function ProductionDetail() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const cancelOrder = useMutation({
+    mutationFn: async (reason: string) => {
+      const { error } = await supabase.rpc("cancel_production_with_reason", { p_id: id, p_reason: reason });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Orden cancelada — los productos quedan liberados para reenviarse");
+      setCancelOpen(false);
+      qc.invalidateQueries({ queryKey: ["production-order", id] });
+      qc.invalidateQueries({ queryKey: ["production-audit", id] });
+      qc.invalidateQueries({ queryKey: ["production-orders"] });
+      qc.invalidateQueries({ queryKey: ["production-by-order"] });
+      qc.invalidateQueries({ queryKey: ["order-items-for-production"] });
+      if (prod.data?.order_id) navigate({ to: "/erp/orders/$id", params: { id: prod.data.order_id } });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
   const regen = useMutation({
     mutationFn: async () => {
       if (!prod.data?.order_id) throw new Error("Esta orden no está vinculada a una venta");
