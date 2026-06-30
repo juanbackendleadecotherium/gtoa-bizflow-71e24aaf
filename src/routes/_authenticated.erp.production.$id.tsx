@@ -294,6 +294,15 @@ function ProductionDetail() {
         pending={reject.isPending}
         onConfirm={(r) => reject.mutate(r)}
       />
+      <ReasonDialog
+        open={cancelOpen} onOpenChange={setCancelOpen}
+        title="Cancelar orden de producción"
+        description="Sólo puedes cancelar mientras la orden esté en estado Pendiente. Al cancelar, los productos quedan liberados para volver a enviarse desde la venta. Si producción ya aceptó la orden, comunícate con ellos por WhatsApp."
+        confirmLabel="Cancelar orden"
+        confirmVariant="destructive"
+        pending={cancelOrder.isPending}
+        onConfirm={(r) => cancelOrder.mutate(r)}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
