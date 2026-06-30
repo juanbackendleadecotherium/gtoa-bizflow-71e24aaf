@@ -258,6 +258,24 @@ export function InvoicePanel({ order }: { order: Order }) {
       });
       if (vErr) throw vErr;
 
+      // Hito de "Cuenta de cobro" en la orden: se guarda en la PRIMERA emisión
+      // y no se sobrescribe en regeneraciones.
+      const isFirstIssue = !existingRes.data;
+      if (isFirstIssue) {
+        const today = new Date().toISOString().slice(0, 10);
+        await supabase
+          .from("orders")
+          .update({ invoice_date: today } as any)
+          .eq("id", order.id);
+        // Propagar a las órdenes de producción ligadas, para que el hito aparezca
+        // también en el tablero de seguimiento.
+        await supabase
+          .from("production_orders")
+          .update({ invoice_date: today } as any)
+          .eq("order_id", order.id)
+          .is("invoice_date", null);
+      }
+
       const { data: signed } = await supabase.storage.from("invoices").createSignedUrl(path, 60 * 10);
       if (signed?.signedUrl) window.open(signed.signedUrl, "_blank", "noopener");
 
