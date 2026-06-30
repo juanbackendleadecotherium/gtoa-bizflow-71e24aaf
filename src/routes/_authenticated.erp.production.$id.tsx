@@ -259,6 +259,11 @@ function ProductionDetail() {
               <ShieldAlert className="h-4 w-4" /> Rechazar
             </Button>
           )}
+          {p.status === "pendiente" && (
+            <Button variant="outline" size="sm" onClick={() => setCancelOpen(true)} className="gap-1 border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-500/10">
+              <XCircle className="h-4 w-4" /> Cancelar orden
+            </Button>
+          )}
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => setDelOpen(true)} className="text-destructive gap-1">
               <Trash2 className="h-4 w-4" /> Eliminar
