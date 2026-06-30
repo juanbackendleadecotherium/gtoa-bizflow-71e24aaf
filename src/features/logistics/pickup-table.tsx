@@ -233,7 +233,15 @@ function PickupRow({
   return (
     <article className="rounded-xl border border-border bg-surface p-4 space-y-3">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1 min-w-0">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          {selectable && (
+            <Checkbox
+              className="mt-1"
+              checked={!!selected}
+              onCheckedChange={() => onToggle?.()}
+            />
+          )}
+          <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2">
             <span
               className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${meta?.tone}`}
