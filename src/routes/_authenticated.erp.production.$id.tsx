@@ -345,6 +345,11 @@ function ProductionDetail() {
               <Label className="text-xs">Notas internas</Label>
               <Textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} placeholder="Especificaciones, materiales, observaciones…" />
             </div>
+            {isSellerOnly && p.status !== "pendiente" && p.status !== "cancelado" && p.status !== "rechazada" && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-[12px] text-amber-900 dark:text-amber-200">
+                Esta orden ya fue aceptada por producción. Para cualquier modificación o cancelación, comunícate directamente con producción por WhatsApp.
+              </div>
+            )}
           </section>
 
           {!isSellerOnly && p.order_id && (
