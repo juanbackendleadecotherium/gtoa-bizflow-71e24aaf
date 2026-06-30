@@ -26,6 +26,7 @@ type Task = {
   resolved_at: string | null;
   order_id: string | null;
   production_order_id: string | null;
+  order_item_id: string | null;
   brand_id: string;
   planimetry_due_at: string | null;
 };
