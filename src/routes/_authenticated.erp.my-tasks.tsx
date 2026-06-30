@@ -105,6 +105,18 @@ function MyTasks() {
           ) : (
             <ul className="space-y-2">
               {tasks.map((t) => {
+                if (t.type === "confirm_supplier_final_payment" && t.order_item_id && t.status === "pendiente") {
+                  return (
+                    <li key={t.id}>
+                      <SupplierFinalPaymentCard
+                        taskId={t.id}
+                        orderItemId={t.order_item_id}
+                        title={t.title}
+                        reason={t.reason}
+                      />
+                    </li>
+                  );
+                }
                 const isCollection = t.type === "invoice_ready_for_collection";
                 const isInfo = isCollection || t.severity === "info" || t.type === "production_started";
                 const isPlanimetry = t.type === "upload_planimetry";
