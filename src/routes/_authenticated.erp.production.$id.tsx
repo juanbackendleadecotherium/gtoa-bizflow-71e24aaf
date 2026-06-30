@@ -114,6 +114,7 @@ function ProductionDetail() {
 
   const [delOpen, setDelOpen] = useState(false);
   const [rejOpen, setRejOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const remove = useMutation({
     mutationFn: async (reason: string) => {
