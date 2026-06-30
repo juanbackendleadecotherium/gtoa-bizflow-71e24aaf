@@ -269,6 +269,7 @@ function PickupRow({
           </div>
           <h3 className="text-sm font-semibold truncate">{pickup.product_description_snapshot}</h3>
           <p className="text-xs text-muted-foreground">Cliente: {order.customer_name ?? "—"}</p>
+          </div>
         </div>
         {canManage && pickup.status !== "entregada" && pickup.status !== "cancelada" && (
           <div className="flex flex-wrap items-center gap-2">
