@@ -1,58 +1,53 @@
-## 1. Bloquear productos ya enviados a producción
+# Mejoras: Producción + Logística
 
-**Diálogo "Enviar a producción" (`src/features/production/send-to-production-button.tsx`)**
+## 1) Notificación de pago restante al proveedor (al marcar terminado)
 
-- Cambiar `getItemLock`: si `it.production_order_id` está definido, devolver `{ disabled: true, reason: "Ya en producción <CODE>" }`. Mantener el bloqueo actual por falta de planimetría.
-- Eliminar el flujo de "Re-envío" (mensaje "la nueva orden la reemplaza" y mutación `regenerate` desde aquí pierden sentido a nivel del diálogo). Los productos en una orden existente solo se pueden reincorporar después de cancelar esa orden.
+Cuando un `order_item` se marca como terminado:
 
-**Cancelación por el vendedor (`src/routes/_authenticated.erp.production.$id.tsx`)**
+- Crear una `seller_task` (reutilizamos esa tabla cambiando el `role` destino) tipo `confirm_supplier_final_payment` dirigida al usuario encargado de pagos. Como hoy no hay un rol "pagos", la asignamos a usuarios con rol `admin` + a quien hizo el primer pago del 50% en `order_item_supplier_payments` (auditor del pago). Si quieres, agregamos un rol `finanzas` (te lo confirmo abajo en preguntas).
+- La tarea incluye: ítem, proveedor, monto total acordado, monto ya pagado (advance), **monto restante** (calculado), y dos botones:
+  - **Sí, ya pagué** → registra un nuevo renglón en `order_item_supplier_payments` con `payment_type='final'` y marca la tarea como `done`.
+  - **No, aún no** → mantiene la tarea pendiente (no la oculta).
+- Se muestra en `/erp/my-tasks` con su propia tarjeta (sección "Pagos finales a proveedor") con el monto restante en grande.
 
-- Añadir botón **"Cancelar orden"** visible para el vendedor (rol `ventas`, también admin), pero **solo cuando `status === "pendiente"`** (antes de que producción la acepte). Si ya está en `en_proceso` o posterior, mostrar nota fija: *"Esta orden ya fue aceptada por producción. Para cancelarla, comunícate por WhatsApp con producción."*
-- Al confirmar la cancelación (modal de razón reusando `ReasonDialog`):
-  - Llamar nueva función `cancel_production_with_reason(p_id, p_reason)` (SECURITY DEFINER) que:
-    - Verifica que la orden está en `pendiente`.
-    - `UPDATE order_items SET production_order_id = NULL WHERE production_order_id = p_id` → libera los productos para que vuelvan a aparecer como "Nuevo".
-    - Marca la orden como `cancelada` (nuevo valor en `PRODUCTION_STATUSES`) o la borra vía `production_deletions` con motivo. Preferencia: marcar `status='cancelada'` para conservar bitácora.
-    - Registra evento en `production_audit_log` con `auth.uid()` / email.
-- Agregar `cancelada` a `production-meta.ts` con color gris y excluirla de los listados activos del módulo de producción (revisar `_authenticated.erp.production.index.tsx` y `tracking.tsx`).
+SQL:
+- Trigger `notify_final_supplier_payment_on_finish` sobre `order_items` cuando `finished_at` pasa de null → fecha.
+- Migración añade columna `payment_type` (`advance` | `final`) a `order_item_supplier_payments` (default `advance` para data actual).
+- RPC `confirm_final_supplier_payment(_item_id, _amount, _account, _ref)`.
 
-## 2. Hitos automáticos
+## 2) Aviso al vendedor cuando su producto queda terminado
 
-Tabla `orders` ya tiene `invoice_date`, `planimetry_sent_date`, `client_promised_date`. `order_items` ya tiene `supplier_promised_date`. No requiere cambios de esquema, solo automatizaciones.
+- Mismo trigger crea una `seller_task` tipo `item_finished_notify` para `orders.seller_user_id` con texto: "Tu producto X de la factura Y ya fue terminado por producción. Puedes informar al cliente."
+- Aparece como notificación tipo "info" (no bloquea nada), se marca como leída con un solo botón "Entendido".
 
-**Cuenta de cobro → `orders.invoice_date`**
+## 3) Asignación múltiple de productos a un conductor (logística)
 
-- En `src/features/invoices/invoice-panel.tsx` (`issueMutation`), después del insert/update del `invoices`, hacer `supabase.from("orders").update({ invoice_date: <hoy ISO date> }).eq("id", order.id)` **solo si `invoice_date` aún es null** (no sobrescribir la fecha de la primera emisión cuando se regeneren versiones).
+En `pickup-table.tsx` (tab Activas):
+- Añadir checkbox de selección por fila + checkbox "seleccionar todas".
+- Barra de acciones flotante cuando hay ≥1 seleccionado: botón **Asignar conductor** y selector **Destino** (Bodega / Cliente) aplicado en lote.
+- Nuevo server fn `bulkAssignDriver({ pickupIds, driverId, destination, destinationWarehouseId? })` que itera (reusa lógica de `assignDriver` y `updatePickupBasics`).
+- Solo permite seleccionar pickups en estado `pendiente` o `asignada` (las demás se deshabilitan).
 
-**Planimetría aceptada → `orders.planimetry_sent_date`**
+## 4) Disponibilidad logística: rango y arrastre
 
-- En la mutación `accept` de `_authenticated.erp.production.$id.tsx` (que cambia `status` a `en_proceso`), además actualizar `orders.planimetry_sent_date = today` para `p.order_id`, **solo si está null**.
-- Alternativa más robusta: trigger en `production_orders` `AFTER UPDATE` que cuando `OLD.status='pendiente' AND NEW.status='en_proceso'` setea `planimetry_sent_date` en la orden vinculada si está vacío. Se hará como trigger para cubrir cualquier vía (incluida la regeneración futura).
+En `availability-calendar.tsx`:
+- Reemplazar `Calendar mode="single"` por `mode="multiple"` + soporte de **rango por shift+click** y **arrastre del mouse** (mousedown sobre día → mousemove marca el set temporal → mouseup abre diálogo de confirmación).
+- Diálogo de confirmación muestra "N días seleccionados", botones **Marcar disponibles** / **Marcar no disponibles** + nota opcional aplicada a todos.
+- Server fn nueva `setAvailabilityBulk({ dates: string[], available: boolean, note? })` que hace upsert en `logistics_availability`.
+- Se respetan los días ya marcados (sobrescribe).
 
-**Entrega prometida al cliente → `order_items.supplier_promised_date` (−3 días hábiles)**
+## Archivos a tocar
 
-- Crear trigger en `orders` `AFTER UPDATE OF client_promised_date`: si cambia, calcular `client_promised_date − 3 business days` (usar función SQL equivalente a `subtractBusinessDays`, o un trigger en plpgsql con tabla de festivos como la del front; alternativa práctica: trigger que setea cada item solo si su `supplier_promised_date` está null, y delegar el cálculo a un helper en `src/lib/business-days.ts` invocado desde el handler que edita la fecha en `production.tracking.tsx`).
-- Implementación elegida (más simple y consistente con el helper existente): en `_authenticated.erp.production.tracking.tsx`, cuando `onPatch({ client_promised_date })` se ejecute a nivel orden, después del update propagar el `supplier_promised_date = subtractBusinessDays(client_promised_date, 3)` a todos los `order_items` de esa orden cuyo `supplier_promised_date` esté null o difiera. Misma lógica al editar el campo a nivel de item individual queda intacta (override manual).
+- `supabase/migrations/*` — trigger, columna `payment_type`, RPCs.
+- `src/lib/supplier-advance-payments.functions.ts` — `confirmFinalSupplierPayment`.
+- `src/lib/pickup-orders.functions.ts` — `bulkAssignDriver`.
+- `src/lib/logistics-scheduling.functions.ts` — `setAvailabilityBulk`.
+- `src/features/logistics/pickup-table.tsx` — selección múltiple + barra de acciones.
+- `src/features/logistics/availability-calendar.tsx` — drag/range.
+- `src/features/seller-tasks/seller-tasks-panel.tsx` — render de las dos nuevas tareas.
+- `src/routes/_authenticated.erp.my-tasks.tsx` — sección "Pagos finales".
 
-**Entrega real**
+## Preguntas rápidas antes de implementar
 
-- Se deja editable manualmente por producción (sin automatización), tal como pediste.
-
-## 3. Detalles técnicos
-
-- Migración:
-  1. Agregar `cancelada` como valor permitido (el campo `status` es texto libre hoy, basta con sumarlo a `PRODUCTION_STATUSES`).
-  2. Crear `public.cancel_production_with_reason(p_id uuid, p_reason text) RETURNS void` SECURITY DEFINER, con verificación de pertenencia a la marca y status pendiente.
-  3. Crear trigger `set_planimetry_sent_date_on_accept` sobre `production_orders`.
-- Frontend:
-  - `send-to-production-button.tsx`: lock por `production_order_id`, badge "Ya en producción", quitar selector de orden destino.
-  - `production/$id.tsx`: botón Cancelar (pendiente), texto fijo cuando ya aceptada, llamada a la RPC.
-  - `invoice-panel.tsx`: setear `invoice_date` en la primera emisión.
-  - `production.tracking.tsx`: tras `onPatch` de `client_promised_date`, propagar `supplier_promised_date` a items.
-  - `production-meta.ts`: agregar `cancelada`.
-- Bitácora: todos los cambios pasan por triggers existentes (`log_production_changes`, `log_order_changes`) — no requiere trabajo adicional.
-
-## 4. Fuera de alcance (confirmar si quieres incluir)
-
-- Automatizar `client_actual_date` (lo dejaste explícitamente para después).
-- Notificación push/email al vendedor cuando producción acepta (hoy ya se invalida la UI; se puede sumar luego).
+1. **¿A quién va la notificación de pago final?** Opciones: (a) a todos los `admin`, (b) creamos rol nuevo `finanzas` y se la mostramos solo a ellos, (c) al usuario que registró el pago del 50% inicial. Mi default si no respondes: **(a) admins + (c) quien registró el anticipo**.
+2. **Aviso al vendedor:** ¿basta una tarea informativa en su bandeja, o también quieres email/WhatsApp? Default: **solo bandeja**.
