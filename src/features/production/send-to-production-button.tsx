@@ -322,12 +322,17 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
     return m;
   }, [list.data]);
 
-  // Only block items without planimetry. Items already in another production
-  // order can still be re-sent — se crea una nueva orden que reemplaza el
-  // envío previo, sin requerir rechazo manual.
+  // Bloquea ítems sin planimetría y también los que ya están vinculados a una
+  // orden de producción activa. Para liberar un ítem ya enviado, el vendedor
+  // debe cancelar la orden de producción correspondiente (sólo posible mientras
+  // esté en estado "Pendiente", antes de que producción la acepte).
   const getItemLock = (it: ItemRow): { disabled: boolean; reason?: string } => {
     if ((it.planimetry_files?.length ?? 0) === 0) {
       return { disabled: true, reason: "Sin planimetría" };
+    }
+    if (it.production_order_id) {
+      const code = codeById.get(it.production_order_id);
+      return { disabled: true, reason: code ? `Ya en producción · ${code}` : "Ya en producción" };
     }
     return { disabled: false };
   };
