@@ -507,7 +507,7 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
             <>
               {existing.length > 0 && (
                 <p className="text-[11px] text-muted-foreground rounded-lg border border-border bg-muted/30 p-2.5">
-                  Se creará una <span className="font-medium text-foreground">nueva orden de producción</span> con los productos que elijas. Si re-envías un producto que ya estaba en otra orden, la nueva orden la reemplaza — no necesitas rechazar nada manualmente.
+                  Se creará una <span className="font-medium text-foreground">nueva orden de producción</span> con los productos que elijas. Los productos que ya están en otra orden aparecen bloqueados — para reenviarlos, el vendedor primero debe cancelar esa orden (sólo mientras siga en estado <span className="font-medium">Pendiente</span>).
                 </p>
               )}
 
