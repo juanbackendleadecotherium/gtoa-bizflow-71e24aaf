@@ -50,18 +50,20 @@ export function SupplierAdvancePaymentForm({
 
   const submit = useMutation({
     mutationFn: async () => {
-      if (!file) throw new Error("Adjunta el comprobante");
       if (!(amount > 0)) throw new Error("Monto inválido");
       if (!paidAt) throw new Error("Fecha de pago requerida");
-      const uploaded = await uploadSupplierPaymentReceipt(file, brandId, orderId, orderItemId);
+      let uploaded: { path: string; mime: string; size: number } | null = null;
+      if (file) {
+        uploaded = await uploadSupplierPaymentReceipt(file, brandId, orderId, orderItemId);
+      }
       await confirmFn({
         data: {
           orderItemId,
           amount,
           paidAt,
-          receiptPath: uploaded.path,
-          receiptMime: uploaded.mime,
-          receiptSizeBytes: uploaded.size,
+          receiptPath: uploaded?.path ?? null,
+          receiptMime: uploaded?.mime ?? null,
+          receiptSizeBytes: uploaded?.size ?? null,
         },
       });
     },
@@ -98,7 +100,7 @@ export function SupplierAdvancePaymentForm({
       </div>
 
       <div>
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Comprobante (imagen o PDF)</span>
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Comprobante (opcional — imagen o PDF)</span>
         <input
           ref={inputRef}
           type="file"
@@ -145,7 +147,7 @@ export function SupplierAdvancePaymentForm({
       <button
         type="button"
         onClick={() => submit.mutate()}
-        disabled={disabled || !file || !(amount > 0)}
+        disabled={disabled || !(amount > 0)}
         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-primary hover:bg-primary/90 text-white text-xs font-semibold px-3 py-2 disabled:opacity-50"
       >
         {submit.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
