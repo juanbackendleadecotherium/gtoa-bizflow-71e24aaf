@@ -24,6 +24,7 @@ import { BrandProvider, useBrand } from "@/features/brands/brand-context";
 import { useMyPendingTasksCount } from "@/features/seller-tasks/seller-tasks-panel";
 import { countActivePickups } from "@/lib/pickup-orders.functions";
 import { usePickupCountRealtime } from "@/features/logistics/use-logistics-realtime";
+import { getPendingSupplierPaymentsCount } from "@/lib/supplier-advance-payments.functions";
 
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
