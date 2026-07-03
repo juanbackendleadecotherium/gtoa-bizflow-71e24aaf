@@ -1,85 +1,98 @@
-# Tableros ejecutivos — /erp/analytics/operations
+## Objetivo
 
-Nueva ruta de solo lectura con tres tarjetas KPI en la misma pantalla y una barra superior de filtros globales (marca, vendedor, rango de fechas) que aplica a los tres al mismo tiempo. Al hacer clic en una tarjeta se abre un panel/dialog con el detalle en tabla.
+Conectar la aprobación de cotización de proveedor externo con el gerente financiero: al guardarla se genera automáticamente una tarea de pago para finanzas; solo finanzas puede registrar el pago; ese registro se convierte en la fecha oficial de inicio de fabricación y notifica al creador de la orden de producción.
 
-## Filtros globales (barra superior)
+## Cambios en base de datos
 
-- **Marca**: selector poblado desde `brands` limitado a las marcas que el usuario ve (usa `BrandProvider`).
-- **Vendedor**: selector poblado desde `profiles` (usuarios con `orders.seller_id` asociados).
-- **Rango de fechas**: date range picker; por defecto últimos 30 días. Se aplica a `orders.sale_date` (KPIs 2 y 3) y a la fecha de entrega programada (KPI 4).
-- Los filtros viven como search params en la URL (`?brand=&seller=&from=&to=`) usando `validateSearch` + `zodValidator` para que sean compartibles.
+### 1. Extender `seller_tasks` con un nuevo tipo
+- Nuevo `type = 'pay_supplier_advance'` (asignado al rol `finanzas`).
+- Nuevo `type = 'supplier_advance_paid'` (asignado a quien creó la orden de producción).
+- Campos existentes cubren todo; solo se agregan estos valores.
 
-## KPI 2 — Cumplimiento de entregas al cliente
-
-**Definiciones**
-- Fecha prometida = `orders.estimated_delivery_date`.
-- Fecha real entregada = fecha de entrega efectiva de la orden. Se toma el `MAX(pickup_orders.delivered_at)` de los pickups con `destination='cliente'` de esa orden. Si no hay pickup a cliente entregado, la orden no cuenta como entregada aún y se excluye del cálculo (queda pendiente).
-- A tiempo = `delivered_at::date <= estimated_delivery_date`.
-
-**Tarjeta**: % entregas a tiempo sobre entregadas en el rango. Verde ≥90%, ámbar 75–89%, rojo <75%. Muestra también `X de Y entregadas a tiempo`.
-
-**Detalle (clic)**: tabla con Cliente, Nº factura (`invoices.invoice_number` o `orders.invoice_number`), Fecha prometida, Fecha entregada, Días diferencia (positivo=tarde en rojo, ≤0 verde). Ordenada por mayor retraso primero.
-
-## KPI 3 — Margen de productos (mínimo 45%)
-
-**Definición**
-- Por línea (`order_items`): `venta = unit_price * quantity`, `costo = COALESCE(negotiated_cost, manufacturing_cost)`, `margen% = (venta - costo)/venta * 100`.
-- Se consideran solo líneas con `costo IS NOT NULL AND costo > 0` (las demás se listan aparte como "sin costo registrado").
-- Cumple si `margen% >= 45`.
-
-**Tarjeta**: barra proporcional dividida en Cumplen (verde) vs No cumplen (rojo) con los dos porcentajes visibles y el conteo absoluto.
-
-**Detalle (clic)**: tabla de los que NO cumplen — Producto (`description`), Factura, Precio venta, Costo, Margen % (rojo). Ordenada por peor margen primero. Segunda pestaña opcional "Sin costo registrado".
-
-## KPI 4 — Recaudo semanal proyectado con acumulación
-
-**Semana** = semana ISO (lunes–domingo).
-
-**Por cada orden con saldo pendiente**:
-- Saldo = `orders.total - orders.advance_amount - SUM(order_payments.amount)` a la fecha.
-- Semana objetivo = semana ISO de `orders.estimated_delivery_date` (si no hay fecha, va a "Sin fecha").
-
-**Recaudado en semana W** = `SUM(order_payments.amount)` cuyo `paid_at` cae en W (solo pagos posteriores al anticipo inicial; el anticipo ya está restado del saldo).
-
-**Lógica de rezago (acumulación)** por cada semana W en orden cronológico:
+### 2. Nueva función `create_supplier_payment_tasks(_item_id uuid)` (security definer)
+Inserta una tarea `pay_supplier_advance` por cada usuario con rol `finanzas` (via `user_roles`). Contenido de `reason`:
 ```
-proyectado_nuevo[W]   = suma de saldos de órdenes cuya semana objetivo == W
-rezago_entrada[W]     = pendiente_salida[W-1]  (0 si es la primera)
-proyectado_total[W]   = proyectado_nuevo[W] + rezago_entrada[W]
-recaudado[W]          = pagos recibidos durante W (limitados a proyectado_total[W])
-pendiente_salida[W]   = max(0, proyectado_total[W] - recaudado[W])
+Producto: <descripción> · Factura #<invoice_number|order_number>
+Proveedor: <nombre>
+Valor a pagar (anticipo <pct>%): $<monto>
+Cotización aprobada el <quotation_date>
 ```
+Idempotente: si ya existe una tarea `pay_supplier_advance` pendiente para ese `order_item_id`, no la duplica.
 
-**Tarjeta**: monto proyectado_total de la semana actual, dividido visualmente en "Nuevo esta semana" vs "Rezago de semanas anteriores". Badge con el % de rezago sobre el total.
+### 3. Trigger `trg_order_items_quotation_approved`
+`AFTER INSERT OR UPDATE OF supplier_id, negotiated_cost, manufacturing_cost, quotation_date ON order_items`:
+- Se ejecuta cuando: `supplier_id IS NOT NULL` AND (`negotiated_cost IS NOT NULL` OR `manufacturing_cost IS NOT NULL`) AND `quotation_date IS NOT NULL` AND aún no existe pago en `order_item_supplier_payments`.
+- Aplica a todos los proveedores externos (ignora el flag `requires_advance_payment` para el trigger).
+- Llama a `create_supplier_payment_tasks(NEW.id)`.
 
-**Detalle (clic)**: tabla/gráfico de barras apiladas semana a semana con columnas: Semana, Proyectado nuevo, Rezago entrada, Proyectado total, Recaudado, Rezago salida. Cada fila expandible muestra las facturas que componen el proyectado nuevo y el rezago de esa semana (cliente, Nº factura, saldo, fecha prometida original).
+### 4. RLS estricto en `order_item_supplier_payments`
+- Reemplazar el `INSERT` policy para exigir `has_role(auth.uid(), 'finanzas') OR has_role(auth.uid(), 'admin')`.
+- `SELECT` sigue abierto a quien tiene acceso a la marca (producción puede ver estado).
+- Sin política de UPDATE ni DELETE (ya inexistentes, se confirma).
 
-## Arquitectura técnica
+### 5. Ampliar `confirm_supplier_final_payment` no aplica aquí (es otro flujo); esta feature usa `confirmSupplierAdvancePayment` existente.
 
-**Ruta**: `src/routes/_authenticated.erp.analytics.operations.tsx` (nueva). La ruta actual `_authenticated.erp.analytics.tsx` pasa a ser layout con `<Outlet />` y redirige `/erp/analytics` → `/erp/analytics/operations` como pestaña inicial.
+### 6. Trigger post-pago: notificar a producción
+Nuevo trigger `AFTER INSERT ON order_item_supplier_payments` (cuando `payment_type = 'advance'`):
+- Resuelve tarea(s) `pay_supplier_advance` de ese `order_item_id` → `status = 'resuelta'`.
+- Inserta tarea `supplier_advance_paid` para `production_orders.created_by` del ítem, con `reason` incluyendo fecha real del pago y "Puedes iniciar fabricación desde <fecha>".
+- El RPC `start_real_production` ya se llama desde el server function, así que la fecha se persiste igual.
 
-**Server functions** (nuevo `src/lib/analytics-operations.functions.ts`, todas con `requireSupabaseAuth`):
-- `getDeliveryCompliance({ brandId?, sellerId?, from, to })` → `{ onTime, total, rows: [...] }`
-- `getMarginCompliance({ brandId?, sellerId?, from, to })` → `{ compliant, nonCompliant, noCost, rows: [...] }`
-- `getWeeklyCollectionForecast({ brandId?, sellerId?, from, to })` → `{ weeks: [...], currentWeek: {...} }`
+## Cambios en código server
 
-Cada función corre queries directas a `orders`, `order_items`, `order_payments`, `pickup_orders`, `invoices` con los filtros aplicados. Los cálculos de agregación y la lógica de rezago se hacen en JS dentro del handler para mantener las queries simples. Datos devueltos como DTOs planos.
+### `src/lib/supplier-advance-payments.functions.ts`
+- En `confirmSupplierAdvancePayment.handler`: verificar `has_role(userId, 'finanzas' | 'admin')` antes del insert; si no, lanzar "Solo el gerente financiero puede registrar este pago".
+- Nueva función `listPendingSupplierPayments`: devuelve todos los ítems con cotización aprobada y sin pago, con brand, invoice, product, supplier, suggested_amount, quotation_date, order_id, order_item_id.
+- Nueva función `getSupplierPaymentsSummary`: total_pendiente (COP), count.
 
-**Componentes** en `src/features/analytics/operations/`:
-- `filters-bar.tsx` — barra sticky con selectores de marca/vendedor/fechas ligados a search params.
-- `delivery-kpi-card.tsx` + `delivery-detail-dialog.tsx`
-- `margin-kpi-card.tsx` + `margin-detail-dialog.tsx`
-- `collection-kpi-card.tsx` + `collection-detail-dialog.tsx` (con barras apiladas usando `recharts` ya presente en `chart.tsx`)
+## Cambios en UI
 
-**Data loading**: loader del route usa `queryClient.ensureQueryData` para las tres server functions en paralelo; componentes leen con `useSuspenseQuery`. `loaderDeps` incluye los cuatro search params para que un cambio de filtro re-dispare las queries.
+### 1. Nueva ruta `/erp/finance/supplier-payments`
+Página protegida bajo `_authenticated`, visible solo si `roles` incluye `finanzas` o `admin`.
 
-**Acceso**: solo lectura. Restringido por `requireSupabaseAuth` + verificación de que el usuario tiene rol `admin` o `gerencia` (si no existe el rol, se limita a `admin`). Confirmar con el usuario si otros roles deben ver esta pantalla.
+- **Encabezado**: tarjeta grande con "Total pendiente a proveedores: $X" y contador de pagos.
+- **Filtros**: marca, proveedor, buscador por producto/factura.
+- **Tabla** (una fila por ítem pendiente):
+  - Producto (truncado) · Factura # · Proveedor · Valor a pagar (anticipo sugerido) · Fecha aprobación · botón "Registrar pago".
+- **Registrar pago**: abre un `Dialog` con el `SupplierAdvancePaymentForm` existente (reutilizado), sin cambios visuales. Al confirmar, refresca la lista y el total.
 
-**Enlace en el menú**: entrada "Gráficas ERP → Operación" en el sidebar del ERP apuntando a `/erp/analytics/operations`.
+### 2. Sidebar (nav ERP)
+Nuevo item "Pagos a proveedores" bajo Finanzas, visible con rol `finanzas`/`admin`. Badge numérico con la cantidad de pagos pendientes (consulta ligera cacheada 30s).
 
-## Preguntas para confirmar antes de construir
+### 3. Panel de tareas (`/erp/my-tasks`)
+Renderizado especial para `type = 'pay_supplier_advance'`:
+- Card verde-azul con icono `DollarSign`, mostrando producto/factura/proveedor/monto/fecha.
+- CTA "Ir a pagos a proveedores" que navega a la nueva ruta filtrada por ese ítem.
 
-1. **Entrega real (KPI 2)**: ¿tomamos `MAX(pickup_orders.delivered_at)` con `destination='cliente'` como la fecha real de entrega al cliente? ¿O prefieres un campo distinto (p.ej. una futura `orders.actual_delivery_date`)?
-2. **Costo para margen (KPI 3)**: ¿usamos `negotiated_cost` cuando existe y si no `manufacturing_cost`? ¿Los productos sin costo registrado se muestran en una pestaña separada o se ignoran?
-3. **Vendedor**: filtro por `orders.seller_id` — ¿correcto?
-4. **Acceso**: ¿solo `admin`, o también algún rol de gerencia/finanzas?
+Renderizado para `type = 'supplier_advance_paid'`:
+- Card azul informativa "Pago confirmado — puedes iniciar fabricación desde <fecha>".
+- Botón "Visto" (marcar como resuelta), como los `production_started` actuales.
+
+### 4. Panel de producción existente
+En `src/routes/_authenticated.erp.production.tracking.tsx` y donde aparece `SupplierAdvancePaymentForm` para roles no-finanzas: ocultar el formulario y mostrar un estado read-only "Pendiente de pago al proveedor por finanzas" con la fecha en que se aprobó la cotización.
+
+### 5. Estado "en fabricación"
+La lógica actual ya usa `production_started_at` (seteado por `start_real_production` en el pago). No cambia: mientras no haya pago, `production_started_at` es NULL y no aparece como "en fabricación". Verificar en `real-production` y `production.tracking` que las vistas respeten esto (spot check, no requiere cambios previstos).
+
+## Consideraciones técnicas
+
+- El trigger se dispara en `AFTER UPDATE` sobre columnas específicas para no ejecutarse en cada save irrelevante.
+- Idempotencia: si producción reabre la cotización y vuelve a guardar sin cambios materiales, no se duplica la tarea.
+- Si producción **cambia** el proveedor o el costo antes de que finanzas pague: la tarea pendiente se debe actualizar (nuevo `reason` y monto). Se resuelve borrando la tarea anterior no-resuelta y creando la nueva dentro de `create_supplier_payment_tasks` (delete-and-insert cuando ya existe pendiente y algún dato cambió).
+- Grants: `GRANT EXECUTE` de las nuevas funciones a `authenticated`.
+- Sin reversión en UI (regla explícita del usuario). Corrección manual = SQL admin.
+
+## Archivos afectados
+
+- **Nueva migración SQL**: trigger, función, RLS, valores de enum implícitos (los `type` son texto libre en `seller_tasks`, no requiere cambio de enum).
+- `src/lib/supplier-advance-payments.functions.ts`: agregar `listPendingSupplierPayments`, `getSupplierPaymentsSummary`, y guard de rol en `confirmSupplierAdvancePayment`.
+- **Nuevo**: `src/routes/_authenticated.erp.finance.supplier-payments.tsx`.
+- `src/routes/_authenticated.erp.my-tasks.tsx`: renderizado especial para los nuevos tipos.
+- `src/routes/_authenticated.erp.tsx` (sidebar): item "Pagos a proveedores" con badge.
+- `src/routes/_authenticated.erp.production.tracking.tsx`: ocultar formulario para no-finanzas y mostrar estado.
+
+## Fuera de alcance (por decisión del usuario)
+
+- Reversión de pagos desde la UI.
+- Notificación a otros roles distintos a "quien creó la orden de producción".
+- Cambios al flujo de pago final (`confirm_supplier_final_payment`), que sigue como está.
