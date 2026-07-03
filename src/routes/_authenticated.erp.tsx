@@ -259,12 +259,13 @@ function Shell() {
                 </div>
 
                 <nav className="px-3 py-4 space-y-1">
-                  {NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics)).map((item) => {
+                  {NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics) && (!i.financeOnly || isFinance)).map((item) => {
                     const Icon = item.icon;
                     const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
                     const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
                     const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
-                    const badge = taskBadge || pickupBadge;
+                    const financeBadge = item.to === "/erp/finance/supplier-payments" && financePaymentsCount > 0 ? financePaymentsCount : 0;
+                    const badge = taskBadge || pickupBadge || financeBadge;
                     return (
                       <Link
                         key={item.to}
