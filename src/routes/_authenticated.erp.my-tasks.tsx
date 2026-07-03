@@ -1,14 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle, Rocket, Check, FileUp, Clock, AlertOctagon, DollarSign } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle, Rocket, Check, FileUp, Clock, AlertOctagon, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
 import { computeDeadlineState } from "@/features/seller-tasks/planimetry-deadline";
 import { SupplierFinalPaymentCard } from "@/features/seller-tasks/supplier-final-payment-card";
+
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
 export const Route = createFileRoute("/_authenticated/erp/my-tasks")({
   head: () => ({ meta: [{ title: "Mis tareas — Grupo Getova" }] }),
@@ -36,6 +39,12 @@ function MyTasks() {
   const qc = useQueryClient();
   const userId = session.session?.user.id;
   const [tab, setTab] = useState<"pendiente" | "resuelta">("pendiente");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tab, pageSize]);
 
   const q = useQuery({
     queryKey: ["my-tasks", userId, tab],
@@ -69,6 +78,12 @@ function MyTasks() {
   });
 
   const tasks = q.data ?? [];
+  const total = tasks.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIdx = (currentPage - 1) * pageSize;
+  const endIdx = Math.min(startIdx + pageSize, total);
+  const pagedTasks = useMemo(() => tasks.slice(startIdx, endIdx), [tasks, startIdx, endIdx]);
 
   return (
     <div className="space-y-6">
@@ -104,7 +119,7 @@ function MyTasks() {
             </div>
           ) : (
             <ul className="space-y-2">
-              {tasks.map((t) => {
+              {pagedTasks.map((t) => {
                 if (t.type === "confirm_supplier_final_payment" && t.order_item_id && t.status === "pendiente") {
                   return (
                     <li key={t.id}>
@@ -214,6 +229,53 @@ function MyTasks() {
                 );
               })}
             </ul>
+          )}
+
+          {!q.isLoading && total > 0 && (
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Mostrar</span>
+                <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                  <SelectTrigger className="h-8 w-[80px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)} className="text-xs">
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span>por página</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {startIdx + 1}–{endIdx} de {total}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                </Button>
+                <span className="text-xs text-muted-foreground px-2">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  Siguiente <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
           )}
         </TabsContent>
       </Tabs>
