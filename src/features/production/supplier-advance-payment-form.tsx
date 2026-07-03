@@ -147,7 +147,7 @@ export function SupplierAdvancePaymentForm({
       <button
         type="button"
         onClick={() => submit.mutate()}
-        disabled={disabled || !file || !(amount > 0)}
+        disabled={disabled || !(amount > 0)}
         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-primary hover:bg-primary/90 text-white text-xs font-semibold px-3 py-2 disabled:opacity-50"
       >
         {submit.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
