@@ -39,6 +39,12 @@ function MyTasks() {
   const qc = useQueryClient();
   const userId = session.session?.user.id;
   const [tab, setTab] = useState<"pendiente" | "resuelta">("pendiente");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tab, pageSize]);
 
   const q = useQuery({
     queryKey: ["my-tasks", userId, tab],
