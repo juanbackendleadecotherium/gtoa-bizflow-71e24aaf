@@ -96,6 +96,15 @@ function Shell() {
   });
   const pickupCount = pickupCountQuery.data ?? 0;
 
+  const financeCountFn = useServerFn(getPendingSupplierPaymentsCount);
+  const financeCountQuery = useQuery({
+    queryKey: ["finance-pending-supplier-payments-count"],
+    enabled: isFinance,
+    queryFn: () => financeCountFn(),
+    staleTime: 30_000,
+  });
+  const financePaymentsCount = financeCountQuery.data?.count ?? 0;
+
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
     enabled: !!userId,
