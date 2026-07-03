@@ -1,14 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle, Rocket, Check, FileUp, Clock, AlertOctagon, DollarSign } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle, Rocket, Check, FileUp, Clock, AlertOctagon, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
 import { computeDeadlineState } from "@/features/seller-tasks/planimetry-deadline";
 import { SupplierFinalPaymentCard } from "@/features/seller-tasks/supplier-final-payment-card";
+
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
 export const Route = createFileRoute("/_authenticated/erp/my-tasks")({
   head: () => ({ meta: [{ title: "Mis tareas — Grupo Getova" }] }),
