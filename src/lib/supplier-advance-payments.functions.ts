@@ -18,6 +18,17 @@ export const confirmSupplierAdvancePayment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId, claims } = context;
 
+    // Only finanzas or admin may register a supplier advance payment.
+    const { data: roles, error: rolesErr } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    if (rolesErr) throw rolesErr;
+    const allowed = (roles ?? []).some((r: any) => r.role === "admin" || r.role === "finanzas");
+    if (!allowed) {
+      throw new Error("Solo el gerente financiero (rol Finanzas) puede registrar este pago.");
+    }
+
     // 1. Load item + supplier
     const { data: item, error: itemErr } = await supabase
       .from("order_items")
