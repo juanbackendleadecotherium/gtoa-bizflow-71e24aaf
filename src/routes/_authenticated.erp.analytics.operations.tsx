@@ -148,7 +148,7 @@ function OperationsPage() {
             from={filters.from}
             to={filters.to}
             onChange={(from, to) => {
-              navigate({ search: (prev) => ({ ...prev, from, to }) });
+              navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, from, to }) });
             }}
           />
 
