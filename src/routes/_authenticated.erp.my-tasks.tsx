@@ -105,7 +105,54 @@ function MyTasks() {
             <CheckCircle2 className="h-3.5 w-3.5" /> Resueltas
           </TabsTrigger>
         </TabsList>
-        <TabsContent value={tab} className="mt-4">
+        <TabsContent value={tab} className="mt-4 space-y-3">
+          {!q.isLoading && total > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Mostrar</span>
+                <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                  <SelectTrigger className="h-8 w-[80px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)} className="text-xs">
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span>por página</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {startIdx + 1}–{endIdx} de {total}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                </Button>
+                <span className="text-xs text-muted-foreground px-2">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  Siguiente <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           {q.isLoading ? (
             <div className="py-12 text-center">
               <Loader2 className="h-5 w-5 animate-spin inline text-muted-foreground" />
