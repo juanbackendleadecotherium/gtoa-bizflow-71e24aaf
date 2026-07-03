@@ -41,21 +41,28 @@ function fmtDate(s: string | null | undefined) {
 function SupplierPaymentsPage() {
   const { isAdmin, roles } = useBrand();
   const isFinance = isAdmin || roles.includes("finanzas");
-  const navigate = useNavigate();
 
   if (!isFinance) {
-    return (
-      <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-6 flex items-start gap-3">
-        <ShieldAlert className="h-5 w-5 text-amber-600 mt-0.5" />
-        <div>
-          <h2 className="font-semibold text-sm">Acceso restringido</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Esta vista es exclusiva del rol Finanzas.
-          </p>
-        </div>
-      </div>
-    );
+    return <AccessDenied />;
   }
+  return <SupplierPaymentsInner />;
+}
+
+function AccessDenied() {
+  return (
+    <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-6 flex items-start gap-3">
+      <ShieldAlert className="h-5 w-5 text-amber-600 mt-0.5" />
+      <div>
+        <h2 className="font-semibold text-sm">Acceso restringido</h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          Esta vista es exclusiva del rol Finanzas.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SupplierPaymentsInner() {
 
   const listFn = useServerFn(listPendingSupplierPayments);
   const q = useQuery({
