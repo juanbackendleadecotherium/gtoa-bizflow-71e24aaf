@@ -266,7 +266,14 @@ function MyTasks() {
                         </p>
                       </div>
                       <div className="flex gap-2 flex-wrap">
-                        {t.order_id && (
+                        {isPayAdvance ? (
+                          <Link
+                            to="/erp/finance/supplier-payments"
+                            className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
+                          >
+                            {ctaLabel} <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        ) : t.order_id ? (
                           <Link
                             to="/erp/orders/$id"
                             params={{ id: t.order_id }}
@@ -274,7 +281,7 @@ function MyTasks() {
                           >
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
                           </Link>
-                        )}
+                        ) : null}
                         {isInfo && pending && (
                           <Button
                             size="sm"
