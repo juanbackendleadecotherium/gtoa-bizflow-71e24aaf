@@ -719,13 +719,20 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
                     return (
                       <div className="space-y-2">
                         <SupplierAdvancePaymentNotice supplierName={sup.name} pct={Number(sup.advance_payment_pct ?? 50)} />
-                        <SupplierAdvancePaymentForm
-                          orderItemId={it.id}
-                          brandId={row.brand_id}
-                          orderId={it.order_id ?? row.order_id}
-                          suggestedAmount={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
-                          pct={Number(sup.advance_payment_pct ?? 50)}
-                        />
+                        {canRegisterPayment ? (
+                          <SupplierAdvancePaymentForm
+                            orderItemId={it.id}
+                            brandId={row.brand_id}
+                            orderId={it.order_id ?? row.order_id}
+                            suggestedAmount={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
+                            pct={Number(sup.advance_payment_pct ?? 50)}
+                          />
+                        ) : (
+                          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5 text-[11px] text-amber-800 dark:text-amber-200">
+                            Pendiente de pago al proveedor por finanzas. Solo el gerente
+                            financiero puede registrar este pago.
+                          </div>
+                        )}
                       </div>
                     );
                   }
