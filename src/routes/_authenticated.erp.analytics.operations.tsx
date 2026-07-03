@@ -73,7 +73,7 @@ function OperationsPage() {
   };
 
   const setFilter = (key: "brand" | "seller" | "from" | "to", value: string | undefined) => {
-    navigate({ search: (prev) => ({ ...prev, [key]: value }) });
+    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, [key]: value }) });
   };
 
   const listSellersFn = useServerFn(listAnalyticsSellers);
