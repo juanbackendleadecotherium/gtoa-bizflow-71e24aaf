@@ -42,6 +42,7 @@ import { Route as AuthenticatedErpLogisticsPickupsRouteImport } from './routes/_
 import { Route as AuthenticatedErpFinanceSellersRouteImport } from './routes/_authenticated.erp.finance.sellers'
 import { Route as AuthenticatedErpFinanceReceivablesRouteImport } from './routes/_authenticated.erp.finance.receivables'
 import { Route as AuthenticatedErpFinanceDeletionsRouteImport } from './routes/_authenticated.erp.finance.deletions'
+import { Route as AuthenticatedErpAnalyticsOperationsRouteImport } from './routes/_authenticated.erp.analytics.operations'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -232,18 +233,25 @@ const AuthenticatedErpFinanceDeletionsRoute =
     path: '/deletions',
     getParentRoute: () => AuthenticatedErpFinanceRoute,
   } as any)
+const AuthenticatedErpAnalyticsOperationsRoute =
+  AuthenticatedErpAnalyticsOperationsRouteImport.update({
+    id: '/operations',
+    path: '/operations',
+    getParentRoute: () => AuthenticatedErpAnalyticsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/erp': typeof AuthenticatedErpRouteWithChildren
-  '/erp/analytics': typeof AuthenticatedErpAnalyticsRoute
+  '/erp/analytics': typeof AuthenticatedErpAnalyticsRouteWithChildren
   '/erp/finance': typeof AuthenticatedErpFinanceRouteWithChildren
   '/erp/my-tasks': typeof AuthenticatedErpMyTasksRoute
   '/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/erp/real-production': typeof AuthenticatedErpRealProductionRouteWithChildren
   '/erp/warehouse': typeof AuthenticatedErpWarehouseRoute
   '/erp/': typeof AuthenticatedErpIndexRoute
+  '/erp/analytics/operations': typeof AuthenticatedErpAnalyticsOperationsRoute
   '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
   '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
@@ -270,10 +278,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/erp/analytics': typeof AuthenticatedErpAnalyticsRoute
+  '/erp/analytics': typeof AuthenticatedErpAnalyticsRouteWithChildren
   '/erp/my-tasks': typeof AuthenticatedErpMyTasksRoute
   '/erp/warehouse': typeof AuthenticatedErpWarehouseRoute
   '/erp': typeof AuthenticatedErpIndexRoute
+  '/erp/analytics/operations': typeof AuthenticatedErpAnalyticsOperationsRoute
   '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
   '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
@@ -303,13 +312,14 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/erp': typeof AuthenticatedErpRouteWithChildren
-  '/_authenticated/erp/analytics': typeof AuthenticatedErpAnalyticsRoute
+  '/_authenticated/erp/analytics': typeof AuthenticatedErpAnalyticsRouteWithChildren
   '/_authenticated/erp/finance': typeof AuthenticatedErpFinanceRouteWithChildren
   '/_authenticated/erp/my-tasks': typeof AuthenticatedErpMyTasksRoute
   '/_authenticated/erp/orders': typeof AuthenticatedErpOrdersRouteWithChildren
   '/_authenticated/erp/real-production': typeof AuthenticatedErpRealProductionRouteWithChildren
   '/_authenticated/erp/warehouse': typeof AuthenticatedErpWarehouseRoute
   '/_authenticated/erp/': typeof AuthenticatedErpIndexRoute
+  '/_authenticated/erp/analytics/operations': typeof AuthenticatedErpAnalyticsOperationsRoute
   '/_authenticated/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/_authenticated/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
   '/_authenticated/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/erp/real-production'
     | '/erp/warehouse'
     | '/erp/'
+    | '/erp/analytics/operations'
     | '/erp/finance/deletions'
     | '/erp/finance/receivables'
     | '/erp/finance/sellers'
@@ -376,6 +387,7 @@ export interface FileRouteTypes {
     | '/erp/my-tasks'
     | '/erp/warehouse'
     | '/erp'
+    | '/erp/analytics/operations'
     | '/erp/finance/deletions'
     | '/erp/finance/receivables'
     | '/erp/finance/sellers'
@@ -411,6 +423,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/real-production'
     | '/_authenticated/erp/warehouse'
     | '/_authenticated/erp/'
+    | '/_authenticated/erp/analytics/operations'
     | '/_authenticated/erp/finance/deletions'
     | '/_authenticated/erp/finance/receivables'
     | '/_authenticated/erp/finance/sellers'
@@ -674,8 +687,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpFinanceDeletionsRouteImport
       parentRoute: typeof AuthenticatedErpFinanceRoute
     }
+    '/_authenticated/erp/analytics/operations': {
+      id: '/_authenticated/erp/analytics/operations'
+      path: '/operations'
+      fullPath: '/erp/analytics/operations'
+      preLoaderRoute: typeof AuthenticatedErpAnalyticsOperationsRouteImport
+      parentRoute: typeof AuthenticatedErpAnalyticsRoute
+    }
   }
 }
+
+interface AuthenticatedErpAnalyticsRouteChildren {
+  AuthenticatedErpAnalyticsOperationsRoute: typeof AuthenticatedErpAnalyticsOperationsRoute
+}
+
+const AuthenticatedErpAnalyticsRouteChildren: AuthenticatedErpAnalyticsRouteChildren =
+  {
+    AuthenticatedErpAnalyticsOperationsRoute:
+      AuthenticatedErpAnalyticsOperationsRoute,
+  }
+
+const AuthenticatedErpAnalyticsRouteWithChildren =
+  AuthenticatedErpAnalyticsRoute._addFileChildren(
+    AuthenticatedErpAnalyticsRouteChildren,
+  )
 
 interface AuthenticatedErpFinanceRouteChildren {
   AuthenticatedErpFinanceDeletionsRoute: typeof AuthenticatedErpFinanceDeletionsRoute
@@ -740,7 +775,7 @@ const AuthenticatedErpRealProductionRouteWithChildren =
   )
 
 interface AuthenticatedErpRouteChildren {
-  AuthenticatedErpAnalyticsRoute: typeof AuthenticatedErpAnalyticsRoute
+  AuthenticatedErpAnalyticsRoute: typeof AuthenticatedErpAnalyticsRouteWithChildren
   AuthenticatedErpFinanceRoute: typeof AuthenticatedErpFinanceRouteWithChildren
   AuthenticatedErpMyTasksRoute: typeof AuthenticatedErpMyTasksRoute
   AuthenticatedErpOrdersRoute: typeof AuthenticatedErpOrdersRouteWithChildren
@@ -762,7 +797,7 @@ interface AuthenticatedErpRouteChildren {
 }
 
 const AuthenticatedErpRouteChildren: AuthenticatedErpRouteChildren = {
-  AuthenticatedErpAnalyticsRoute: AuthenticatedErpAnalyticsRoute,
+  AuthenticatedErpAnalyticsRoute: AuthenticatedErpAnalyticsRouteWithChildren,
   AuthenticatedErpFinanceRoute: AuthenticatedErpFinanceRouteWithChildren,
   AuthenticatedErpMyTasksRoute: AuthenticatedErpMyTasksRoute,
   AuthenticatedErpOrdersRoute: AuthenticatedErpOrdersRouteWithChildren,
