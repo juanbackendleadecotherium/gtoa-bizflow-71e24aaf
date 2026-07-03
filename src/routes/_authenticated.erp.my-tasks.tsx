@@ -119,7 +119,7 @@ function MyTasks() {
             </div>
           ) : (
             <ul className="space-y-2">
-              {tasks.map((t) => {
+              {pagedTasks.map((t) => {
                 if (t.type === "confirm_supplier_final_payment" && t.order_item_id && t.status === "pendiente") {
                   return (
                     <li key={t.id}>
