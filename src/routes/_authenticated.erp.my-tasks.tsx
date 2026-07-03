@@ -78,6 +78,12 @@ function MyTasks() {
   });
 
   const tasks = q.data ?? [];
+  const total = tasks.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIdx = (currentPage - 1) * pageSize;
+  const endIdx = Math.min(startIdx + pageSize, total);
+  const pagedTasks = useMemo(() => tasks.slice(startIdx, endIdx), [tasks, startIdx, endIdx]);
 
   return (
     <div className="space-y-6">
