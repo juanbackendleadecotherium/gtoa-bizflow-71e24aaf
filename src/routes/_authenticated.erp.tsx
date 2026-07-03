@@ -52,6 +52,7 @@ type NavItem = {
   exact?: boolean;
   adminOnly?: boolean;
   logisticsOnly?: boolean;
+  financeOnly?: boolean;
 };
 
 const NAV: NavItem[] = [
