@@ -50,18 +50,20 @@ export function SupplierAdvancePaymentForm({
 
   const submit = useMutation({
     mutationFn: async () => {
-      if (!file) throw new Error("Adjunta el comprobante");
       if (!(amount > 0)) throw new Error("Monto inválido");
       if (!paidAt) throw new Error("Fecha de pago requerida");
-      const uploaded = await uploadSupplierPaymentReceipt(file, brandId, orderId, orderItemId);
+      let uploaded: { path: string; mime: string; size: number } | null = null;
+      if (file) {
+        uploaded = await uploadSupplierPaymentReceipt(file, brandId, orderId, orderItemId);
+      }
       await confirmFn({
         data: {
           orderItemId,
           amount,
           paidAt,
-          receiptPath: uploaded.path,
-          receiptMime: uploaded.mime,
-          receiptSizeBytes: uploaded.size,
+          receiptPath: uploaded?.path ?? null,
+          receiptMime: uploaded?.mime ?? null,
+          receiptSizeBytes: uploaded?.size ?? null,
         },
       });
     },
