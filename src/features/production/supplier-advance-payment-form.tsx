@@ -18,12 +18,14 @@ export function SupplierAdvancePaymentForm({
   orderId,
   suggestedAmount,
   pct = 50,
+  onConfirmed,
 }: {
   orderItemId: string;
   brandId: string;
   orderId: string;
   suggestedAmount?: number | null;
   pct?: number;
+  onConfirmed?: () => void;
 }) {
   const qc = useQueryClient();
   const confirmFn = useServerFn(confirmSupplierAdvancePayment);
