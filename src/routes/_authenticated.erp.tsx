@@ -80,6 +80,7 @@ function Shell() {
   const userId = session.session?.user.id;
   const { brands, selectedBrand, setSelectedBrandId, isAdmin, roles } = useBrand();
   const isLogistics = isAdmin || roles.includes("logistica");
+  const isFinance = isAdmin || roles.includes("finanzas");
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
   const [mobileOpen, setMobileOpen] = useState(false);
