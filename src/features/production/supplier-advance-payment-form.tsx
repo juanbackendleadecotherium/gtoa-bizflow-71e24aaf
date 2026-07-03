@@ -100,7 +100,7 @@ export function SupplierAdvancePaymentForm({
       </div>
 
       <div>
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Comprobante (imagen o PDF)</span>
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Comprobante (opcional — imagen o PDF)</span>
         <input
           ref={inputRef}
           type="file"
