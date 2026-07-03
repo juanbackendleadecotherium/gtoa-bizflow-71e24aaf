@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import {
   LayoutDashboard, ClipboardList, Settings,
   LogOut, ChevronDown, Building2, ShieldCheck, ArrowLeft, Menu,
-  FileText, Receipt, Wallet, Factory, BarChart3, Users, ListTodo, Boxes, UserCog, Database, Truck,
+  FileText, Receipt, Wallet, Factory, BarChart3, Users, ListTodo, Boxes, UserCog, Database, Truck, DollarSign,
 } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -24,6 +24,7 @@ import { BrandProvider, useBrand } from "@/features/brands/brand-context";
 import { useMyPendingTasksCount } from "@/features/seller-tasks/seller-tasks-panel";
 import { countActivePickups } from "@/lib/pickup-orders.functions";
 import { usePickupCountRealtime } from "@/features/logistics/use-logistics-realtime";
+import { getPendingSupplierPaymentsCount } from "@/lib/supplier-advance-payments.functions";
 
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
@@ -52,6 +53,7 @@ type NavItem = {
   exact?: boolean;
   adminOnly?: boolean;
   logisticsOnly?: boolean;
+  financeOnly?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -63,6 +65,7 @@ const NAV: NavItem[] = [
   { label: "Gráficas ERP", to: "/erp/analytics", icon: BarChart3, adminOnly: true },
   { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo },
   { label: "Finanzas", to: "/erp/finance", icon: Wallet, adminOnly: true },
+  { label: "Pagos a proveedores", to: "/erp/finance/supplier-payments", icon: DollarSign, financeOnly: true },
   { label: "Estados", to: "/erp/settings/statuses", icon: Settings, adminOnly: true },
   { label: "Proveedores", to: "/erp/settings/suppliers", icon: Users, adminOnly: true },
   { label: "Bodegas y zonas", to: "/erp/settings/warehouses", icon: Building2, adminOnly: true },
@@ -78,6 +81,7 @@ function Shell() {
   const userId = session.session?.user.id;
   const { brands, selectedBrand, setSelectedBrandId, isAdmin, roles } = useBrand();
   const isLogistics = isAdmin || roles.includes("logistica");
+  const isFinance = isAdmin || roles.includes("finanzas");
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -92,6 +96,15 @@ function Shell() {
     queryFn: () => pickupCountFn(),
   });
   const pickupCount = pickupCountQuery.data ?? 0;
+
+  const financeCountFn = useServerFn(getPendingSupplierPaymentsCount);
+  const financeCountQuery = useQuery({
+    queryKey: ["finance-pending-supplier-payments-count"],
+    enabled: isFinance,
+    queryFn: () => financeCountFn(),
+    staleTime: 30_000,
+  });
+  const financePaymentsCount = financeCountQuery.data?.count ?? 0;
 
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
@@ -137,12 +150,13 @@ function Shell() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics)).map((item) => {
+          {NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics) && (!i.financeOnly || isFinance)).map((item) => {
             const Icon = item.icon;
             const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
             const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
             const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
-            const badge = taskBadge || pickupBadge;
+            const financeBadge = item.to === "/erp/finance/supplier-payments" && financePaymentsCount > 0 ? financePaymentsCount : 0;
+            const badge = taskBadge || pickupBadge || financeBadge;
             return (
               <Link
                 key={item.to}
@@ -245,12 +259,13 @@ function Shell() {
                 </div>
 
                 <nav className="px-3 py-4 space-y-1">
-                  {NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics)).map((item) => {
+                  {NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics) && (!i.financeOnly || isFinance)).map((item) => {
                     const Icon = item.icon;
                     const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
                     const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
                     const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
-                    const badge = taskBadge || pickupBadge;
+                    const financeBadge = item.to === "/erp/finance/supplier-payments" && financePaymentsCount > 0 ? financePaymentsCount : 0;
+                    const badge = taskBadge || pickupBadge || financeBadge;
                     return (
                       <Link
                         key={item.to}

@@ -2112,6 +2112,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_supplier_payment_tasks: {
+        Args: { _item_id: string }
+        Returns: undefined
+      }
       delete_order_with_reason: {
         Args: { p_order_id: string; p_reason: string }
         Returns: undefined

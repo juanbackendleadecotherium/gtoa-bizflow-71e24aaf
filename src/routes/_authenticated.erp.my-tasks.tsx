@@ -180,33 +180,51 @@ function MyTasks() {
                   );
                 }
                 const isCollection = t.type === "invoice_ready_for_collection";
-                const isInfo = isCollection || t.severity === "info" || t.type === "production_started";
+                const isPayAdvance = t.type === "pay_supplier_advance";
+                const isPaidNotice = t.type === "supplier_advance_paid";
+                const isInfo =
+                  isCollection ||
+                  isPaidNotice ||
+                  t.severity === "info" ||
+                  t.type === "production_started";
                 const isPlanimetry = t.type === "upload_planimetry";
                 const pending = t.status === "pendiente";
                 const deadline = isPlanimetry && pending ? computeDeadlineState(t.planimetry_due_at) : null;
                 const overdue = deadline?.isOverdue ?? false;
                 const wrapCls = overdue
                   ? "border-red-500/60 bg-red-500/5"
-                  : isCollection
-                    ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
-                    : isInfo
-                      ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
-                      : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
-                const Icon = overdue ? AlertOctagon : isCollection ? DollarSign : isPlanimetry ? FileUp : isInfo ? Rocket : AlertTriangle;
+                  : isPayAdvance
+                    ? (pending ? "border-emerald-500/60 bg-emerald-500/5" : "border-border bg-surface")
+                    : isCollection
+                      ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
+                      : isInfo
+                        ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
+                        : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
+                const Icon = overdue
+                  ? AlertOctagon
+                  : (isCollection || isPayAdvance)
+                    ? DollarSign
+                    : isPlanimetry
+                      ? FileUp
+                      : isInfo
+                        ? Rocket
+                        : AlertTriangle;
                 const iconCls = overdue
                   ? "text-red-600 dark:text-red-400"
-                  : isCollection
+                  : (isCollection || isPayAdvance)
                     ? "text-emerald-600 dark:text-emerald-400"
                     : isInfo
                       ? "text-blue-600 dark:text-blue-400"
                       : "text-amber-600 dark:text-amber-400";
-                const ctaLabel = isCollection
-                  ? "Gestionar cobro"
-                  : isPlanimetry
-                    ? "Subir planimetría"
-                    : isInfo
-                      ? "Ver venta"
-                      : "Ir a la venta para corregir";
+                const ctaLabel = isPayAdvance
+                  ? "Ir a pagos a proveedores"
+                  : isCollection
+                    ? "Gestionar cobro"
+                    : isPlanimetry
+                      ? "Subir planimetría"
+                      : isInfo
+                        ? "Ver venta"
+                        : "Ir a la venta para corregir";
 
                 return (
                   <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
@@ -248,7 +266,14 @@ function MyTasks() {
                         </p>
                       </div>
                       <div className="flex gap-2 flex-wrap">
-                        {t.order_id && (
+                        {isPayAdvance ? (
+                          <Link
+                            to="/erp/finance/supplier-payments"
+                            className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
+                          >
+                            {ctaLabel} <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        ) : t.order_id ? (
                           <Link
                             to="/erp/orders/$id"
                             params={{ id: t.order_id }}
@@ -256,7 +281,7 @@ function MyTasks() {
                           >
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
                           </Link>
-                        )}
+                        ) : null}
                         {isInfo && pending && (
                           <Button
                             size="sm"

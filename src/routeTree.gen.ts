@@ -39,6 +39,7 @@ import { Route as AuthenticatedErpProductionApprovalsRouteImport } from './route
 import { Route as AuthenticatedErpProductionIdRouteImport } from './routes/_authenticated.erp.production.$id'
 import { Route as AuthenticatedErpOrdersIdRouteImport } from './routes/_authenticated.erp.orders.$id'
 import { Route as AuthenticatedErpLogisticsPickupsRouteImport } from './routes/_authenticated.erp.logistics.pickups'
+import { Route as AuthenticatedErpFinanceSupplierPaymentsRouteImport } from './routes/_authenticated.erp.finance.supplier-payments'
 import { Route as AuthenticatedErpFinanceSellersRouteImport } from './routes/_authenticated.erp.finance.sellers'
 import { Route as AuthenticatedErpFinanceReceivablesRouteImport } from './routes/_authenticated.erp.finance.receivables'
 import { Route as AuthenticatedErpFinanceDeletionsRouteImport } from './routes/_authenticated.erp.finance.deletions'
@@ -215,6 +216,12 @@ const AuthenticatedErpLogisticsPickupsRoute =
     path: '/logistics/pickups',
     getParentRoute: () => AuthenticatedErpRoute,
   } as any)
+const AuthenticatedErpFinanceSupplierPaymentsRoute =
+  AuthenticatedErpFinanceSupplierPaymentsRouteImport.update({
+    id: '/supplier-payments',
+    path: '/supplier-payments',
+    getParentRoute: () => AuthenticatedErpFinanceRoute,
+  } as any)
 const AuthenticatedErpFinanceSellersRoute =
   AuthenticatedErpFinanceSellersRouteImport.update({
     id: '/sellers',
@@ -255,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
   '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
+  '/erp/finance/supplier-payments': typeof AuthenticatedErpFinanceSupplierPaymentsRoute
   '/erp/logistics/pickups': typeof AuthenticatedErpLogisticsPickupsRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/production/$id': typeof AuthenticatedErpProductionIdRoute
@@ -286,6 +294,7 @@ export interface FileRoutesByTo {
   '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
   '/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
+  '/erp/finance/supplier-payments': typeof AuthenticatedErpFinanceSupplierPaymentsRoute
   '/erp/logistics/pickups': typeof AuthenticatedErpLogisticsPickupsRoute
   '/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/erp/production/$id': typeof AuthenticatedErpProductionIdRoute
@@ -323,6 +332,7 @@ export interface FileRoutesById {
   '/_authenticated/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/_authenticated/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
   '/_authenticated/erp/finance/sellers': typeof AuthenticatedErpFinanceSellersRoute
+  '/_authenticated/erp/finance/supplier-payments': typeof AuthenticatedErpFinanceSupplierPaymentsRoute
   '/_authenticated/erp/logistics/pickups': typeof AuthenticatedErpLogisticsPickupsRoute
   '/_authenticated/erp/orders/$id': typeof AuthenticatedErpOrdersIdRoute
   '/_authenticated/erp/production/$id': typeof AuthenticatedErpProductionIdRoute
@@ -360,6 +370,7 @@ export interface FileRouteTypes {
     | '/erp/finance/deletions'
     | '/erp/finance/receivables'
     | '/erp/finance/sellers'
+    | '/erp/finance/supplier-payments'
     | '/erp/logistics/pickups'
     | '/erp/orders/$id'
     | '/erp/production/$id'
@@ -391,6 +402,7 @@ export interface FileRouteTypes {
     | '/erp/finance/deletions'
     | '/erp/finance/receivables'
     | '/erp/finance/sellers'
+    | '/erp/finance/supplier-payments'
     | '/erp/logistics/pickups'
     | '/erp/orders/$id'
     | '/erp/production/$id'
@@ -427,6 +439,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/finance/deletions'
     | '/_authenticated/erp/finance/receivables'
     | '/_authenticated/erp/finance/sellers'
+    | '/_authenticated/erp/finance/supplier-payments'
     | '/_authenticated/erp/logistics/pickups'
     | '/_authenticated/erp/orders/$id'
     | '/_authenticated/erp/production/$id'
@@ -666,6 +679,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpLogisticsPickupsRouteImport
       parentRoute: typeof AuthenticatedErpRoute
     }
+    '/_authenticated/erp/finance/supplier-payments': {
+      id: '/_authenticated/erp/finance/supplier-payments'
+      path: '/supplier-payments'
+      fullPath: '/erp/finance/supplier-payments'
+      preLoaderRoute: typeof AuthenticatedErpFinanceSupplierPaymentsRouteImport
+      parentRoute: typeof AuthenticatedErpFinanceRoute
+    }
     '/_authenticated/erp/finance/sellers': {
       id: '/_authenticated/erp/finance/sellers'
       path: '/sellers'
@@ -716,6 +736,7 @@ interface AuthenticatedErpFinanceRouteChildren {
   AuthenticatedErpFinanceDeletionsRoute: typeof AuthenticatedErpFinanceDeletionsRoute
   AuthenticatedErpFinanceReceivablesRoute: typeof AuthenticatedErpFinanceReceivablesRoute
   AuthenticatedErpFinanceSellersRoute: typeof AuthenticatedErpFinanceSellersRoute
+  AuthenticatedErpFinanceSupplierPaymentsRoute: typeof AuthenticatedErpFinanceSupplierPaymentsRoute
   AuthenticatedErpFinanceIndexRoute: typeof AuthenticatedErpFinanceIndexRoute
 }
 
@@ -726,6 +747,8 @@ const AuthenticatedErpFinanceRouteChildren: AuthenticatedErpFinanceRouteChildren
     AuthenticatedErpFinanceReceivablesRoute:
       AuthenticatedErpFinanceReceivablesRoute,
     AuthenticatedErpFinanceSellersRoute: AuthenticatedErpFinanceSellersRoute,
+    AuthenticatedErpFinanceSupplierPaymentsRoute:
+      AuthenticatedErpFinanceSupplierPaymentsRoute,
     AuthenticatedErpFinanceIndexRoute: AuthenticatedErpFinanceIndexRoute,
   }
 
