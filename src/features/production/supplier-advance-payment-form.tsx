@@ -70,6 +70,7 @@ export function SupplierAdvancePaymentForm({
       qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
       qc.invalidateQueries({ queryKey: ["supplier-advance-payment", orderItemId] });
       qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
+      onConfirmed?.();
     },
     onError: (e: any) => toast.error(e.message ?? "Error al confirmar"),
   });
