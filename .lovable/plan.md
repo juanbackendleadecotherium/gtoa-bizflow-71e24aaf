@@ -1,66 +1,77 @@
-## Objetivo
+## 1. Auditoría e historial de comisiones
 
-Añadir al módulo de Finanzas dos capacidades:
+**Nueva tabla `commission_audit_log`** (append-only) para registrar cada cambio:
+- `commission_request_id`, `action` (`created` | `approved` | `rejected` | `paid` | `reverted`), `actor_id`, `actor_label`, `reason` (motivo rechazo), `reference` (referencia pago), `metadata jsonb`, `created_at`.
+- RLS: admin/finanzas leen todo; vendedor lee solo los de sus propias comisiones.
 
-1. **Metas de ventas** editables por el administrador (por marca y por vendedor), con % de avance visible al vendedor en tiempo real.
-2. **Comisiones por tramos** basadas en el cumplimiento mensual, con un flujo de solicitud → aprobación/rechazo por la gerente de ventas (Luisa) antes de que finanzas pague.
+**Triggers/RPC actualizadas**:
+- Al crear una `commission_request` (trigger existente) → insertar log `created`.
+- `approve_commission` → log `approved` con `actor_id`.
+- `reject_commission` → log `rejected` con `reason`.
+- `pay_commission` → log `paid` con `reference`.
 
-Empezamos con Montenegro / Claudia, pero la estructura sirve para todos los vendedores y marcas.
+**UI en `CommissionCard`**: nuevo `<details>` "Historial" que muestra timeline (fecha, acción, quién, motivo/referencia). Server fn `getCommissionAudit(id)`.
+
+## 2. Pago masivo de comisiones aprobadas
+
+- Nueva RPC `pay_commissions_bulk(_ids uuid[], _reference text)` — recorre y marca cada una como pagada, escribe log.
+- En la pestaña **Aprobadas**: checkbox por fila + checkbox "seleccionar todas" + barra sticky con "Pagar N comisiones ($total)" que abre el `PayDialog` con referencia común.
+- Tras confirmar, invalidar queries y las filas quedan visibles en la pestaña **Pagadas** (histórico ya existente, sin cambios).
+
+## 3. Sidebar: quitar "Comisiones"
+
+Eliminar el ítem `Comisiones` (`/erp/finance/commissions`) del `NAV` en `_authenticated.erp.tsx`. El badge de pendientes se mueve al ítem **Finanzas** (suma comisiones + otros si aplica) para no perder la señal.
+
+## 4. Tabs de Finanzas sin mini-scroll
+
+En `_authenticated.erp.finance.tsx` la barra usa `overflow-x-auto` y siempre muestra scrollbar. Cambios:
+- Quitar `overflow-x-auto` en desktop; usar `flex-wrap` para que los tabs bajen si no caben.
+- Reducir padding horizontal (`px-3` en vez de `px-4`) e íconos `h-3.5` para que quepan todos en una fila estándar (~1200px).
+- Mantener scroll horizontal solo en mobile con `md:flex-wrap md:overflow-visible`.
+
+## 5. Rediseño "Rendimiento por vendedor"
+
+Actualmente es una lista simple con barra vs. top vendedor. Nuevo diseño:
+
+**Fila superior — KPIs del mes** (4 cards):
+- Ventas totales del mes (marca)
+- Meta del mes (de `sales_goals` global de marca) + % cumplido con barra
+- Total recaudado / cartera pendiente
+- Nº de vendedores activos
+
+**Podio Top 3** (cards grandes con avatar/inicial, medalla, monto y % vs meta individual).
+
+**Tabla de ranking completa** con columnas:
+- Posición, Vendedor, Nº ventas, Total vendido, Meta individual, % Meta (barra), Recaudado, % Recaudo, Saldo, Comisión estimada del mes (según tramo vigente).
+
+**Selector de mes** conservado; agregar filtro "Todas las marcas" (admin) / marca actual.
+
+**Fuentes de datos**: `order_financials` (ya usado) + `sales_goals` (meta por vendedor/marca) + `commission_tiers` (para estimar comisión con `commission_tier_for`).
+
+## 6. Notificaciones automáticas a Luisa y Finanzas
+
+Extender los triggers/RPCs de comisiones para crear `seller_tasks` a **todos los usuarios con rol `admin` o `finanzas`** en cada transición:
+
+- **Creación** (`pendiente`) → tarea `commission_approval` a admins (ya existe; añadir también a finanzas como informativa `commission_new`).
+- **Aprobada** → tarea `commission_approved` para finanzas (para que la paguen) + notificación al vendedor.
+- **Rechazada** → tarea `commission_rejected` al vendedor con motivo + informativa a finanzas.
+- **Pagada** → tarea `commission_paid` al vendedor + cierre de la tarea `commission_approved` de finanzas.
+
+Cada tarea enlaza a `/erp/finance/commissions?status=<estado>` (agregar `validateSearch` en la ruta para preseleccionar tab).
 
 ---
 
-## 1. Metas de ventas (JD-08)
+### Detalles técnicos
 
-### Reglas confirmadas
-- Meta **por marca** (ej. Montenegro = $250.000.000/mes) — obligatoria.
-- Meta **por vendedor** (opcional, informativa) — el admin la puede ingresar/editar cuando quiera.
-- Período: **mensual**.
-- Base del cálculo de avance: suma de `order_financials.total` del mes vigente, filtrado por marca y por vendedor (`seller_id`/`created_by`).
+**Migración SQL** (1 sola):
+- `CREATE TABLE public.commission_audit_log(...)` + GRANTs (`authenticated`, `service_role`) + RLS + policies.
+- Alterar `maybe_create_commission_request`, `approve_commission`, `reject_commission`, `pay_commission` para insertar log y crear tareas a finanzas.
+- `CREATE FUNCTION public.pay_commissions_bulk(_ids uuid[], _reference text)` — SECURITY DEFINER, chequea rol admin/finanzas, itera llamando lógica de `pay_commission`.
 
-### Cambios de datos
-- `sales_goals` (nueva tabla): `brand_id`, `seller_id` (nullable → si `NULL` = meta global de la marca), `period_month` (date, día 1), `amount` (numeric). Único por (`brand_id`, `seller_id`, `period_month`).
-- RLS: admin puede leer/escribir todo; vendedor solo puede leer las metas donde `seller_id = auth.uid()` o la meta global de una marca donde tenga acceso.
-
-### UI
-- **Nueva pestaña en Finanzas**: "Metas de ventas" (solo admin) — tabla por marca y por vendedor del mes seleccionado con edición inline.
-- **En `/erp/finance/sellers`** (ranking): agregar barra de avance vs meta del vendedor y % contra la meta de marca.
-- **Dashboard del vendedor** (`/erp` index o `my-tasks`): tarjeta "Meta del mes" con % de avance, vendido y faltante.
-
----
-
-## 2. Comisiones (JD-09)
-
-### Tramos confirmados (aplican a todos los vendedores, configurables)
-| Ventas del mes (marca)      | % comisión |
-| --------------------------- | ---------- |
-| Hasta $80.000.000           | 2.0%       |
-| $80.000.001 – $99.999.999   | 2.5%       |
-| $100.000.000 – $149.999.999 | 3.0%       |
-| ≥ $150.000.000              | 3.5%       |
-
-- La comisión se calcula sobre el **total vendido en el mes por el vendedor en esa marca**.
-- Una comisión es **solicitable** cuando la orden tiene `saldo_cobrado = true` (pago completo, `balance = 0`).
-- Se genera **una solicitud por orden** al completar el cobro; el % aplicado es el del tramo alcanzado por el vendedor en ese mes hasta ese momento.
-
-### Cambios de datos
-- `commission_tiers` (nueva tabla, seed con la tabla de arriba): `min_amount`, `max_amount` (nullable = infinito), `percentage`, `is_active`.
-- `commission_requests` (nueva tabla): `order_id`, `brand_id`, `seller_id`, `sale_amount`, `tier_percentage`, `commission_amount`, `status` (`pendiente|aprobada|rechazada|pagada`), `rejection_reason`, `approved_by`, `approved_at`, `paid_by`, `paid_at`.
-- **Trigger**: cuando un pago hace que `balance` de una orden llegue a 0 → insertar `commission_request` (si no existe).
-- RLS: vendedor lee las suyas; admin (Luisa) lee todas, aprueba/rechaza; finanzas marca como pagada.
-
-### UI
-- **Nueva pestaña Finanzas → "Comisiones"** (admin): lista de solicitudes pendientes con botones Aprobar / Rechazar (motivo obligatorio si rechaza), y pestañas Historial / Pagadas.
-- **Tarea en "Mis tareas"** de Luisa: "Comisión pendiente de aprobación — Vendedor X, orden #Y, $Z".
-- **Notificación al vendedor** al aprobar/rechazar (misma tabla `seller_tasks`).
-- **Historial por vendedor** en `/erp/finance/sellers`: total comisiones aprobadas, pagadas y pendientes del mes.
-
----
-
-## Preguntas antes de codificar
-
-1. **¿La meta del vendedor es independiente de la meta de la marca o siempre debe ser una porción de ella?** (Ej. Claudia = meta propia de $250M igual a la marca, o meta menor tipo $180M).
-2. **Los tramos de comisión, ¿son iguales para todas las marcas** o cada marca tendrá los suyos más adelante? (Puedo dejar la tabla lista para variar por marca aunque hoy usemos un único set).
-3. **Al aprobar la comisión**, ¿marca directa a "pagada" o queda en "aprobada" y finanzas la pasa a "pagada" en un paso posterior? (Recomiendo dos pasos: Luisa aprueba, Finanzas paga).
-4. **¿Existe reversa de comisión** si una orden pagada luego se reembolsa/anula? (Puedo dejar `status='revertida'` reservado).
-
-Con las respuestas cierro la implementación en una sola tanda: migración + UI de metas + UI de comisiones + tareas/notificaciones.
+**Archivos afectados**:
+- `supabase/migrations/<nuevo>.sql`
+- `src/lib/commissions.functions.ts` — nuevas fns `getCommissionAudit`, `payCommissionsBulk`.
+- `src/routes/_authenticated.erp.finance.commissions.tsx` — historial en card, selección múltiple + barra de pago masivo, `validateSearch` para tab inicial.
+- `src/routes/_authenticated.erp.finance.sellers.tsx` — rediseño con KPIs, podio y tabla enriquecida.
+- `src/routes/_authenticated.erp.finance.tsx` — tabs sin scroll.
+- `src/routes/_authenticated.erp.tsx` — remover ítem Comisiones del NAV, mover badge a Finanzas.
