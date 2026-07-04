@@ -631,7 +631,32 @@ function OrderDetail() {
 
           <OrderSellerTasksBadge orderId={o.id} />
 
-          <ProductionSection orderId={o.id} brandId={o.brand_id} />
+          <SaleFlowCard
+            order={{
+              id: o.id,
+              total: o.total,
+              advance_amount: o.advance_amount,
+              sale_type: (o as any).sale_type ?? null,
+              separe_activated_at: (o as any).separe_activated_at ?? null,
+              separe_completed_at: (o as any).separe_completed_at ?? null,
+              approval_status: (o as any).approval_status ?? null,
+              approval_requested_at: (o as any).approval_requested_at ?? null,
+              approval_resolved_at: (o as any).approval_resolved_at ?? null,
+              approval_note: (o as any).approval_note ?? null,
+            }}
+            paidTotal={Math.max(Number(o.advance_amount) || 0, paymentsSumQuery.data ?? 0)}
+          />
+
+          <ProductionSection
+            orderId={o.id}
+            brandId={o.brand_id}
+            saleType={(o as any).sale_type ?? null}
+            separeCompletedAt={(o as any).separe_completed_at ?? null}
+            approvalStatus={(o as any).approval_status ?? null}
+            total={Number(o.total) || 0}
+            paidTotal={Math.max(Number(o.advance_amount) || 0, paymentsSumQuery.data ?? 0)}
+          />
+
 
           <ScheduleLogisticsCard orderId={o.id} />
 
