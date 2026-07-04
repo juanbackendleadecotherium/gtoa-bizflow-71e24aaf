@@ -182,9 +182,12 @@ function MyTasks() {
                 const isCollection = t.type === "invoice_ready_for_collection";
                 const isPayAdvance = t.type === "pay_supplier_advance";
                 const isPaidNotice = t.type === "supplier_advance_paid";
+                const isCommissionApproval = t.type === "commission_approval";
+                const isCommissionNotice = t.type === "commission_approved" || t.type === "commission_paid" || t.type === "commission_rejected";
                 const isInfo =
                   isCollection ||
                   isPaidNotice ||
+                  isCommissionNotice ||
                   t.severity === "info" ||
                   t.type === "production_started";
                 const isPlanimetry = t.type === "upload_planimetry";
@@ -193,7 +196,7 @@ function MyTasks() {
                 const overdue = deadline?.isOverdue ?? false;
                 const wrapCls = overdue
                   ? "border-red-500/60 bg-red-500/5"
-                  : isPayAdvance
+                  : isPayAdvance || isCommissionApproval
                     ? (pending ? "border-emerald-500/60 bg-emerald-500/5" : "border-border bg-surface")
                     : isCollection
                       ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
@@ -202,7 +205,7 @@ function MyTasks() {
                         : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
                 const Icon = overdue
                   ? AlertOctagon
-                  : (isCollection || isPayAdvance)
+                  : (isCollection || isPayAdvance || isCommissionApproval || isCommissionNotice)
                     ? DollarSign
                     : isPlanimetry
                       ? FileUp
@@ -211,20 +214,22 @@ function MyTasks() {
                         : AlertTriangle;
                 const iconCls = overdue
                   ? "text-red-600 dark:text-red-400"
-                  : (isCollection || isPayAdvance)
+                  : (isCollection || isPayAdvance || isCommissionApproval)
                     ? "text-emerald-600 dark:text-emerald-400"
                     : isInfo
                       ? "text-blue-600 dark:text-blue-400"
                       : "text-amber-600 dark:text-amber-400";
                 const ctaLabel = isPayAdvance
                   ? "Ir a pagos a proveedores"
-                  : isCollection
-                    ? "Gestionar cobro"
-                    : isPlanimetry
-                      ? "Subir planimetría"
-                      : isInfo
-                        ? "Ver venta"
-                        : "Ir a la venta para corregir";
+                  : isCommissionApproval
+                    ? "Revisar comisión"
+                    : isCollection
+                      ? "Gestionar cobro"
+                      : isPlanimetry
+                        ? "Subir planimetría"
+                        : isInfo
+                          ? "Ver venta"
+                          : "Ir a la venta para corregir";
 
                 return (
                   <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
