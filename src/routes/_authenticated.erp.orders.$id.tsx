@@ -25,6 +25,7 @@ import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 import { InvoicePanel } from "@/features/invoices/invoice-panel";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
 import { PaymentsPanel } from "@/features/finance/payments-panel";
+import { PartialShipmentToggle } from "@/features/orders/partial-shipment-toggle";
 import { formatDepositAccount } from "@/features/finance/deposit-accounts";
 import { DeleteOrderDialog } from "@/features/orders/delete-order-dialog";
 import { ProductionSection } from "@/features/production/send-to-production-button";
@@ -57,7 +58,7 @@ function OrderDetail() {
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
-          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id)
+          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at)
         `)
         .eq("id", id).maybeSingle();
       if (error) throw error;
@@ -434,6 +435,8 @@ function OrderDetail() {
                   return (
                     <OrderItemReadCard
                       key={it.id}
+                      itemId={it.id}
+                      orderId={o.id}
                       index={idx}
                       description={it.description ?? ""}
                       quantity={Number(it.quantity)}
@@ -442,6 +445,9 @@ function OrderDetail() {
                       images={imgs}
                       planimetryFiles={planiFiles}
                       sentToProduction={!!it.production_order_id}
+                      partialEnabled={!!it.partial_shipment_enabled}
+                      partialDeliveredAt={it.partial_delivered_at}
+                      productionFinishedAt={it.production_finished_at}
                     />
                   );
                 })}
@@ -716,6 +722,8 @@ function OrderDetail() {
 
 
 function OrderItemReadCard({
+  itemId,
+  orderId,
   index,
   description,
   quantity,
@@ -724,7 +732,12 @@ function OrderItemReadCard({
   images,
   planimetryFiles,
   sentToProduction,
+  partialEnabled,
+  partialDeliveredAt,
+  productionFinishedAt,
 }: {
+  itemId: string;
+  orderId: string;
   index: number;
   description: string;
   quantity: number;
@@ -733,6 +746,9 @@ function OrderItemReadCard({
   images: string[];
   planimetryFiles: PlanimetryFile[];
   sentToProduction: boolean;
+  partialEnabled: boolean;
+  partialDeliveredAt: string | null;
+  productionFinishedAt: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const isEmpty = !description.trim();
@@ -746,12 +762,23 @@ function OrderItemReadCard({
         <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Producto #{index + 1}
         </span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {sentToProduction && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
               En producción
             </span>
           )}
+          {productionFinishedAt && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold">
+              Terminado
+            </span>
+          )}
+          {partialDeliveredAt && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 font-semibold">
+              Entregado parcial
+            </span>
+          )}
+          <PartialShipmentToggle itemId={itemId} orderId={orderId} enabled={partialEnabled} />
           {hasPlani ? (
             <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold">
               <CheckCircle2 className="h-3 w-3" /> Planimetría OK
