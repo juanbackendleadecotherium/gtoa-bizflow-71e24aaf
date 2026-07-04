@@ -496,10 +496,20 @@ export function NewCustomerDialog({
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
   const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
   const minAdvance = subtotal * 0.5;
-  const advanceOk = subtotal > 0 && (draft.order.advance_amount || 0) >= minAdvance - 0.01;
+  const isPlanSepare = draft.order.sale_type === "plan_separe";
+  const wantsApproval = draft.order.request_approval;
+  // Plan Separe permite arrancar con cualquier abono. Aprobación gerencial
+  // exime del 50%. Solo la venta normal sin excepción exige el 50%.
+  const advanceOk =
+    subtotal > 0 &&
+    (isPlanSepare || wantsApproval || (draft.order.advance_amount || 0) >= minAdvance - 0.01);
   const paymentMethodOk = !!draft.order.payment_method;
-  const depositAccountOk = !!draft.order.advance_deposit_account;
-  const paymentBlockOk = subtotal > 0 && advanceOk && paymentMethodOk && depositAccountOk;
+  // Cuando el abono es 0 (típico de Plan Separe) no exigimos cuenta destino.
+  const depositAccountOk =
+    (draft.order.advance_amount || 0) === 0 || !!draft.order.advance_deposit_account;
+  const approvalReasonOk = !wantsApproval || draft.order.approval_note.trim().length > 0;
+  const paymentBlockOk =
+    subtotal > 0 && advanceOk && paymentMethodOk && depositAccountOk && approvalReasonOk;
   const isJuridica = draft.customer.person_type === "juridica";
 
 
