@@ -426,6 +426,23 @@ export function ProductionSection({
   const allItems = items.data ?? [];
   const freeItemsCount = allItems.filter((i) => !getItemLock(i).disabled).length;
 
+  // Gate: Plan Separe sin 50% completado o aprobación pendiente/rechazada bloquea.
+  const gate: { ok: boolean; reason?: string } = (() => {
+    if (saleType === "plan_separe" && !separeCompletedAt) {
+      const t = Number(total ?? 0), p = Number(paidTotal ?? 0);
+      const pct = t > 0 ? (p / t) * 100 : 0;
+      return { ok: false, reason: `Plan Separe: falta llegar al 50% (actual ${pct.toFixed(1)}%). Registra más abonos para desbloquear producción.` };
+    }
+    if (approvalStatus === "pendiente") {
+      return { ok: false, reason: "Aprobación gerencial pendiente. Producción se habilita cuando gerencia decida." };
+    }
+    if (approvalStatus === "rechazada") {
+      return { ok: false, reason: "Aprobación gerencial rechazada. Contacta a gerencia antes de reintentar." };
+    }
+    return { ok: true };
+  })();
+
+
   const handleSendClick = () => {
     // Default to "new" — locked items stay disabled, unsent items get pre-checked.
     setSelectedTarget("new");
