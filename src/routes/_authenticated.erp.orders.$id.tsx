@@ -32,6 +32,7 @@ import { OrderSellerTasksBadge } from "@/features/seller-tasks/seller-tasks-pane
 import { ScheduleLogisticsCard } from "@/features/orders/schedule-logistics-card";
 import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/features/orders/delivery-urgency";
 import { DeliveryDeferralCard } from "@/features/orders/delivery-deferral-card";
+import { SaleFlowCard } from "@/features/orders/sale-flow-card";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -50,6 +51,8 @@ function OrderDetail() {
         .from("orders")
         .select(`
           id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date, scheduled_delivery_date, is_deferred_delivery, deferred_reason, deferred_at,
+          sale_type, separe_activated_at, separe_completed_at, price_locked_at,
+          approval_status, approval_requested_at, approval_resolved_at, approval_note,
           payment_method, advance_amount, advance_deposit_account, payment_proof_url,
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
@@ -97,6 +100,19 @@ function OrderDetail() {
         .limit(200);
       if (error) throw error;
       return (data ?? []) as AuditRow[];
+    },
+  });
+
+  // Suma de pagos registrados: alimenta el % de Plan Separe y el gate para producción.
+  const paymentsSumQuery = useQuery({
+    queryKey: ["order-payments-sum", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_payments")
+        .select("amount")
+        .eq("order_id", id);
+      if (error) throw error;
+      return (data ?? []).reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
     },
   });
 
@@ -615,7 +631,32 @@ function OrderDetail() {
 
           <OrderSellerTasksBadge orderId={o.id} />
 
-          <ProductionSection orderId={o.id} brandId={o.brand_id} />
+          <SaleFlowCard
+            order={{
+              id: o.id,
+              total: o.total,
+              advance_amount: o.advance_amount,
+              sale_type: (o as any).sale_type ?? null,
+              separe_activated_at: (o as any).separe_activated_at ?? null,
+              separe_completed_at: (o as any).separe_completed_at ?? null,
+              approval_status: (o as any).approval_status ?? null,
+              approval_requested_at: (o as any).approval_requested_at ?? null,
+              approval_resolved_at: (o as any).approval_resolved_at ?? null,
+              approval_note: (o as any).approval_note ?? null,
+            }}
+            paidTotal={Math.max(Number(o.advance_amount) || 0, paymentsSumQuery.data ?? 0)}
+          />
+
+          <ProductionSection
+            orderId={o.id}
+            brandId={o.brand_id}
+            saleType={(o as any).sale_type ?? null}
+            separeCompletedAt={(o as any).separe_completed_at ?? null}
+            approvalStatus={(o as any).approval_status ?? null}
+            total={Number(o.total) || 0}
+            paidTotal={Math.max(Number(o.advance_amount) || 0, paymentsSumQuery.data ?? 0)}
+          />
+
 
           <ScheduleLogisticsCard orderId={o.id} />
 

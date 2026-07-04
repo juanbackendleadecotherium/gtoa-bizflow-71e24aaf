@@ -13,6 +13,7 @@ import { StatusBadge } from "@/features/orders/status-badge";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { NewCustomerDialog } from "@/features/customers/new-customer-dialog";
 import { PaymentBadge, InvoicedBadge } from "@/features/invoices/invoice-badges";
+import { SaleTypeBadge, ApprovalStatusBadge } from "@/features/orders/sale-type-badge";
 import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/features/orders/delivery-urgency";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/")({
@@ -43,7 +44,7 @@ function OrdersPage() {
     queryFn: async () => {
       let q = supabase
         .from("orders")
-        .select("id, order_number, invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, customer_name, customer_phone, customer_doc_number, status:order_statuses(name,color), invoices(id), items:order_items(description, quantity, sort_order)")
+        .select("id, order_number, invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, customer_name, customer_phone, customer_doc_number, sale_type, separe_completed_at, approval_status, status:order_statuses(name,color), invoices(id), items:order_items(description, quantity, sort_order)")
         .eq("brand_id", selectedBrandId!)
         .order("created_at", { ascending: false });
       if (statusFilter !== "all") q = q.eq("status_id", statusFilter);
@@ -146,6 +147,8 @@ function OrdersPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         {o.status ? <StatusBadge name={o.status.name} color={o.status.color} /> : "—"}
                         <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
+                        {o.sale_type === "plan_separe" && <SaleTypeBadge saleType={o.sale_type} separeCompletedAt={o.separe_completed_at} />}
+                        <ApprovalStatusBadge status={o.approval_status} />
                         {o.invoices?.length > 0 && <InvoicedBadge />}
                       </div>
                     </td>
@@ -184,6 +187,8 @@ function OrdersPage() {
                   <p className="text-sm">{summarizeItems(o.items)}</p>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
+                    {o.sale_type === "plan_separe" && <SaleTypeBadge saleType={o.sale_type} separeCompletedAt={o.separe_completed_at} />}
+                    <ApprovalStatusBadge status={o.approval_status} />
                     {o.invoices?.length > 0 && <InvoicedBadge />}
                   </div>
                   <div className="flex items-center justify-between gap-2 flex-wrap">

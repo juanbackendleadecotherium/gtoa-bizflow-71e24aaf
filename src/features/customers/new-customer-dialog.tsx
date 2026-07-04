@@ -96,6 +96,9 @@ type OrderDraft = {
   payment_method: string;
   advance_amount: number;
   advance_deposit_account: string;
+  sale_type: "normal" | "plan_separe";
+  request_approval: boolean;
+  approval_note: string;
 };
 
 type Draft = {
@@ -131,6 +134,9 @@ const EMPTY: Draft = {
     payment_method: "",
     advance_amount: 0,
     advance_deposit_account: "",
+    sale_type: "normal",
+    request_approval: false,
+    approval_note: "",
   },
   items: [],
   notes: "",
@@ -271,6 +277,9 @@ export function NewCustomerDialog({
           payment_method: ext.order.payment_method || d.order.payment_method,
           advance_amount: ext.order.advance_amount || d.order.advance_amount,
           advance_deposit_account: d.order.advance_deposit_account,
+          sale_type: d.order.sale_type,
+          request_approval: d.order.request_approval,
+          approval_note: d.order.approval_note,
         },
         items: ext.items.length > 0 ? ext.items : d.items,
         notes: ext.notes || d.notes,
@@ -294,13 +303,25 @@ export function NewCustomerDialog({
       const _advance = draft.order.advance_amount || 0;
       if (!draft.order.payment_method) throw new Error("Selecciona la modalidad de pago");
       if (_subtotal <= 0) throw new Error("El subtotal de la venta debe ser mayor a cero");
-      if (_advance < _subtotal * 0.5 - 0.01) {
+
+      const isPlanSepare = draft.order.sale_type === "plan_separe";
+      const wantsApproval = draft.order.request_approval;
+
+      // Plan Separe permite arrancar con cualquier abono (incluso 0). Venta
+      // normal exige el 50% salvo que el vendedor solicite aprobación gerencial.
+      if (!isPlanSepare && !wantsApproval && _advance < _subtotal * 0.5 - 0.01) {
         throw new Error(
-          `El abono debe ser mínimo el 50% del total (${formatMoney(_subtotal * 0.5)}).`,
+          `El abono debe ser mínimo el 50% del total (${formatMoney(_subtotal * 0.5)}). ` +
+          `Marca "Plan Separe" o solicita aprobación gerencial para excepción.`,
         );
       }
-      if (!draft.order.advance_deposit_account)
-        throw new Error("Indica a qué cuenta llegó el abono del 50%");
+      if (wantsApproval && !draft.order.approval_note.trim()) {
+        throw new Error("Escribe el motivo de la excepción para gerencia.");
+      }
+      if (_advance > 0 && !draft.order.advance_deposit_account) {
+        throw new Error("Indica a qué cuenta llegó el abono");
+      }
+
 
 
       const {
@@ -344,6 +365,7 @@ export function NewCustomerDialog({
           payment_method: draft.order.payment_method || null,
           advance_amount: draft.order.advance_amount || 0,
           advance_deposit_account: draft.order.advance_deposit_account || null,
+          sale_type: draft.order.sale_type,
           customer_name: c.display_name.trim(),
           customer_doc_type: c.doc_type || null,
           customer_doc_number: c.doc_number.trim() || null,
@@ -398,6 +420,20 @@ export function NewCustomerDialog({
           .from("orders")
           .update({ payment_proof_url: url } as never)
           .eq("id", order.id);
+      }
+
+      // Si el vendedor pidió excepción por anticipo < 50%, dispara la solicitud
+      // de aprobación gerencial. Solo aplica a ventas normales; Plan Separe
+      // no necesita aprobación porque tiene su propio flujo.
+      if (draft.order.sale_type === "normal" && draft.order.request_approval) {
+        const { error: apprErr } = await supabase.rpc("request_management_approval", {
+          p_order_id: order.id,
+          p_note: draft.order.approval_note.trim() || undefined,
+        });
+        if (apprErr) {
+          // No revertimos la orden: el vendedor puede reintentar desde el detalle.
+          toast.error(`Venta creada, pero falló la solicitud de aprobación: ${apprErr.message}`);
+        }
       }
 
       return order;
@@ -460,10 +496,20 @@ export function NewCustomerDialog({
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
   const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
   const minAdvance = subtotal * 0.5;
-  const advanceOk = subtotal > 0 && (draft.order.advance_amount || 0) >= minAdvance - 0.01;
+  const isPlanSepare = draft.order.sale_type === "plan_separe";
+  const wantsApproval = draft.order.request_approval;
+  // Plan Separe permite arrancar con cualquier abono. Aprobación gerencial
+  // exime del 50%. Solo la venta normal sin excepción exige el 50%.
+  const advanceOk =
+    subtotal > 0 &&
+    (isPlanSepare || wantsApproval || (draft.order.advance_amount || 0) >= minAdvance - 0.01);
   const paymentMethodOk = !!draft.order.payment_method;
-  const depositAccountOk = !!draft.order.advance_deposit_account;
-  const paymentBlockOk = subtotal > 0 && advanceOk && paymentMethodOk && depositAccountOk;
+  // Cuando el abono es 0 (típico de Plan Separe) no exigimos cuenta destino.
+  const depositAccountOk =
+    (draft.order.advance_amount || 0) === 0 || !!draft.order.advance_deposit_account;
+  const approvalReasonOk = !wantsApproval || draft.order.approval_note.trim().length > 0;
+  const paymentBlockOk =
+    subtotal > 0 && advanceOk && paymentMethodOk && depositAccountOk && approvalReasonOk;
   const isJuridica = draft.customer.person_type === "juridica";
 
 
@@ -851,9 +897,39 @@ export function NewCustomerDialog({
           <SectionCard
             icon={<CreditCard className="h-4 w-4" />}
             title="Pago"
-            subtitle="Modalidad y abono inicial (mínimo 50% del total)."
+            subtitle="Elige tipo de venta y registra el abono."
           >
-            <div className="grid sm:grid-cols-2 gap-4">
+            {/* Tipo de venta */}
+            <FieldBlock label="Tipo de venta">
+              <div className="grid sm:grid-cols-2 gap-2">
+                <button type="button"
+                  onClick={() => { setO("sale_type", "normal"); setO("request_approval", false); }}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    !isPlanSepare
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}>
+                  <div className="text-sm font-medium">Venta normal</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Requiere 50% de anticipo para entrar a producción.
+                  </div>
+                </button>
+                <button type="button"
+                  onClick={() => { setO("sale_type", "plan_separe"); setO("request_approval", false); }}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    isPlanSepare
+                      ? "border-violet-500 bg-violet-500/5"
+                      : "border-border hover:border-primary/50"
+                  }`}>
+                  <div className="text-sm font-medium">Plan Separe</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Congela precio con abono parcial. Producción arranca al 50%.
+                  </div>
+                </button>
+              </div>
+            </FieldBlock>
+
+            <div className="grid sm:grid-cols-2 gap-4 mt-3">
               <FieldBlock label="Modalidad de pago *">
                 <Select
                   value={draft.order.payment_method || undefined}
@@ -871,36 +947,74 @@ export function NewCustomerDialog({
                   </SelectContent>
                 </Select>
               </FieldBlock>
-              <FieldBlock label={`Abono * (mín. ${subtotal > 0 ? formatMoney(minAdvance) : "50% del total"})`}>
+              <FieldBlock label={isPlanSepare
+                ? "Abono inicial (opcional en Plan Separe)"
+                : `Abono * (mín. ${subtotal > 0 ? formatMoney(minAdvance) : "50% del total"})`}>
                 <MoneyInput
                   value={draft.order.advance_amount}
                   onValueChange={(n) => setO("advance_amount", n)}
                 />
             </FieldBlock>
             </div>
-            <div className="mt-3">
-              <FieldBlock label="Cuenta destino del abono *">
-                <Select
-                  value={draft.order.advance_deposit_account || undefined}
-                  onValueChange={(v) => setO("advance_deposit_account", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="¿A qué cuenta llegó el abono?" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEPOSIT_ACCOUNTS.map((a) => (
-                      <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldBlock>
-            </div>
+            {(draft.order.advance_amount || 0) > 0 && (
+              <div className="mt-3">
+                <FieldBlock label="Cuenta destino del abono *">
+                  <Select
+                    value={draft.order.advance_deposit_account || undefined}
+                    onValueChange={(v) => setO("advance_deposit_account", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="¿A qué cuenta llegó el abono?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEPOSIT_ACCOUNTS.map((a) => (
+                        <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldBlock>
+              </div>
+            )}
+
+            {/* Aprobación gerencial — solo si es Venta normal con anticipo < 50% */}
+            {!isPlanSepare && subtotal > 0 && (draft.order.advance_amount || 0) < minAdvance - 0.01 && (
+              <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={draft.order.request_approval}
+                    onChange={(e) => setO("request_approval", e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-amber-500/50"
+                  />
+                  <span className="text-xs">
+                    <span className="font-medium text-amber-700 dark:text-amber-400">
+                      Solicitar excepción de anticipo (aprobación gerencial)
+                    </span>
+                    <br />
+                    <span className="text-muted-foreground">
+                      Luisa o Chiqui deberán aprobar antes de enviar a producción.
+                    </span>
+                  </span>
+                </label>
+                {draft.order.request_approval && (
+                  <Textarea
+                    placeholder="Motivo de la excepción (obligatorio)…"
+                    value={draft.order.approval_note}
+                    onChange={(e) => setO("approval_note", e.target.value)}
+                    rows={2}
+                  />
+                )}
+              </div>
+            )}
+
             {subtotal > 0 && !advanceOk && (
               <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
                 El abono debe ser mínimo el 50% del total ({formatMoney(minAdvance)}). Faltan{" "}
                 <span className="font-medium">{formatMoney(Math.max(0, minAdvance - (draft.order.advance_amount || 0)))}</span>.
+                Marca <b>Plan Separe</b> o solicita aprobación gerencial para excepción.
               </div>
             )}
+
 
             {subtotal > 0 && (
               <div className="mt-3 space-y-2">

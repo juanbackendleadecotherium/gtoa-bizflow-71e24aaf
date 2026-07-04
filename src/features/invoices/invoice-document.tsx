@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
-import { getBrandLogo } from "./brand-logos";
+import { getBrandLogo, getBrandInvoiceColor } from "./brand-logos";
 import { numberToSpanishWords } from "./number-to-words";
 
 export type InvoiceBrandSnapshot = {
@@ -100,10 +100,10 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   brandCol: { maxWidth: "55%" },
   logoBox: {
-    width: 150, height: 64, alignItems: "flex-start", justifyContent: "center",
-    marginBottom: 12,
+    width: 220, height: 90, alignItems: "flex-start", justifyContent: "center",
+    marginBottom: 10,
   },
-  logo: { maxWidth: 150, maxHeight: 60, objectFit: "contain" },
+  logo: { maxWidth: 220, maxHeight: 90, objectFit: "contain" },
   brandName: { fontSize: 11, fontWeight: 700, color: INK, letterSpacing: 0.4 },
   brandLine: { color: SUB, fontSize: 9, marginTop: 2, lineHeight: 1.45 },
 
@@ -198,8 +198,7 @@ const styles = StyleSheet.create({
 
 export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
   const logo = getBrandLogo(data.brand.slug, data.brand.logo_url);
-  const accent = (data.brand.primary_color && /^#[0-9a-f]{3,8}$/i.test(data.brand.primary_color))
-    ? data.brand.primary_color : "#0f172a";
+  const accent = getBrandInvoiceColor(data.brand.slug, data.brand.primary_color);
   const totalWords = numberToSpanishWords(Math.round(Number(data.total) || 0));
 
   return (
@@ -214,22 +213,18 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             <View style={styles.brandCol}>
               <View style={styles.logoBox}>
                 {logo ? <Image src={logo} style={styles.logo} /> : (
-                  <Text style={{ fontSize: 18, fontWeight: 700, color: accent }}>{data.brand.name}</Text>
+                  <Text style={{ fontSize: 22, fontWeight: 700, color: accent }}>{data.brand.name}</Text>
                 )}
               </View>
-              <Text style={styles.brandName}>{(data.brand.legal_name || data.brand.name).toUpperCase()}</Text>
-              {data.brand.tax_id ? <Text style={styles.brandLine}>NIT {data.brand.tax_id}</Text> : null}
+              {/* Datos mínimos: solo dirección + ciudad + teléfono (sin NIT, email o web) */}
               {data.brand.address ? (
                 <Text style={styles.brandLine}>
                   {data.brand.address}{data.brand.city ? ` · ${data.brand.city}` : ""}
                 </Text>
               ) : null}
-              {(data.brand.phone || data.brand.email) ? (
-                <Text style={styles.brandLine}>
-                  {[data.brand.phone, data.brand.email].filter(Boolean).join("  ·  ")}
-                </Text>
+              {data.brand.phone ? (
+                <Text style={styles.brandLine}>Tel. {data.brand.phone}</Text>
               ) : null}
-              {data.brand.website ? <Text style={styles.brandLine}>{data.brand.website}</Text> : null}
             </View>
 
             <View style={styles.metaCol}>
@@ -290,7 +285,6 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             {data.seller_name ? (
               <Text style={styles.partyLine}>Asesor: {data.seller_name}</Text>
             ) : null}
-            <Text style={styles.partyLine}>Tipo: Cuenta de cobro de venta</Text>
             <Text style={styles.partyLine}>{data.items.length} producto{data.items.length === 1 ? "" : "s"}</Text>
           </View>
         </View>
@@ -388,7 +382,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         <View style={styles.footerBlock} fixed>
           <View style={styles.footerTop}>
             <Text style={styles.footerMeta}>
-              {data.brand.legal_name || data.brand.name} · Cuenta de cobro {data.invoice_number}
+              {data.brand.name} · Cuenta de cobro {data.invoice_number}
               {data.version_number && data.version_number > 1 ? ` · v${data.version_number}` : ""}
             </Text>
             <Text style={styles.footerMeta} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />

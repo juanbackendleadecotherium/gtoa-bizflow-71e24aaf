@@ -669,6 +669,60 @@ export type Database = {
         }
         Relationships: []
       }
+      order_approval_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          advance_amount: number | null
+          advance_percentage: number | null
+          created_at: string
+          id: string
+          note: string | null
+          order_id: string
+          total_amount: number | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          advance_amount?: number | null
+          advance_percentage?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_id: string
+          total_amount?: number | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          advance_amount?: number | null
+          advance_percentage?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_id?: string
+          total_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_approval_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_approval_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_audit_log: {
         Row: {
           action: string
@@ -1229,6 +1283,12 @@ export type Database = {
         Row: {
           advance_amount: number
           advance_deposit_account: string | null
+          approval_note: string | null
+          approval_requested_at: string | null
+          approval_requested_by: string | null
+          approval_resolved_at: string | null
+          approval_resolved_by: string | null
+          approval_status: string
           assigned_to: string | null
           brand_id: string
           created_at: string
@@ -1257,12 +1317,17 @@ export type Database = {
           order_number: string
           payment_method: string | null
           payment_proof_url: string | null
+          price_locked_at: string | null
+          requires_management_approval: boolean
           sale_date: string | null
+          sale_type: string
           scheduled_delivery_date: string | null
           scheduled_logistics_at: string | null
           scheduled_logistics_by: string | null
           scheduled_logistics_date: string | null
           seller_id: string | null
+          separe_activated_at: string | null
+          separe_completed_at: string | null
           source: string
           status_id: string
           subtotal: number
@@ -1274,6 +1339,12 @@ export type Database = {
         Insert: {
           advance_amount?: number
           advance_deposit_account?: string | null
+          approval_note?: string | null
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approval_resolved_at?: string | null
+          approval_resolved_by?: string | null
+          approval_status?: string
           assigned_to?: string | null
           brand_id: string
           created_at?: string
@@ -1302,12 +1373,17 @@ export type Database = {
           order_number: string
           payment_method?: string | null
           payment_proof_url?: string | null
+          price_locked_at?: string | null
+          requires_management_approval?: boolean
           sale_date?: string | null
+          sale_type?: string
           scheduled_delivery_date?: string | null
           scheduled_logistics_at?: string | null
           scheduled_logistics_by?: string | null
           scheduled_logistics_date?: string | null
           seller_id?: string | null
+          separe_activated_at?: string | null
+          separe_completed_at?: string | null
           source?: string
           status_id: string
           subtotal?: number
@@ -1319,6 +1395,12 @@ export type Database = {
         Update: {
           advance_amount?: number
           advance_deposit_account?: string | null
+          approval_note?: string | null
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approval_resolved_at?: string | null
+          approval_resolved_by?: string | null
+          approval_status?: string
           assigned_to?: string | null
           brand_id?: string
           created_at?: string
@@ -1347,12 +1429,17 @@ export type Database = {
           order_number?: string
           payment_method?: string | null
           payment_proof_url?: string | null
+          price_locked_at?: string | null
+          requires_management_approval?: boolean
           sale_date?: string | null
+          sale_type?: string
           scheduled_delivery_date?: string | null
           scheduled_logistics_at?: string | null
           scheduled_logistics_by?: string | null
           scheduled_logistics_date?: string | null
           seller_id?: string | null
+          separe_activated_at?: string | null
+          separe_completed_at?: string | null
           source?: string
           status_id?: string
           subtotal?: number
@@ -2443,6 +2530,10 @@ export type Database = {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
+      check_separe_completion: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
       commission_actor_label: { Args: { _uid: string }; Returns: string }
       commission_tier_for: {
         Args: { _amount: number; _brand_id: string }
@@ -2550,6 +2641,14 @@ export type Database = {
       }
       reject_production_with_reason: {
         Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      request_management_approval: {
+        Args: { p_note?: string; p_order_id: string }
+        Returns: undefined
+      }
+      resolve_management_approval: {
+        Args: { p_decision: string; p_note?: string; p_order_id: string }
         Returns: undefined
       }
       revert_invoice_electronic: {

@@ -265,7 +265,23 @@ export async function generatePlanimetryForOrder(opts: {
   return lastVersion;
 }
 
-export function ProductionSection({ orderId, brandId }: { orderId: string; brandId: string }) {
+export function ProductionSection({
+  orderId,
+  brandId,
+  saleType,
+  separeCompletedAt,
+  approvalStatus,
+  total,
+  paidTotal,
+}: {
+  orderId: string;
+  brandId: string;
+  saleType?: string | null;
+  separeCompletedAt?: string | null;
+  approvalStatus?: string | null;
+  total?: number;
+  paidTotal?: number;
+}) {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [step, setStep] = useState<"select" | "preview">("select");
@@ -410,6 +426,23 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
   const allItems = items.data ?? [];
   const freeItemsCount = allItems.filter((i) => !getItemLock(i).disabled).length;
 
+  // Gate: Plan Separe sin 50% completado o aprobación pendiente/rechazada bloquea.
+  const gate: { ok: boolean; reason?: string } = (() => {
+    if (saleType === "plan_separe" && !separeCompletedAt) {
+      const t = Number(total ?? 0), p = Number(paidTotal ?? 0);
+      const pct = t > 0 ? (p / t) * 100 : 0;
+      return { ok: false, reason: `Plan Separe: falta llegar al 50% (actual ${pct.toFixed(1)}%). Registra más abonos para desbloquear producción.` };
+    }
+    if (approvalStatus === "pendiente") {
+      return { ok: false, reason: "Aprobación gerencial pendiente. Producción se habilita cuando gerencia decida." };
+    }
+    if (approvalStatus === "rechazada") {
+      return { ok: false, reason: "Aprobación gerencial rechazada. Contacta a gerencia antes de reintentar." };
+    }
+    return { ok: true };
+  })();
+
+
   const handleSendClick = () => {
     // Default to "new" — locked items stay disabled, unsent items get pre-checked.
     setSelectedTarget("new");
@@ -460,11 +493,20 @@ export function ProductionSection({ orderId, brandId }: { orderId: string; brand
           <Factory className="h-4 w-4" /> Producción
         </h2>
         <Button size="sm" variant="outline" onClick={handleSendClick}
-          disabled={busy || items.isLoading} className="gap-1">
+          disabled={busy || items.isLoading || !gate.ok}
+          title={!gate.ok ? gate.reason : undefined}
+          className="gap-1">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Enviar a producción
         </Button>
       </div>
+
+      {!gate.ok && (
+        <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+          {gate.reason}
+        </div>
+      )}
+
 
       {list.isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
