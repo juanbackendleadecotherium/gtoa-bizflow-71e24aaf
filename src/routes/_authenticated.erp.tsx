@@ -25,6 +25,7 @@ import { useMyPendingTasksCount } from "@/features/seller-tasks/seller-tasks-pan
 import { countActivePickups } from "@/lib/pickup-orders.functions";
 import { usePickupCountRealtime } from "@/features/logistics/use-logistics-realtime";
 import { getPendingSupplierPaymentsCount } from "@/lib/supplier-advance-payments.functions";
+import { getPendingCommissionsCount } from "@/lib/commissions.functions";
 
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
@@ -66,6 +67,7 @@ const NAV: NavItem[] = [
   { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo },
   { label: "Finanzas", to: "/erp/finance", icon: Wallet, adminOnly: true },
   { label: "Pagos a proveedores", to: "/erp/finance/supplier-payments", icon: DollarSign, financeOnly: true },
+  { label: "Comisiones", to: "/erp/finance/commissions", icon: DollarSign, adminOnly: true },
   { label: "Estados", to: "/erp/settings/statuses", icon: Settings, adminOnly: true },
   { label: "Proveedores", to: "/erp/settings/suppliers", icon: Users, adminOnly: true },
   { label: "Bodegas y zonas", to: "/erp/settings/warehouses", icon: Building2, adminOnly: true },
@@ -105,6 +107,16 @@ function Shell() {
     staleTime: 30_000,
   });
   const financePaymentsCount = financeCountQuery.data?.count ?? 0;
+
+  const commissionsCountFn = useServerFn(getPendingCommissionsCount);
+  const commissionsCountQuery = useQuery({
+    queryKey: ["commissions-pending-count"],
+    enabled: isAdmin,
+    queryFn: () => commissionsCountFn(),
+    staleTime: 30_000,
+  });
+  const commissionsPendingCount = commissionsCountQuery.data?.count ?? 0;
+
 
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
@@ -156,7 +168,8 @@ function Shell() {
             const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
             const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
             const financeBadge = item.to === "/erp/finance/supplier-payments" && financePaymentsCount > 0 ? financePaymentsCount : 0;
-            const badge = taskBadge || pickupBadge || financeBadge;
+            const commissionBadge = item.to === "/erp/finance/commissions" && commissionsPendingCount > 0 ? commissionsPendingCount : 0;
+            const badge = taskBadge || pickupBadge || financeBadge || commissionBadge;
             return (
               <Link
                 key={item.to}
@@ -265,7 +278,8 @@ function Shell() {
                     const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
                     const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
                     const financeBadge = item.to === "/erp/finance/supplier-payments" && financePaymentsCount > 0 ? financePaymentsCount : 0;
-                    const badge = taskBadge || pickupBadge || financeBadge;
+                    const commissionBadge = item.to === "/erp/finance/commissions" && commissionsPendingCount > 0 ? commissionsPendingCount : 0;
+                    const badge = taskBadge || pickupBadge || financeBadge || commissionBadge;
                     return (
                       <Link
                         key={item.to}

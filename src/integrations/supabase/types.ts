@@ -95,6 +95,138 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          brand_id: string
+          commission_amount: number
+          created_at: string
+          id: string
+          order_id: string
+          paid_at: string | null
+          paid_by: string | null
+          paid_reference: string | null
+          period_month: string
+          rejection_reason: string | null
+          sale_amount: number
+          seller_id: string
+          seller_label: string | null
+          seller_monthly_sales: number
+          status: string
+          tier_percentage: number
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          brand_id: string
+          commission_amount: number
+          created_at?: string
+          id?: string
+          order_id: string
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_reference?: string | null
+          period_month: string
+          rejection_reason?: string | null
+          sale_amount: number
+          seller_id: string
+          seller_label?: string | null
+          seller_monthly_sales: number
+          status?: string
+          tier_percentage: number
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          brand_id?: string
+          commission_amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_reference?: string | null
+          period_month?: string
+          rejection_reason?: string | null
+          sale_amount?: number
+          seller_id?: string
+          seller_label?: string | null
+          seller_monthly_sales?: number
+          status?: string
+          tier_percentage?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_requests_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "commission_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_tiers: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          max_amount: number | null
+          min_amount: number
+          percentage: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_amount?: number | null
+          min_amount: number
+          percentage: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_amount?: number | null
+          min_amount?: number
+          percentage?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_tiers_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -1651,6 +1783,47 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_goals: {
+        Row: {
+          amount: number
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          period_month: string
+          seller_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          period_month: string
+          seller_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          period_month?: string
+          seller_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_goals_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seller_tasks: {
         Row: {
           brand_id: string
@@ -2091,6 +2264,7 @@ export type Database = {
         Args: { p_confirm: string }
         Returns: Json
       }
+      approve_commission: { Args: { _id: string }; Returns: undefined }
       can_finish_order_item: {
         Args: { _item_id: string; _user_id: string }
         Returns: boolean
@@ -2102,6 +2276,10 @@ export type Database = {
       cancel_production_with_reason: {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
+      }
+      commission_tier_for: {
+        Args: { _amount: number; _brand_id: string }
+        Returns: number
       }
       confirm_supplier_final_payment: {
         Args: {
@@ -2147,6 +2325,10 @@ export type Database = {
         Args: { _item_id: string }
         Returns: undefined
       }
+      maybe_create_commission_request: {
+        Args: { _order_id: string }
+        Returns: undefined
+      }
       notify_seller_invoice_ready: {
         Args: { _order_id: string }
         Returns: undefined
@@ -2162,6 +2344,14 @@ export type Database = {
       order_item_has_planimetry: {
         Args: { _item_id: string }
         Returns: boolean
+      }
+      pay_commission: {
+        Args: { _id: string; _reference?: string }
+        Returns: undefined
+      }
+      reject_commission: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
       }
       reject_production_with_reason: {
         Args: { p_id: string; p_reason: string }
