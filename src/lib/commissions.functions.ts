@@ -112,7 +112,7 @@ export const payCommission = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.rpc("pay_commission", {
       _id: data.id,
-      _reference: data.reference ?? null,
+      _reference: data.reference ?? undefined,
     });
     if (error) throw error;
     return { ok: true };
