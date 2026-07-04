@@ -422,6 +422,20 @@ export function NewCustomerDialog({
           .eq("id", order.id);
       }
 
+      // Si el vendedor pidió excepción por anticipo < 50%, dispara la solicitud
+      // de aprobación gerencial. Solo aplica a ventas normales; Plan Separe
+      // no necesita aprobación porque tiene su propio flujo.
+      if (draft.order.sale_type === "normal" && draft.order.request_approval) {
+        const { error: apprErr } = await supabase.rpc("request_management_approval", {
+          p_order_id: order.id,
+          p_note: draft.order.approval_note.trim() || null,
+        });
+        if (apprErr) {
+          // No revertimos la orden: el vendedor puede reintentar desde el detalle.
+          toast.error(`Venta creada, pero falló la solicitud de aprobación: ${apprErr.message}`);
+        }
+      }
+
       return order;
     },
 
