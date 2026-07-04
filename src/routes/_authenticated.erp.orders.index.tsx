@@ -187,6 +187,8 @@ function OrdersPage() {
                   <p className="text-sm">{summarizeItems(o.items)}</p>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
+                    {o.sale_type === "plan_separe" && <SaleTypeBadge saleType={o.sale_type} separeCompletedAt={o.separe_completed_at} />}
+                    <ApprovalStatusBadge status={o.approval_status} />
                     {o.invoices?.length > 0 && <InvoicedBadge />}
                   </div>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
