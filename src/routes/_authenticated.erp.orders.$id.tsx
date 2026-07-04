@@ -31,6 +31,7 @@ import { ProductionSection } from "@/features/production/send-to-production-butt
 import { OrderSellerTasksBadge } from "@/features/seller-tasks/seller-tasks-panel";
 import { ScheduleLogisticsCard } from "@/features/orders/schedule-logistics-card";
 import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/features/orders/delivery-urgency";
+import { DeliveryDeferralCard } from "@/features/orders/delivery-deferral-card";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
