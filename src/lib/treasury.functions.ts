@@ -132,7 +132,7 @@ export const listTreasuryInvoices = createServerFn({ method: "POST" })
         brand_name: bMap.get(inv.brand_id) ?? null,
         invoice_number: inv.invoice_number ?? null,
         order_number: o.order_number ?? null,
-        customer_name: o.customer_name ?? inv.customer_snapshot?.name ?? null,
+        customer_name: o.customer_name ?? (inv.customer_snapshot as any)?.name ?? null,
         customer_doc_number: o.customer_doc_number ?? null,
         customer_phone: o.customer_phone ?? null,
         seller_label: o.seller_id ? (pMap.get(o.seller_id) ?? null) : null,
