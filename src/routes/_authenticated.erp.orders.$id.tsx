@@ -721,6 +721,8 @@ function OrderDetail() {
 
 
 function OrderItemReadCard({
+  itemId,
+  orderId,
   index,
   description,
   quantity,
@@ -729,7 +731,12 @@ function OrderItemReadCard({
   images,
   planimetryFiles,
   sentToProduction,
+  partialEnabled,
+  partialDeliveredAt,
+  productionFinishedAt,
 }: {
+  itemId: string;
+  orderId: string;
   index: number;
   description: string;
   quantity: number;
@@ -738,6 +745,9 @@ function OrderItemReadCard({
   images: string[];
   planimetryFiles: PlanimetryFile[];
   sentToProduction: boolean;
+  partialEnabled: boolean;
+  partialDeliveredAt: string | null;
+  productionFinishedAt: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const isEmpty = !description.trim();
@@ -751,12 +761,23 @@ function OrderItemReadCard({
         <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Producto #{index + 1}
         </span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {sentToProduction && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
               En producción
             </span>
           )}
+          {productionFinishedAt && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold">
+              Terminado
+            </span>
+          )}
+          {partialDeliveredAt && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 font-semibold">
+              Entregado parcial
+            </span>
+          )}
+          <PartialShipmentToggle itemId={itemId} orderId={orderId} enabled={partialEnabled} />
           {hasPlani ? (
             <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold">
               <CheckCircle2 className="h-3 w-3" /> Planimetría OK
