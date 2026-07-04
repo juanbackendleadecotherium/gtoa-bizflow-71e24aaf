@@ -167,7 +167,7 @@ function Shell() {
             const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
             const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
             const financeBadge = item.to === "/erp/finance/supplier-payments" && financePaymentsCount > 0 ? financePaymentsCount : 0;
-            const commissionBadge = item.to === "/erp/finance/commissions" && commissionsPendingCount > 0 ? commissionsPendingCount : 0;
+            const commissionBadge = item.to === "/erp/finance" && commissionsPendingCount > 0 ? commissionsPendingCount : 0;
             const badge = taskBadge || pickupBadge || financeBadge || commissionBadge;
             return (
               <Link
