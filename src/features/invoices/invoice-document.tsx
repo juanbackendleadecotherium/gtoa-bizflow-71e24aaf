@@ -100,10 +100,10 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   brandCol: { maxWidth: "55%" },
   logoBox: {
-    width: 150, height: 64, alignItems: "flex-start", justifyContent: "center",
-    marginBottom: 12,
+    width: 220, height: 90, alignItems: "flex-start", justifyContent: "center",
+    marginBottom: 10,
   },
-  logo: { maxWidth: 150, maxHeight: 60, objectFit: "contain" },
+  logo: { maxWidth: 220, maxHeight: 90, objectFit: "contain" },
   brandName: { fontSize: 11, fontWeight: 700, color: INK, letterSpacing: 0.4 },
   brandLine: { color: SUB, fontSize: 9, marginTop: 2, lineHeight: 1.45 },
 
