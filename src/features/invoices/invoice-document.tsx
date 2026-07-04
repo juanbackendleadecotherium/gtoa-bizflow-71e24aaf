@@ -382,7 +382,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         <View style={styles.footerBlock} fixed>
           <View style={styles.footerTop}>
             <Text style={styles.footerMeta}>
-              {data.brand.legal_name || data.brand.name} · Cuenta de cobro {data.invoice_number}
+              {data.brand.name} · Cuenta de cobro {data.invoice_number}
               {data.version_number && data.version_number > 1 ? ` · v${data.version_number}` : ""}
             </Text>
             <Text style={styles.footerMeta} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
