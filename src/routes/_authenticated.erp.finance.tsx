@@ -44,7 +44,7 @@ function FinanceLayout() {
         </p>
       </div>
 
-      <div className="flex gap-1 border-b border-border overflow-x-auto">
+      <div className="flex flex-wrap gap-1 border-b border-border">
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = t.exact ? currentPath === t.to : currentPath.startsWith(t.to);
@@ -52,13 +52,13 @@ function FinanceLayout() {
             <Link
               key={t.to}
               to={t.to}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 -mb-px transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm border-b-2 -mb-px transition-colors whitespace-nowrap ${
                 active
                   ? "border-primary text-foreground font-medium"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className="h-4 w-4" />{t.label}
+              <Icon className="h-3.5 w-3.5" />{t.label}
             </Link>
           );
         })}
