@@ -1,158 +1,64 @@
 
-# Plan · Entrega diferida + Módulo Tesorería
+Voy a implementar los 3 requerimientos. Los dos primeros (JD-N04 aprobación gerencial y JD-N05 Plan Separe) están íntimamente ligados en la lógica de ventas, así que comparten migración y UI de orden. El tercero (JD-N07 cuenta de cobro) es solo cambios de plantilla PDF.
 
-Dos features independientes, foco distinto pero comparten la orden como raíz.
+## 1. Aprobación gerencial para anticipo < 50% (JD-N04)
 
----
+**BD (migración única):**
+- `orders`: `requires_management_approval boolean`, `approval_status text` (`no_requerida | pendiente | aprobada | rechazada`), `approval_requested_at/by`, `approval_resolved_at/by`, `approval_note`.
+- Nueva tabla `order_approval_log` (audit: acción, gerente, comentario, snapshot de valor y % anticipo).
+- RPCs: `request_management_approval(order_id, note)`, `resolve_management_approval(order_id, decision, note)` — solo `admin` puede resolver (Luisa/Chiqui usarán rol admin por ahora; añado nota para tabla `management_approvers` si luego quieren restringir).
+- Bloqueo: función existente de "enviar a producción" valida `approval_status IN ('no_requerida','aprobada')`.
 
-## 1) Entrega diferida — el recaudo se ancla a la semana del pago, no de la entrega
+**UI:**
+- En el detalle de orden: si `anticipo < 50%` y no es Plan Separe → mostrar checkbox "Solicitar excepción de anticipo" con campo de monto real, motivo y botón "Solicitar aprobación gerencial".
+- Botón "Enviar a producción" se deshabilita mientras `approval_status = 'pendiente' | 'rechazada'`.
+- Nueva vista `/erp/finance/approvals` (solo admin): lista de órdenes pendientes con Aprobar / Rechazar + comentario obligatorio.
+- Badge de estado en la orden ("Pendiente aprobación gerencial" / "Aprobada por X" / "Rechazada").
+- Tarea automática en `seller_tasks` para admins cuando se solicita, y para el vendedor cuando se aprueba/rechaza.
 
-### Regla de negocio (resumen)
+**Preguntas abiertas (te dejo defaults, dime si cambio):**
+- ¿Cualquier admin aprueba o requiere ambos? → Default: **cualquier admin** (más simple; se puede endurecer luego).
+- ¿Monto mínimo absoluto de anticipo? → Default: **sin mínimo**, se aprueba caso por caso.
 
-- El recaudo semanal (KPI 4) agrupa por **fecha de pago (`order_payments.paid_at`)**, no por fecha de entrega.
-- Cada `order` tendrá dos fechas separadas:
-  - `estimated_delivery_date` → fecha pactada original (ya existe).
-  - **`scheduled_delivery_date`** → fecha real a la que el cliente aceptó recibir (nueva).
-- El vendedor puede marcar la venta como **entrega diferida** con:
-  - Nueva fecha (`scheduled_delivery_date`).
-  - Motivo (texto).
-  - Marca `is_deferred_delivery` (bool).
-- La logística usa `scheduled_delivery_date` para programar; el reporte de recaudo sigue usando `paid_at`.
-- Regla maestra: **el saldo ya cobrado NUNCA se revierte al diferir la entrega**. Aplazar solo mueve la entrega física.
-- Caso inverso (cliente pagará al recibir): el pago sencillamente aún no existe en `order_payments` → cae en la semana en que se registre. No requiere lógica extra; solo debe poder diferirse la entrega sin exigir saldo cero.
+## 2. Plan Separe (JD-N05)
 
-### Cambios de datos (migración)
+**BD (misma migración):**
+- `orders.sale_type text` (`normal | plan_separe`, default `normal`), `separe_activated_at`, `separe_completed_at`, `price_locked_at`.
+- Nueva tabla `order_separe_events` (opcional; audit de cada abono como "abono separe" además del pago normal).
+- Trigger / RPC `check_separe_completion(order_id)`: cuando `sum(order_payments) >= total * 0.5` y `sale_type='plan_separe'`, marca `separe_completed_at` y desbloquea "enviar a producción" + crea tarea al vendedor "Plan Separe completado — enviar a producción".
 
-En `public.orders`:
-- `scheduled_delivery_date date` (nullable; default = `estimated_delivery_date` vía trigger cuando se crea).
-- `is_deferred_delivery boolean not null default false`.
-- `deferred_reason text`.
-- `deferred_at timestamptz`, `deferred_by uuid`.
+**UI:**
+- Al crear una orden: selector "Tipo de venta" (Normal / Plan Separe). En Plan Separe se permite guardar sin anticipo del 50%.
+- En orden Plan Separe: bloqueo de "Enviar a producción" hasta llegar al 50%, con barra de progreso ("Abonos: $X / $Y — 32%") y CTA "Registrar abono".
+- Badge "Plan Separe" en listados de órdenes + filtro en `/erp/orders`.
+- Dashboard del vendedor: sección "Plan Separe activos" con % completado por cliente (agrego card en `my-tasks`).
+- Nota informativa: "El precio se congela al crear el Plan Separe" (usaremos `price_locked_at = created_at`).
 
-Nueva tabla `order_delivery_deferrals` (historial/auditoría de cada aplazamiento):
-- `order_id`, `previous_date`, `new_date`, `reason`, `created_by`, `created_at`.
-- RLS: admin/finanzas leen todo; vendedor lee las de sus órdenes.
-- GRANT correspondientes a `authenticated` y `service_role`.
+**Preguntas abiertas:**
+- ¿Fecha límite para completar el anticipo? → Default: **sin fecha límite obligatoria**, solo alerta si pasan 30 días sin abonos nuevos (tarea automática al vendedor).
+- ¿Precio congelado siempre? → Default: **sí**, `unit_price` no editable en Plan Separe una vez creado.
 
-RPC:
-- `defer_order_delivery(order_id, new_date, reason)` — valida rol vendedor/admin, escribe orden + historial, dispara `seller_task` para logística/finanzas.
+## 3. Cuenta de cobro — branding y limpieza (JD-N07)
 
-### Cambios UI
+**Cambios en `src/features/invoices/invoice-document.tsx`:**
+- **Logo grande**: subir `logoBox` a 240×90 px (de 150×64) y quitar el bloque de texto "brandName" (queda solo logo → identidad visual limpia).
+- **Colores por marca** (fallback a lo actual si no hay slug):
+  - `espacio-inmobiliario`/`espacio-mobiliario` → azul cielo `#7FB8DB` (banda + acentos + total box).
+  - `casa-diseno` → mantener `primary_color` actual de la marca (ya funciona bien).
+  - `montenegro-design` → negro `#0a0a0a`.
+  - `getova` → negro `#0a0a0a`.
+- **Quitar el ítem "cuenta de cobro"** que aparece de más en el listado (revisar y limpiar).
+- **Datos de la marca en header/footer**: mostrar solo `address`, `city`, `phone`. Ocultar `tax_id` (NIT), `email`, `website`, `legal_name`. (Los mantenemos en BD por si se necesitan en un futuro, solo no se pintan en el PDF.)
+- **T&C**: dejo pendiente hasta que se valide con Jenny Cris (según nota en la imagen); no toco `terms_versions` hoy.
 
-**Orden (`/erp/orders/$id`)**
-- Nuevo bloque "Entrega" con:
-  - Fecha pactada (readonly).
-  - Fecha programada actual + badge "Diferida" si aplica.
-  - Botón "Aplazar entrega" (dialog con date picker + motivo).
-  - Historial colapsable de aplazamientos.
+## Orden de implementación
 
-**Logística (`real-production.logistica`, `pickups`)**
-- Reemplazar cualquier uso de `estimated_delivery_date` por `scheduled_delivery_date ?? estimated_delivery_date` en agrupaciones/columnas.
-- Badge "Diferida" visible en las filas afectadas.
+1. **Migración única** (aprobación + Plan Separe + logs). — requiere tu aprobación por separado.
+2. Server functions + hooks (`orders-approval.functions.ts`, extend `orders-sales.functions.ts`).
+3. UI: detalle de orden (approval card + separe progress), formulario de nueva orden (selector tipo de venta), vista `/erp/finance/approvals`, filtros y badges en listados.
+4. Cuenta de cobro: reescribir `invoice-document.tsx` con nuevos tokens de color por slug, logo grande, footer limpio.
+5. QA con Playwright: crear orden Plan Separe → abonar → verificar bloqueo/desbloqueo; crear orden con anticipo 30% → solicitar aprobación → aprobar → verificar habilitación de producción; generar PDF de cada marca y validar visuales.
 
-**Recaudo semanal (dashboards existentes que usen fecha de entrega)**
-- Auditar y forzar `paid_at` como eje de agrupación. Confirmar en `finance.receivables` y en el ejecutivo del warehouse si aplica.
+**Sin cambios en:** producción, logística, tesorería, comisiones — todo se mantiene, solo se añaden gates de entrada a producción.
 
-### Notificaciones
-- Al diferir: `seller_task` a logística + admin ("Entrega de {order} aplazada del X al Y — motivo: …").
-
----
-
-## 2) Módulo Tesorería — vista maestra de facturas + registro de pagos
-
-Reemplaza el uso de Alegra: las chicas de tesorería buscan la factura, ven todo el histórico y registran el pago desde nuestro ERP.
-
-### Ruta y acceso
-- Nueva ruta: `/_authenticated/erp/finance/treasury` (pestaña "Tesorería" en Finanzas).
-- Rol necesario: `finanzas` o `admin`. Añadir rol enum **`tesoreria`** si el usuario quiere separar permisos (a confirmar — ver preguntas).
-- Sidebar: aparece dentro de Finanzas, no como módulo raíz (coherente con la decisión previa sobre Comisiones).
-
-### Vista principal (tabla maestra de facturas)
-Fuente: `invoices` + join a `orders`, `order_payments`, `customers`, `brands`.
-
-Columnas:
-- N° cuenta de cobro / factura.
-- Cliente (nombre + doc).
-- Marca.
-- Vendedor.
-- Fecha emisión.
-- Total, Recaudado, Saldo.
-- Estado: `pendiente | parcial | pagada`.
-- Facturación electrónica: `no_facturada | facturada` (nuevo campo, ver abajo).
-- Acciones: Ver detalle · Registrar pago · Marcar facturada electrónicamente.
-
-Filtros:
-- Buscador (n° factura, n° orden, cliente, doc, teléfono).
-- Marca (multi).
-- Estado de pago (multi).
-- Estado facturación electrónica.
-- Rango de fechas (emisión / pago).
-- Vendedor.
-
-Exportar a CSV (misma pauta que Receivables).
-
-### Detalle de factura (drawer / sub-ruta)
-- Encabezado: cliente, marca, fechas, totales.
-- Snapshot de ítems.
-- Historial de pagos (`order_payments`): fecha, método, referencia, cuenta destino, quién lo registró, comprobante.
-- Historial de auditoría de la factura (envíos, versiones si existen en `invoice_versions`).
-- Botones:
-  - **Registrar pago** → reusa `PaymentDialog` existente en `src/features/finance/payment-dialog.tsx`.
-  - **Marcar como facturada electrónicamente** (Siigo) → dialog con:
-    - N° factura electrónica externa.
-    - Fecha de emisión electrónica.
-    - Observación / URL PDF opcional.
-  - **Descargar PDF interno** (ya existe).
-
-### Cambios de datos (migración)
-
-Extender `public.invoices`:
-- `electronic_invoice_status text not null default 'no_facturada'` (`no_facturada | facturada`).
-- `electronic_invoice_number text`.
-- `electronic_invoice_issued_at timestamptz`.
-- `electronic_invoice_issued_by uuid`.
-- `electronic_invoice_note text`.
-
-Nueva tabla `invoice_electronic_log` (auditoría de marcaciones):
-- `invoice_id`, `action` (`marked_facturada | reverted`), `external_number`, `note`, `actor_id`, `actor_email`, `created_at`.
-- RLS: solo `finanzas`/`admin`; GRANT a `authenticated` + `service_role`.
-
-RPC:
-- `mark_invoice_electronic(invoice_id, external_number, issued_at, note)` — valida rol, actualiza `invoices`, inserta log, dispara notificación al vendedor.
-- `revert_invoice_electronic(invoice_id, reason)` — opcional, para corregir.
-
-### Notificaciones
-- Al registrar pago desde tesorería → `seller_task` al vendedor ("Pago de {monto} registrado en factura {n°}").
-- Al marcar factura electrónica → `seller_task` informativo al vendedor + finanzas.
-
----
-
-## Detalles técnicos
-
-**Server functions (nuevas)** — `src/lib/`:
-- `orders-delivery.functions.ts` → `deferOrderDelivery`, `listDeferrals`.
-- `treasury.functions.ts` → `listTreasuryInvoices(filters)`, `getTreasuryInvoice(id)`, `markInvoiceElectronic`, `revertInvoiceElectronic`.
-
-Todas con `.middleware([requireSupabaseAuth])`. Validación rol dentro del handler para las acciones sensibles (Siigo, aplazamiento).
-
-**Rutas nuevas**:
-- `src/routes/_authenticated.erp.finance.treasury.tsx` (tabla).
-- Tab "Tesorería" agregada en `_authenticated.erp.finance.tsx`.
-
-**Componentes reutilizables**:
-- Reusar `PaymentDialog`, `formatMoney`, `AuditRow` (histórico), `Checkbox`, `Dialog`, `Input`, `Select` de shadcn.
-
-**Realtime** (opcional, evaluar): suscripción a `invoices` y `order_payments` en la vista de Tesorería para refrescar la tabla cuando otro usuario registre un pago.
-
-**Ordenamiento y paginación**: por defecto ordenar por `issued_at desc`, límite 200 filas + carga por scroll o paginación (definir en implementación).
-
----
-
-## Fuera de alcance (confirmar)
-- Integración automática con Siigo (API): por ahora solo registro manual del n° de factura electrónica. Se puede añadir después.
-- No se toca el cálculo del recaudo de comisiones (comisiones ya usan `paid_at` implícitamente vía `order_payments`).
-
-## Preguntas abiertas
-1. ¿Crear rol `tesoreria` separado de `finanzas`, o reusar `finanzas`?
-2. Al aplazar entrega, ¿solo puede hacerlo el vendedor asignado a la orden, o cualquier vendedor + admin?
-3. ¿Necesitan revertir una "factura electrónica marcada" (por error), o basta con marcarla una sola vez?
+¿Apruebas para arrancar con la migración?
