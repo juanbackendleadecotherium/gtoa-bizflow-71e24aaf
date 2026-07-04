@@ -303,13 +303,25 @@ export function NewCustomerDialog({
       const _advance = draft.order.advance_amount || 0;
       if (!draft.order.payment_method) throw new Error("Selecciona la modalidad de pago");
       if (_subtotal <= 0) throw new Error("El subtotal de la venta debe ser mayor a cero");
-      if (_advance < _subtotal * 0.5 - 0.01) {
+
+      const isPlanSepare = draft.order.sale_type === "plan_separe";
+      const wantsApproval = draft.order.request_approval;
+
+      // Plan Separe permite arrancar con cualquier abono (incluso 0). Venta
+      // normal exige el 50% salvo que el vendedor solicite aprobación gerencial.
+      if (!isPlanSepare && !wantsApproval && _advance < _subtotal * 0.5 - 0.01) {
         throw new Error(
-          `El abono debe ser mínimo el 50% del total (${formatMoney(_subtotal * 0.5)}).`,
+          `El abono debe ser mínimo el 50% del total (${formatMoney(_subtotal * 0.5)}). ` +
+          `Marca "Plan Separe" o solicita aprobación gerencial para excepción.`,
         );
       }
-      if (!draft.order.advance_deposit_account)
-        throw new Error("Indica a qué cuenta llegó el abono del 50%");
+      if (wantsApproval && !draft.order.approval_note.trim()) {
+        throw new Error("Escribe el motivo de la excepción para gerencia.");
+      }
+      if (_advance > 0 && !draft.order.advance_deposit_account) {
+        throw new Error("Indica a qué cuenta llegó el abono");
+      }
+
 
 
       const {
