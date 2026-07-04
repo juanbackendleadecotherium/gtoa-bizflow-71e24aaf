@@ -257,8 +257,8 @@ export const markInvoiceElectronic = createServerFn({ method: "POST" })
       p_invoice_id: data.invoiceId,
       p_external_number: data.externalNumber,
       p_issued_at: data.issuedAt ?? new Date().toISOString(),
-      p_note: data.note ?? null,
-    });
+      p_note: data.note ?? "",
+    } as any);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
