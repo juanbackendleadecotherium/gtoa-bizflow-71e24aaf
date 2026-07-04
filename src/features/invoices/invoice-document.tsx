@@ -198,8 +198,7 @@ const styles = StyleSheet.create({
 
 export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
   const logo = getBrandLogo(data.brand.slug, data.brand.logo_url);
-  const accent = (data.brand.primary_color && /^#[0-9a-f]{3,8}$/i.test(data.brand.primary_color))
-    ? data.brand.primary_color : "#0f172a";
+  const accent = getBrandInvoiceColor(data.brand.slug, data.brand.primary_color);
   const totalWords = numberToSpanishWords(Math.round(Number(data.total) || 0));
 
   return (
@@ -214,22 +213,18 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             <View style={styles.brandCol}>
               <View style={styles.logoBox}>
                 {logo ? <Image src={logo} style={styles.logo} /> : (
-                  <Text style={{ fontSize: 18, fontWeight: 700, color: accent }}>{data.brand.name}</Text>
+                  <Text style={{ fontSize: 22, fontWeight: 700, color: accent }}>{data.brand.name}</Text>
                 )}
               </View>
-              <Text style={styles.brandName}>{(data.brand.legal_name || data.brand.name).toUpperCase()}</Text>
-              {data.brand.tax_id ? <Text style={styles.brandLine}>NIT {data.brand.tax_id}</Text> : null}
+              {/* Datos mínimos: solo dirección + ciudad + teléfono (sin NIT, email o web) */}
               {data.brand.address ? (
                 <Text style={styles.brandLine}>
                   {data.brand.address}{data.brand.city ? ` · ${data.brand.city}` : ""}
                 </Text>
               ) : null}
-              {(data.brand.phone || data.brand.email) ? (
-                <Text style={styles.brandLine}>
-                  {[data.brand.phone, data.brand.email].filter(Boolean).join("  ·  ")}
-                </Text>
+              {data.brand.phone ? (
+                <Text style={styles.brandLine}>Tel. {data.brand.phone}</Text>
               ) : null}
-              {data.brand.website ? <Text style={styles.brandLine}>{data.brand.website}</Text> : null}
             </View>
 
             <View style={styles.metaCol}>
