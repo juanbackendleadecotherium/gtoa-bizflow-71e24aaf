@@ -1,64 +1,72 @@
+# Plan: JD-N06 Envíos parciales + Auditoría Responsive Móvil
 
-Voy a implementar los 3 requerimientos. Los dos primeros (JD-N04 aprobación gerencial y JD-N05 Plan Separe) están íntimamente ligados en la lógica de ventas, así que comparten migración y UI de orden. El tercero (JD-N07 cuenta de cobro) es solo cambios de plantilla PDF.
+Dos entregables, en orden. Para ahorrar créditos, ejecuto ambos en pasadas focalizadas (sin re-lecturas innecesarias) y agrupo edits en paralelo.
 
-## 1. Aprobación gerencial para anticipo < 50% (JD-N04)
+---
 
-**BD (migración única):**
-- `orders`: `requires_management_approval boolean`, `approval_status text` (`no_requerida | pendiente | aprobada | rechazada`), `approval_requested_at/by`, `approval_resolved_at/by`, `approval_note`.
-- Nueva tabla `order_approval_log` (audit: acción, gerente, comentario, snapshot de valor y % anticipo).
-- RPCs: `request_management_approval(order_id, note)`, `resolve_management_approval(order_id, decision, note)` — solo `admin` puede resolver (Luisa/Chiqui usarán rol admin por ahora; añado nota para tabla `management_approvers` si luego quieren restringir).
-- Bloqueo: función existente de "enviar a producción" valida `approval_status IN ('no_requerida','aprobada')`.
+## Parte 1 — JD-N06: Envíos parciales por ítem
 
-**UI:**
-- En el detalle de orden: si `anticipo < 50%` y no es Plan Separe → mostrar checkbox "Solicitar excepción de anticipo" con campo de monto real, motivo y botón "Solicitar aprobación gerencial".
-- Botón "Enviar a producción" se deshabilita mientras `approval_status = 'pendiente' | 'rechazada'`.
-- Nueva vista `/erp/finance/approvals` (solo admin): lista de órdenes pendientes con Aprobar / Rechazar + comentario obligatorio.
-- Badge de estado en la orden ("Pendiente aprobación gerencial" / "Aprobada por X" / "Rechazada").
-- Tarea automática en `seller_tasks` para admins cuando se solicita, y para el vendedor cuando se aprueba/rechaza.
+**Regla actual (no se rompe):** una factura solo pasa a logística cuando TODOS sus ítems están terminados, y el saldo (50% restante) solo se cobra al entregar todo.
 
-**Preguntas abiertas (te dejo defaults, dime si cambio):**
-- ¿Cualquier admin aprueba o requiere ambos? → Default: **cualquier admin** (más simple; se puede endurecer luego).
-- ¿Monto mínimo absoluto de anticipo? → Default: **sin mínimo**, se aprueba caso por caso.
+**Cambio propuesto (excepción documentada):** habilitar un checkbox por `order_item` llamado **"Gestión de envío parcial"** que exime a ese ítem de la regla maestra.
 
-## 2. Plan Separe (JD-N05)
+### Base de datos (una sola migración)
+- `order_items`: agregar
+  - `partial_shipment_enabled boolean default false`
+  - `partial_shipment_enabled_at timestamptz`
+  - `partial_shipment_enabled_by uuid`
+  - `partial_delivered_at timestamptz` (cuando ese ítem individual se entrega)
+- `order_item_partial_log` (auditoría): `id, order_id, order_item_id, action (enabled|disabled|delivered), actor_id, actor_email, note, created_at`. RLS: read authenticated, all service_role. GRANTs correctos.
+- **RPC `toggle_item_partial_shipment(p_item_id, p_enabled, p_note)`**:
+  - Solo `admin` o el vendedor asignado a la orden (usa `has_role` + `orders.seller_id`).
+  - **Nunca producción** (validación explícita: si el actor tiene solo rol `production`, rechaza).
+  - Al activar: escribe log, crea `seller_tasks` para producción ("Se aprobó entrega parcial del ítem X de factura #Y") y para el vendedor ("Coordinar entrega parcial de ítem X con el cliente").
+  - Al desactivar: log + task de reversión.
+- **Función `can_send_order_to_logistics(p_order_id) → boolean`**: true si todos los ítems `NO partial_shipment_enabled` están terminados. Los ítems con parcial activado pueden entrar a logística de forma independiente aunque el resto no esté listo.
+- **Función `can_collect_final_balance(p_order_id) → boolean`**: true solo cuando TODOS los ítems (parciales incluidos) tienen `partial_delivered_at IS NOT NULL` o entrega registrada — el cobro total sigue bloqueado hasta que todo esté entregado.
 
-**BD (misma migración):**
-- `orders.sale_type text` (`normal | plan_separe`, default `normal`), `separe_activated_at`, `separe_completed_at`, `price_locked_at`.
-- Nueva tabla `order_separe_events` (opcional; audit de cada abono como "abono separe" además del pago normal).
-- Trigger / RPC `check_separe_completion(order_id)`: cuando `sum(order_payments) >= total * 0.5` y `sale_type='plan_separe'`, marca `separe_completed_at` y desbloquea "enviar a producción" + crea tarea al vendedor "Plan Separe completado — enviar a producción".
+### UI
+- **Order detail (`_authenticated.erp.orders.$id.tsx`)**: en cada `OrderItemRow`, un checkbox pequeño "Envío parcial" con badge ámbar cuando esté activo. Deshabilitado para rol producción. Modal de confirmación con nota obligatoria (queda en log).
+- **Logística**: en la vista de items pendientes, incluir ítems con `partial_shipment_enabled=true` aunque la orden completa no esté terminada. Badge visible "PARCIAL".
+- **Historial de factura**: nueva sección "Entregas parciales" que lista qué ítems se entregaron parcialmente y en qué fecha (leyendo `order_item_partial_log` + `partial_delivered_at`).
+- **Send to production**: sin cambios — la excepción es solo para la salida a **logística**, no para producción (producción sigue trabajando ítem por ítem como hoy).
 
-**UI:**
-- Al crear una orden: selector "Tipo de venta" (Normal / Plan Separe). En Plan Separe se permite guardar sin anticipo del 50%.
-- En orden Plan Separe: bloqueo de "Enviar a producción" hasta llegar al 50%, con barra de progreso ("Abonos: $X / $Y — 32%") y CTA "Registrar abono".
-- Badge "Plan Separe" en listados de órdenes + filtro en `/erp/orders`.
-- Dashboard del vendedor: sección "Plan Separe activos" con % completado por cliente (agrego card en `my-tasks`).
-- Nota informativa: "El precio se congela al crear el Plan Separe" (usaremos `price_locked_at = created_at`).
+### Mejora recomendada aplicable
+- Mostrar en el card de la orden un contador "3 de 5 ítems entregados (2 pendientes, 1 parcial)" para que el vendedor vea el estado real sin abrir el detalle.
 
-**Preguntas abiertas:**
-- ¿Fecha límite para completar el anticipo? → Default: **sin fecha límite obligatoria**, solo alerta si pasan 30 días sin abonos nuevos (tarea automática al vendedor).
-- ¿Precio congelado siempre? → Default: **sí**, `unit_price` no editable en Plan Separe una vez creado.
+---
 
-## 3. Cuenta de cobro — branding y limpieza (JD-N07)
+## Parte 2 — Auditoría responsive móvil (ERP global)
 
-**Cambios en `src/features/invoices/invoice-document.tsx`:**
-- **Logo grande**: subir `logoBox` a 240×90 px (de 150×64) y quitar el bloque de texto "brandName" (queda solo logo → identidad visual limpia).
-- **Colores por marca** (fallback a lo actual si no hay slug):
-  - `espacio-inmobiliario`/`espacio-mobiliario` → azul cielo `#7FB8DB` (banda + acentos + total box).
-  - `casa-diseno` → mantener `primary_color` actual de la marca (ya funciona bien).
-  - `montenegro-design` → negro `#0a0a0a`.
-  - `getova` → negro `#0a0a0a`.
-- **Quitar el ítem "cuenta de cobro"** que aparece de más en el listado (revisar y limpiar).
-- **Datos de la marca en header/footer**: mostrar solo `address`, `city`, `phone`. Ocultar `tax_id` (NIT), `email`, `website`, `legal_name`. (Los mantenemos en BD por si se necesitan en un futuro, solo no se pintan en el PDF.)
-- **T&C**: dejo pendiente hasta que se valide con Jenny Cris (según nota en la imagen); no toco `terms_versions` hoy.
+**Enfoque económico:** NO reescribir cada componente. Aplicar el patrón responsive del design system (grid + `min-w-0` + `shrink-0` + `truncate`) solo en los puntos que rompen en 375px.
 
-## Orden de implementación
+### Método
+1. Playwright a 375×812 sobre las rutas principales del ERP:
+   - `/erp/dashboard`, `/erp/orders`, `/erp/orders/$id`, `/erp/production`, `/erp/logistics`, `/erp/finance` (invoices, treasury, approvals, commissions), `/erp/warehouse`, `/erp/customers`, `/erp/admin/users`.
+2. Screenshots + detección de overflow horizontal (`document.documentElement.scrollWidth > innerWidth`).
+3. Lista priorizada de fixes (headers que se salen, tablas sin scroll, calendarios que se desbordan, cards con paddings fijos, botones apilables).
 
-1. **Migración única** (aprobación + Plan Separe + logs). — requiere tu aprobación por separado.
-2. Server functions + hooks (`orders-approval.functions.ts`, extend `orders-sales.functions.ts`).
-3. UI: detalle de orden (approval card + separe progress), formulario de nueva orden (selector tipo de venta), vista `/erp/finance/approvals`, filtros y badges en listados.
-4. Cuenta de cobro: reescribir `invoice-document.tsx` con nuevos tokens de color por slug, logo grande, footer limpio.
-5. QA con Playwright: crear orden Plan Separe → abonar → verificar bloqueo/desbloqueo; crear orden con anticipo 30% → solicitar aprobación → aprobar → verificar habilitación de producción; generar PDF de cada marca y validar visuales.
+### Fixes estándar que aplicaré
+- Headers de página: `grid grid-cols-[minmax(0,1fr)_auto] sm:flex` con `min-w-0` y `truncate`.
+- Tablas anchas: envolver en `<div className="-mx-4 overflow-x-auto sm:mx-0">` cuando no quepan.
+- KPIs/cards: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` en lugar de fijos.
+- Filtros de fecha (el bug que reportaste en tesorería y similares): mover popovers a `align="end"` con `w-[calc(100vw-2rem)] sm:w-auto` para no desbordar.
+- Diálogos: `max-w-[calc(100vw-2rem)]` + `max-h-[calc(100dvh-2rem)] overflow-y-auto`.
+- Botones de acción en headers: `w-full sm:w-auto` cuando sean más de 2.
 
-**Sin cambios en:** producción, logística, tesorería, comisiones — todo se mantiene, solo se añaden gates de entrada a producción.
+### Entregable
+- Un solo commit con todos los fixes agrupados por archivo (parallel edits).
+- Reporte final: rutas auditadas + fixes aplicados + rutas que quedaron limpias sin tocar.
 
-¿Apruebas para arrancar con la migración?
+---
+
+## Orden de ejecución
+1. Parte 1 completa (migración + RPCs + UI + logística + historial).
+2. Parte 2 (audit + fixes en un solo lote).
+
+## Preguntas rápidas (defaults asumidos si no respondes)
+- **¿Producción puede ver el checkbox aunque no pueda activarlo?** Default: **sí, ve el estado pero está disabled con tooltip "Solo admin o vendedor"**.
+- **¿El ítem parcial permite cobrar su valor prorrateado o solo se cobra al final?** Default: **solo se cobra el total al final**, respetando la regla maestra (lo que dice el requerimiento).
+- **¿Auditoría solo móvil o también tablet?** Default: **priorizo móvil 375px**, tablet 768px como pasada rápida final.
+
+Confirma y arranco.
