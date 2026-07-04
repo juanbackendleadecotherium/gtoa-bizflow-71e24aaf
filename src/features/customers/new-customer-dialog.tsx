@@ -428,7 +428,7 @@ export function NewCustomerDialog({
       if (draft.order.sale_type === "normal" && draft.order.request_approval) {
         const { error: apprErr } = await supabase.rpc("request_management_approval", {
           p_order_id: order.id,
-          p_note: draft.order.approval_note.trim() || null,
+          p_note: draft.order.approval_note.trim() || undefined,
         });
         if (apprErr) {
           // No revertimos la orden: el vendedor puede reintentar desde el detalle.
