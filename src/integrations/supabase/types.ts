@@ -900,6 +900,39 @@ export type Database = {
           },
         ]
       }
+      order_item_partial_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          id: string
+          note: string | null
+          order_id: string
+          order_item_id: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_id: string
+          order_item_id: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_id?: string
+          order_item_id?: string
+        }
+        Relationships: []
+      }
       order_item_supplier_payments: {
         Row: {
           amount: number
@@ -1017,6 +1050,10 @@ export type Database = {
           negotiated_by: string | null
           negotiated_cost: number | null
           order_id: string
+          partial_delivered_at: string | null
+          partial_shipment_enabled: boolean
+          partial_shipment_enabled_at: string | null
+          partial_shipment_enabled_by: string | null
           planimetry_files: Json
           production_due_date: string | null
           production_finished_at: string | null
@@ -1046,6 +1083,10 @@ export type Database = {
           negotiated_by?: string | null
           negotiated_cost?: number | null
           order_id: string
+          partial_delivered_at?: string | null
+          partial_shipment_enabled?: boolean
+          partial_shipment_enabled_at?: string | null
+          partial_shipment_enabled_by?: string | null
           planimetry_files?: Json
           production_due_date?: string | null
           production_finished_at?: string | null
@@ -1075,6 +1116,10 @@ export type Database = {
           negotiated_by?: string | null
           negotiated_cost?: number | null
           order_id?: string
+          partial_delivered_at?: string | null
+          partial_shipment_enabled?: boolean
+          partial_shipment_enabled_at?: string | null
+          partial_shipment_enabled_by?: string | null
           planimetry_files?: Json
           production_due_date?: string | null
           production_finished_at?: string | null
@@ -2518,8 +2563,16 @@ export type Database = {
         Returns: Json
       }
       approve_commission: { Args: { _id: string }; Returns: undefined }
+      can_collect_final_balance: {
+        Args: { p_order_id: string }
+        Returns: boolean
+      }
       can_finish_order_item: {
         Args: { _item_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_send_order_to_logistics: {
+        Args: { p_order_id: string }
         Returns: boolean
       }
       can_write_brand: {
@@ -2603,6 +2656,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_item_partial_delivered: {
+        Args: { p_item_id: string; p_note?: string }
+        Returns: Json
+      }
       mark_order_item_finished: {
         Args: { _item_id: string }
         Returns: undefined
@@ -2670,6 +2727,10 @@ export type Database = {
       sum_external_logistics_cost: {
         Args: { _brand_id?: string; _from: string; _to: string }
         Returns: number
+      }
+      toggle_item_partial_shipment: {
+        Args: { p_enabled: boolean; p_item_id: string; p_note?: string }
+        Returns: Json
       }
       unmark_order_item_finished: {
         Args: { _item_id: string; _reason: string }
