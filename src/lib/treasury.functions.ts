@@ -276,3 +276,149 @@ export const revertInvoiceElectronic = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ============ Reconciliation ============
+
+export type ReconciliationBrandRow = {
+  brand_id: string;
+  brand_name: string | null;
+  invoices_count: number;
+  invoiced_total: number;
+  collected_in_range: number;
+  balance_open: number;
+};
+
+export type ReconciliationSummary = {
+  range: { from: string; to: string };
+  invoices_in_range: { count: number; total: number };
+  payments_in_range: {
+    count: number;
+    total: number;
+    on_range_invoices: number;
+    on_prior_invoices: number;
+    unlinked: number;
+  };
+  open_balance_of_range_invoices: number;
+  by_brand: ReconciliationBrandRow[];
+};
+
+const ReconInput = z.object({
+  brandId: z.string().uuid().optional().nullable(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const getTreasuryReconciliation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => ReconInput.parse(d))
+  .handler(async ({ data, context }): Promise<ReconciliationSummary> => {
+    await assertTreasury(context);
+    const fromIso = data.from;
+    const toIso = data.to + "T23:59:59";
+
+    // 1) Invoices issued in range (optionally scoped to brand)
+    let invQ = context.supabase
+      .from("invoices")
+      .select("id, order_id, brand_id, total_snapshot, issued_at")
+      .gte("issued_at", fromIso)
+      .lte("issued_at", toIso);
+    if (data.brandId) invQ = invQ.eq("brand_id", data.brandId);
+    const { data: invRange, error: invErr } = await invQ;
+    if (invErr) throw new Error(invErr.message);
+
+    const rangeOrderIds = new Set((invRange ?? []).map((i: any) => i.order_id));
+    const invoicedTotal = (invRange ?? []).reduce((s, i: any) => s + Number(i.total_snapshot), 0);
+
+    // 2) Payments received in range (all, then scope by order brand if needed)
+    const { data: payRange, error: payErr } = await context.supabase
+      .from("order_payments")
+      .select("id, order_id, amount, paid_at")
+      .gte("paid_at", fromIso)
+      .lte("paid_at", toIso);
+    if (payErr) throw new Error(payErr.message);
+
+    const payOrderIds = Array.from(new Set((payRange ?? []).map((p: any) => p.order_id)));
+    let orderBrand = new Map<string, string>();
+    if (payOrderIds.length > 0) {
+      const { data: ords } = await context.supabase
+        .from("orders").select("id, brand_id").in("id", payOrderIds);
+      orderBrand = new Map((ords ?? []).map((o: any) => [o.id, o.brand_id]));
+    }
+    const scopedPayments = (payRange ?? []).filter((p: any) =>
+      !data.brandId || orderBrand.get(p.order_id) === data.brandId,
+    );
+
+    let anyInvoiceOrderIds = new Set<string>();
+    if (payOrderIds.length > 0) {
+      const { data: linkedInvs } = await context.supabase
+        .from("invoices").select("order_id").in("order_id", payOrderIds);
+      anyInvoiceOrderIds = new Set((linkedInvs ?? []).map((i: any) => i.order_id));
+    }
+
+    let paymentsTotal = 0, onRange = 0, onPrior = 0, unlinked = 0;
+    for (const p of scopedPayments) {
+      const amt = Number(p.amount);
+      paymentsTotal += amt;
+      if (rangeOrderIds.has(p.order_id)) onRange += amt;
+      else if (anyInvoiceOrderIds.has(p.order_id)) onPrior += amt;
+      else unlinked += amt;
+    }
+
+    // 3) Open balance of the range invoices (all payments to those orders, any date)
+    const allPaidByOrder = new Map<string, number>();
+    if (rangeOrderIds.size > 0) {
+      const { data: allP } = await context.supabase
+        .from("order_payments").select("order_id, amount").in("order_id", Array.from(rangeOrderIds));
+      for (const p of allP ?? []) {
+        allPaidByOrder.set(p.order_id, (allPaidByOrder.get(p.order_id) ?? 0) + Number(p.amount));
+      }
+    }
+    let openBalance = 0;
+    for (const i of invRange ?? []) {
+      const paid = allPaidByOrder.get((i as any).order_id) ?? 0;
+      openBalance += Math.max(0, Number((i as any).total_snapshot) - paid);
+    }
+
+    // 4) Per-brand breakdown
+    const brandIds = Array.from(new Set((invRange ?? []).map((i: any) => i.brand_id)));
+    const { data: brands } = brandIds.length
+      ? await context.supabase.from("brands").select("id, name").in("id", brandIds)
+      : { data: [] as any[] };
+    const bMap = new Map((brands ?? []).map((b: any) => [b.id, b.name]));
+
+    const byBrandMap = new Map<string, ReconciliationBrandRow>();
+    for (const i of invRange ?? []) {
+      const bid = (i as any).brand_id;
+      const row = byBrandMap.get(bid) ?? {
+        brand_id: bid, brand_name: bMap.get(bid) ?? null,
+        invoices_count: 0, invoiced_total: 0, collected_in_range: 0, balance_open: 0,
+      };
+      row.invoices_count += 1;
+      row.invoiced_total += Number((i as any).total_snapshot);
+      const paid = allPaidByOrder.get((i as any).order_id) ?? 0;
+      row.balance_open += Math.max(0, Number((i as any).total_snapshot) - paid);
+      byBrandMap.set(bid, row);
+    }
+    const invByOrder = new Map((invRange ?? []).map((i: any) => [i.order_id, i]));
+    for (const p of scopedPayments) {
+      if (!rangeOrderIds.has(p.order_id)) continue;
+      const inv: any = invByOrder.get(p.order_id);
+      if (!inv) continue;
+      const row = byBrandMap.get(inv.brand_id);
+      if (row) row.collected_in_range += Number(p.amount);
+    }
+
+    return {
+      range: { from: data.from, to: data.to },
+      invoices_in_range: { count: (invRange ?? []).length, total: invoicedTotal },
+      payments_in_range: {
+        count: scopedPayments.length,
+        total: paymentsTotal,
+        on_range_invoices: onRange,
+        on_prior_invoices: onPrior,
+        unlinked,
+      },
+      open_balance_of_range_invoices: openBalance,
+      by_brand: Array.from(byBrandMap.values()).sort((a, b) => b.invoiced_total - a.invoiced_total),
+    };
+  });
