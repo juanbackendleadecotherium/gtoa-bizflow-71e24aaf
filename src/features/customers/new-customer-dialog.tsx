@@ -365,6 +365,7 @@ export function NewCustomerDialog({
           payment_method: draft.order.payment_method || null,
           advance_amount: draft.order.advance_amount || 0,
           advance_deposit_account: draft.order.advance_deposit_account || null,
+          sale_type: draft.order.sale_type,
           customer_name: c.display_name.trim(),
           customer_doc_type: c.doc_type || null,
           customer_doc_number: c.doc_number.trim() || null,
