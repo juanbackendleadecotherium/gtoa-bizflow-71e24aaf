@@ -361,6 +361,15 @@ function OrderDetail() {
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
+          <DeliveryDeferralCard
+            orderId={o.id}
+            estimatedDate={o.estimated_delivery_date}
+            scheduledDate={(o as any).scheduled_delivery_date ?? null}
+            isDeferred={Boolean((o as any).is_deferred_delivery)}
+            deferredReason={(o as any).deferred_reason ?? null}
+            canEdit
+            onDone={() => orderQuery.refetch()}
+          />
           {(() => {
             const missing = items.filter(
               (it: any) => !it.production_order_id && (!Array.isArray(it.planimetry_files) || it.planimetry_files.length === 0),
