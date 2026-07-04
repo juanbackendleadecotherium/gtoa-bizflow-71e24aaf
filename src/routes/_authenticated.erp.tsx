@@ -67,7 +67,6 @@ const NAV: NavItem[] = [
   { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo },
   { label: "Finanzas", to: "/erp/finance", icon: Wallet, adminOnly: true },
   { label: "Pagos a proveedores", to: "/erp/finance/supplier-payments", icon: DollarSign, financeOnly: true },
-  { label: "Comisiones", to: "/erp/finance/commissions", icon: DollarSign, adminOnly: true },
   { label: "Estados", to: "/erp/settings/statuses", icon: Settings, adminOnly: true },
   { label: "Proveedores", to: "/erp/settings/suppliers", icon: Users, adminOnly: true },
   { label: "Bodegas y zonas", to: "/erp/settings/warehouses", icon: Building2, adminOnly: true },
@@ -168,7 +167,7 @@ function Shell() {
             const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
             const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
             const financeBadge = item.to === "/erp/finance/supplier-payments" && financePaymentsCount > 0 ? financePaymentsCount : 0;
-            const commissionBadge = item.to === "/erp/finance/commissions" && commissionsPendingCount > 0 ? commissionsPendingCount : 0;
+            const commissionBadge = item.to === "/erp/finance" && commissionsPendingCount > 0 ? commissionsPendingCount : 0;
             const badge = taskBadge || pickupBadge || financeBadge || commissionBadge;
             return (
               <Link
@@ -278,7 +277,7 @@ function Shell() {
                     const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
                     const pickupBadge = item.to === "/erp/logistics/pickups" && pickupCount > 0 ? pickupCount : 0;
                     const financeBadge = item.to === "/erp/finance/supplier-payments" && financePaymentsCount > 0 ? financePaymentsCount : 0;
-                    const commissionBadge = item.to === "/erp/finance/commissions" && commissionsPendingCount > 0 ? commissionsPendingCount : 0;
+                    const commissionBadge = item.to === "/erp/finance" && commissionsPendingCount > 0 ? commissionsPendingCount : 0;
                     const badge = taskBadge || pickupBadge || financeBadge || commissionBadge;
                     return (
                       <Link

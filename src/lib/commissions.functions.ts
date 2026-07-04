@@ -118,6 +118,41 @@ export const payCommission = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const BulkPayInput = z.object({
+  ids: z.array(z.string().uuid()).min(1),
+  reference: z.string().optional().nullable(),
+});
+
+export const payCommissionsBulk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => BulkPayInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: count, error } = await context.supabase.rpc("pay_commissions_bulk", {
+      _ids: data.ids,
+      _reference: data.reference ?? undefined,
+    });
+    if (error) throw error;
+    return { count: (count as number) ?? 0 };
+  });
+
+export type CommissionAuditRow = {
+  id: string;
+  action: "created" | "approved" | "rejected" | "paid" | "reverted";
+  actor_label: string | null;
+  reason: string | null;
+  reference: string | null;
+  created_at: string;
+};
+
+export const getCommissionAudit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => IdInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase.rpc("get_commission_audit", { _id: data.id });
+    if (error) throw error;
+    return (rows ?? []) as CommissionAuditRow[];
+  });
+
 // Count for sidebar badge (admin only sees pending approvals)
 export const getPendingCommissionsCount = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

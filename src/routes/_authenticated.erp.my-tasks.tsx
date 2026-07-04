@@ -183,7 +183,14 @@ function MyTasks() {
                 const isPayAdvance = t.type === "pay_supplier_advance";
                 const isPaidNotice = t.type === "supplier_advance_paid";
                 const isCommissionApproval = t.type === "commission_approval";
-                const isCommissionNotice = t.type === "commission_approved" || t.type === "commission_paid" || t.type === "commission_rejected";
+                const isCommissionReadyToPay = t.type === "commission_ready_to_pay";
+                const isCommissionNotice =
+                  t.type === "commission_approved" ||
+                  t.type === "commission_paid" ||
+                  t.type === "commission_rejected" ||
+                  t.type === "commission_new" ||
+                  t.type === "commission_rejected_notice";
+                const isAnyCommission = isCommissionApproval || isCommissionReadyToPay || isCommissionNotice;
                 const isInfo =
                   isCollection ||
                   isPaidNotice ||
@@ -196,7 +203,7 @@ function MyTasks() {
                 const overdue = deadline?.isOverdue ?? false;
                 const wrapCls = overdue
                   ? "border-red-500/60 bg-red-500/5"
-                  : isPayAdvance || isCommissionApproval
+                  : isPayAdvance || isCommissionApproval || isCommissionReadyToPay
                     ? (pending ? "border-emerald-500/60 bg-emerald-500/5" : "border-border bg-surface")
                     : isCollection
                       ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
@@ -205,7 +212,7 @@ function MyTasks() {
                         : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
                 const Icon = overdue
                   ? AlertOctagon
-                  : (isCollection || isPayAdvance || isCommissionApproval || isCommissionNotice)
+                  : (isCollection || isPayAdvance || isAnyCommission)
                     ? DollarSign
                     : isPlanimetry
                       ? FileUp
@@ -214,7 +221,7 @@ function MyTasks() {
                         : AlertTriangle;
                 const iconCls = overdue
                   ? "text-red-600 dark:text-red-400"
-                  : (isCollection || isPayAdvance || isCommissionApproval)
+                  : (isCollection || isPayAdvance || isCommissionApproval || isCommissionReadyToPay)
                     ? "text-emerald-600 dark:text-emerald-400"
                     : isInfo
                       ? "text-blue-600 dark:text-blue-400"
@@ -223,13 +230,15 @@ function MyTasks() {
                   ? "Ir a pagos a proveedores"
                   : isCommissionApproval
                     ? "Revisar comisión"
-                    : isCollection
-                      ? "Gestionar cobro"
-                      : isPlanimetry
-                        ? "Subir planimetría"
-                        : isInfo
-                          ? "Ver venta"
-                          : "Ir a la venta para corregir";
+                    : isCommissionReadyToPay
+                      ? "Pagar comisión"
+                      : isCollection
+                        ? "Gestionar cobro"
+                        : isPlanimetry
+                          ? "Subir planimetría"
+                          : isInfo
+                            ? "Ver venta"
+                            : "Ir a la venta para corregir";
 
                 return (
                   <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
@@ -278,7 +287,7 @@ function MyTasks() {
                           >
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
                           </Link>
-                        ) : isCommissionApproval ? (
+                        ) : (isCommissionApproval || isCommissionReadyToPay) ? (
                           <Link
                             to="/erp/finance/commissions"
                             className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
