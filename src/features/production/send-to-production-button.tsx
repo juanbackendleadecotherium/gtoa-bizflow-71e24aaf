@@ -493,11 +493,20 @@ export function ProductionSection({
           <Factory className="h-4 w-4" /> Producción
         </h2>
         <Button size="sm" variant="outline" onClick={handleSendClick}
-          disabled={busy || items.isLoading} className="gap-1">
+          disabled={busy || items.isLoading || !gate.ok}
+          title={!gate.ok ? gate.reason : undefined}
+          className="gap-1">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Enviar a producción
         </Button>
       </div>
+
+      {!gate.ok && (
+        <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+          {gate.reason}
+        </div>
+      )}
+
 
       {list.isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
