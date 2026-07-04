@@ -285,7 +285,6 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             {data.seller_name ? (
               <Text style={styles.partyLine}>Asesor: {data.seller_name}</Text>
             ) : null}
-            <Text style={styles.partyLine}>Tipo: Cuenta de cobro de venta</Text>
             <Text style={styles.partyLine}>{data.items.length} producto{data.items.length === 1 ? "" : "s"}</Text>
           </View>
         </View>
