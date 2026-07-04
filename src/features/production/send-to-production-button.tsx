@@ -265,7 +265,23 @@ export async function generatePlanimetryForOrder(opts: {
   return lastVersion;
 }
 
-export function ProductionSection({ orderId, brandId }: { orderId: string; brandId: string }) {
+export function ProductionSection({
+  orderId,
+  brandId,
+  saleType,
+  separeCompletedAt,
+  approvalStatus,
+  total,
+  paidTotal,
+}: {
+  orderId: string;
+  brandId: string;
+  saleType?: string | null;
+  separeCompletedAt?: string | null;
+  approvalStatus?: string | null;
+  total?: number;
+  paidTotal?: number;
+}) {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [step, setStep] = useState<"select" | "preview">("select");
