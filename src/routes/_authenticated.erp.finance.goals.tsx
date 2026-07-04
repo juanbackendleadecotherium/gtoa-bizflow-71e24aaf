@@ -58,7 +58,7 @@ function GoalsPage() {
         .in("user_id", ids);
       return (profs ?? []).map((p) => ({
         id: p.user_id,
-        label: p.display_name || p.email,
+        label: p.display_name || p.email || "—",
       }));
     },
   });
