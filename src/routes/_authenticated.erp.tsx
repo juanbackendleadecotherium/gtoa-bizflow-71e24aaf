@@ -108,6 +108,16 @@ function Shell() {
   });
   const financePaymentsCount = financeCountQuery.data?.count ?? 0;
 
+  const commissionsCountFn = useServerFn(getPendingCommissionsCount);
+  const commissionsCountQuery = useQuery({
+    queryKey: ["commissions-pending-count"],
+    enabled: isAdmin,
+    queryFn: () => commissionsCountFn(),
+    staleTime: 30_000,
+  });
+  const commissionsPendingCount = commissionsCountQuery.data?.count ?? 0;
+
+
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
     enabled: !!userId,
