@@ -149,8 +149,9 @@ function CommissionsPage() {
               </button>
               {selected.size > 0 && (
                 <BulkPayDialog
-                  count={selected.size}
+                  rows={selectedRows}
                   total={selectedTotal}
+                  loading={payBulk.isPending}
                   onSubmit={(reference) => payBulk.mutate({ ids: [...selected], reference })}
                 />
               )}
@@ -370,32 +371,124 @@ function PayDialog({ onSubmit, amount }: { onSubmit: (ref: string | undefined) =
   );
 }
 
-function BulkPayDialog({ count, total, onSubmit }: { count: number; total: number; onSubmit: (ref: string | undefined) => void }) {
+function BulkPayDialog({ rows, total, loading, onSubmit }: { rows: CommissionRow[]; total: number; loading: boolean; onSubmit: (ref: string | undefined) => void }) {
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"preview" | "confirm">("preview");
   const [ref, setRef] = useState("");
+  const count = rows.length;
+
+  const bySeller = useMemo(() => {
+    const m = new Map<string, { label: string; count: number; total: number }>();
+    for (const r of rows) {
+      const k = r.seller_id;
+      const cur = m.get(k) ?? { label: r.seller_label ?? "—", count: 0, total: 0 };
+      cur.count += 1;
+      cur.total += Number(r.commission_amount);
+      m.set(k, cur);
+    }
+    return Array.from(m.values()).sort((a, b) => b.total - a.total);
+  }, [rows]);
+
+  const brandsCount = useMemo(() => new Set(rows.map((r) => r.brand_id)).size, [rows]);
+
+  const reset = (o: boolean) => {
+    setOpen(o);
+    if (!o) { setStep("preview"); setRef(""); }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={reset}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1">
           <Send className="h-3.5 w-3.5" /> Pagar {count} comisiones ({formatMoney(total)})
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Pago masivo · {count} comisiones · {formatMoney(total)}</DialogTitle>
+          <DialogTitle>
+            {step === "preview" ? "Vista previa · pago masivo" : "Confirmar pago masivo"}
+          </DialogTitle>
         </DialogHeader>
-        <div>
-          <label className="text-xs text-muted-foreground">Referencia común (opcional)</label>
-          <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Nº lote, transferencia, banco…" />
-          <p className="text-xs text-muted-foreground mt-2">
-            Todas las comisiones seleccionadas quedarán en estado <span className="font-medium">pagada</span> con esta misma referencia y aparecerán en la pestaña Pagadas.
-          </p>
-        </div>
-        <DialogFooter>
-          <Button onClick={() => { onSubmit(ref.trim() || undefined); setOpen(false); setRef(""); }}>
-            Confirmar pago masivo
-          </Button>
-        </DialogFooter>
+
+        {step === "preview" ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-lg border border-border bg-surface p-3">
+                <p className="text-[10px] uppercase text-muted-foreground">Comisiones</p>
+                <p className="text-lg font-semibold tabular-nums">{count}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-surface p-3">
+                <p className="text-[10px] uppercase text-muted-foreground">Vendedores</p>
+                <p className="text-lg font-semibold tabular-nums">{bySeller.length}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-surface p-3">
+                <p className="text-[10px] uppercase text-muted-foreground">Marcas</p>
+                <p className="text-lg font-semibold tabular-nums">{brandsCount}</p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 flex items-center justify-between">
+              <span className="text-sm font-medium">Total a pagar</span>
+              <span className="text-xl font-semibold tabular-nums">{formatMoney(total)}</span>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Desglose por vendedor</p>
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/40 sticky top-0">
+                    <tr className="text-left">
+                      <th className="px-3 py-2 font-medium">Vendedor</th>
+                      <th className="px-3 py-2 font-medium text-right">#</th>
+                      <th className="px-3 py-2 font-medium text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bySeller.map((s, i) => (
+                      <tr key={i} className="border-t border-border">
+                        <td className="px-3 py-1.5">{s.label}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{s.count}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">{formatMoney(s.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground">Referencia común (opcional)</label>
+              <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Nº lote, transferencia, banco…" />
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => reset(false)}>Cancelar</Button>
+              <Button onClick={() => setStep("confirm")}>Continuar</Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+              <p className="font-medium mb-1">¿Confirmar el pago?</p>
+              <p className="text-muted-foreground">
+                Vas a marcar como <span className="font-medium text-foreground">pagadas</span>{" "}
+                <span className="font-medium text-foreground">{count} comisiones</span> por un total de{" "}
+                <span className="font-medium text-foreground tabular-nums">{formatMoney(total)}</span>
+                {ref.trim() && <> con la referencia <span className="font-medium text-foreground">"{ref.trim()}"</span></>}.
+                Esta acción quedará registrada en el historial y no se puede deshacer desde aquí.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep("preview")} disabled={loading}>Volver</Button>
+              <Button
+                disabled={loading}
+                onClick={() => { onSubmit(ref.trim() || undefined); reset(false); }}
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar pago masivo"}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
