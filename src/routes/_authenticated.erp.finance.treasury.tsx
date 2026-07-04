@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { Loader2, Search, FileText, Send, CheckCircle2, XCircle, ExternalLink, DollarSign, RotateCcw } from "lucide-react";
+import { Loader2, Search, FileText, Send, CheckCircle2, XCircle, ExternalLink, DollarSign, RotateCcw, Scale } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useBrand } from "@/features/brands/brand-context";
 import { formatMoney } from "@/features/orders/order-items-editor";
@@ -11,8 +11,9 @@ import {
   getTreasuryInvoice,
   markInvoiceElectronic,
   revertInvoiceElectronic,
+  getTreasuryReconciliation,
   type TreasuryInvoiceRow,
-  type TreasuryInvoiceDetail,
+  type ReconciliationSummary,
 } from "@/lib/treasury.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,8 +34,10 @@ export const Route = createFileRoute("/_authenticated/erp/finance/treasury")({
 });
 
 function TreasuryPage() {
-  const { isAdmin, roles } = useBrand();
+  const { isAdmin, roles, brands } = useBrand();
   const isFinance = isAdmin || roles.includes("finanzas");
+  const [mode, setMode] = useState<"invoices" | "reconciliation">("invoices");
+  const [brandFilter, setBrandFilter] = useState<string>("all"); // "all" | brand.id
   const [search, setSearch] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<"pendiente" | "parcial" | "pagada" | "todas">("todas");
   const [electronicStatus, setElectronicStatus] = useState<"no_facturada" | "facturada" | "todas">("todas");
@@ -42,19 +45,22 @@ function TreasuryPage() {
   const [to, setTo] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const brandId = brandFilter === "all" ? null : brandFilter;
+
   const listFn = useServerFn(listTreasuryInvoices);
   const q = useQuery({
-    queryKey: ["treasury-invoices", paymentStatus, electronicStatus, from, to],
+    queryKey: ["treasury-invoices", brandId, paymentStatus, electronicStatus, from, to],
     queryFn: () =>
       listFn({
         data: {
+          brandId,
           paymentStatus,
           electronicStatus,
           from: from || undefined,
           to: to || undefined,
         },
       }),
-    enabled: isFinance,
+    enabled: isFinance && mode === "invoices",
   });
 
   const rows = useMemo(() => {
@@ -89,117 +95,158 @@ function TreasuryPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-          <FileText className="h-4 w-4" /> Tesorería · Facturas
-        </h2>
-        <p className="text-xs text-muted-foreground mt-1">
-          Vista maestra de todas las facturas del ERP. Registro de pagos y marcación de facturación electrónica (Siigo).
-        </p>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPI label="Facturas" value={String(rows.length)} />
-        <KPI label="Total facturado" value={formatMoney(totals.total)} />
-        <KPI label="Recaudado" value={formatMoney(totals.paid)} tone="pos" />
-        <KPI label="Saldo pendiente" value={formatMoney(totals.balance)} tone={totals.balance > 0 ? "warn" : "muted"} />
-      </div>
-
-      {/* Filters */}
-      <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
-          <div className="lg:col-span-2 relative">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar factura, cliente, doc, teléfono, n° electrónica…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={paymentStatus} onValueChange={(v: any) => setPaymentStatus(v)}>
-            <SelectTrigger><SelectValue placeholder="Estado de pago" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todos los pagos</SelectItem>
-              <SelectItem value="pendiente">Pendiente</SelectItem>
-              <SelectItem value="parcial">Parcial</SelectItem>
-              <SelectItem value="pagada">Pagada</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={electronicStatus} onValueChange={(v: any) => setElectronicStatus(v)}>
-            <SelectTrigger><SelectValue placeholder="Facturación electrónica" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas</SelectItem>
-              <SelectItem value="no_facturada">Sin facturar (Siigo)</SelectItem>
-              <SelectItem value="facturada">Facturadas (Siigo)</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="flex gap-2">
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="text-xs" />
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="text-xs" />
-          </div>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
+        <div className="min-w-0">
+          <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <FileText className="h-4 w-4 shrink-0" />
+            <span className="truncate">Tesorería · Facturas</span>
+          </h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Vista maestra de todas las facturas del ERP. Registro de pagos y marcación de facturación electrónica (Siigo).
+          </p>
+        </div>
+        <div className="inline-flex rounded-lg border border-border bg-surface p-0.5 shrink-0">
+          <button
+            onClick={() => setMode("invoices")}
+            className={`px-3 py-1.5 text-xs rounded-md transition ${mode === "invoices" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+          >
+            <FileText className="h-3.5 w-3.5 inline mr-1" /> Facturas
+          </button>
+          <button
+            onClick={() => setMode("reconciliation")}
+            className={`px-3 py-1.5 text-xs rounded-md transition ${mode === "reconciliation" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+          >
+            <Scale className="h-3.5 w-3.5 inline mr-1" /> Reconciliación
+          </button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border bg-surface overflow-hidden">
-        {q.isLoading ? (
-          <div className="p-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-        ) : rows.length === 0 ? (
-          <p className="p-8 text-center text-sm text-muted-foreground">Sin facturas para los filtros seleccionados.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/40">
-                <tr className="text-left text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Factura</th>
-                  <th className="px-3 py-2 font-medium">Cliente</th>
-                  <th className="px-3 py-2 font-medium">Marca</th>
-                  <th className="px-3 py-2 font-medium">Vendedor</th>
-                  <th className="px-3 py-2 font-medium">Emisión</th>
-                  <th className="px-3 py-2 font-medium text-right">Total</th>
-                  <th className="px-3 py-2 font-medium text-right">Recaudado</th>
-                  <th className="px-3 py-2 font-medium text-right">Saldo</th>
-                  <th className="px-3 py-2 font-medium">Pago</th>
-                  <th className="px-3 py-2 font-medium">Siigo</th>
-                  <th className="px-3 py-2 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id} className="border-t border-border hover:bg-muted/20">
-                    <td className="px-3 py-2 font-medium">
-                      {r.invoice_number ?? r.order_number ?? "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div>{r.customer_name ?? "—"}</div>
-                      {r.customer_doc_number && (
-                        <div className="text-[10px] text-muted-foreground">{r.customer_doc_number}</div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">{r.brand_name ?? "—"}</td>
-                    <td className="px-3 py-2">{r.seller_label ?? "—"}</td>
-                    <td className="px-3 py-2 tabular-nums">
-                      {new Date(r.issued_at).toLocaleDateString("es-CO")}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.total)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-300">
-                      {formatMoney(r.paid_total)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-medium">{formatMoney(r.balance)}</td>
-                    <td className="px-3 py-2"><PaymentBadge s={r.payment_status} /></td>
-                    <td className="px-3 py-2"><ElectronicBadge s={r.electronic_invoice_status} n={r.electronic_invoice_number} /></td>
-                    <td className="px-3 py-2 text-right">
-                      <Button size="sm" variant="outline" onClick={() => setSelectedId(r.id)}>Ver</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* Brand selector (shared across both modes) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Marca:</span>
+        <button
+          onClick={() => setBrandFilter("all")}
+          className={`text-xs px-2.5 py-1 rounded-full border transition ${brandFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
+        >
+          Todas
+        </button>
+        {brands.map((b) => (
+          <button
+            key={b.id}
+            onClick={() => setBrandFilter(b.id)}
+            className={`text-xs px-2.5 py-1 rounded-full border transition ${brandFilter === b.id ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
+          >
+            {b.name}
+          </button>
+        ))}
       </div>
+
+      {mode === "reconciliation" ? (
+        <ReconciliationView brandId={brandId} />
+      ) : (
+        <>
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KPI label="Facturas" value={String(rows.length)} />
+            <KPI label="Total facturado" value={formatMoney(totals.total)} />
+            <KPI label="Recaudado" value={formatMoney(totals.paid)} tone="pos" />
+            <KPI label="Saldo pendiente" value={formatMoney(totals.balance)} tone={totals.balance > 0 ? "warn" : "muted"} />
+          </div>
+
+          {/* Filters */}
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
+              <div className="lg:col-span-2 relative min-w-0">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar factura, cliente, doc, teléfono, n° electrónica…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 w-full"
+                />
+              </div>
+              <Select value={paymentStatus} onValueChange={(v: any) => setPaymentStatus(v)}>
+                <SelectTrigger className="min-w-0"><SelectValue placeholder="Estado de pago" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todos los pagos</SelectItem>
+                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                  <SelectItem value="parcial">Parcial</SelectItem>
+                  <SelectItem value="pagada">Pagada</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={electronicStatus} onValueChange={(v: any) => setElectronicStatus(v)}>
+                <SelectTrigger className="min-w-0"><SelectValue placeholder="Facturación electrónica" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas (Siigo)</SelectItem>
+                  <SelectItem value="no_facturada">Sin facturar</SelectItem>
+                  <SelectItem value="facturada">Facturadas</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="text-xs min-w-0" aria-label="Desde" />
+              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="text-xs min-w-0" aria-label="Hasta" />
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="rounded-xl border border-border bg-surface overflow-hidden">
+            {q.isLoading ? (
+              <div className="p-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : rows.length === 0 ? (
+              <p className="p-8 text-center text-sm text-muted-foreground">Sin facturas para los filtros seleccionados.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/40">
+                    <tr className="text-left text-muted-foreground">
+                      <th className="px-3 py-2 font-medium">Factura</th>
+                      <th className="px-3 py-2 font-medium">Cliente</th>
+                      <th className="px-3 py-2 font-medium">Marca</th>
+                      <th className="px-3 py-2 font-medium">Vendedor</th>
+                      <th className="px-3 py-2 font-medium">Emisión</th>
+                      <th className="px-3 py-2 font-medium text-right">Total</th>
+                      <th className="px-3 py-2 font-medium text-right">Recaudado</th>
+                      <th className="px-3 py-2 font-medium text-right">Saldo</th>
+                      <th className="px-3 py-2 font-medium">Pago</th>
+                      <th className="px-3 py-2 font-medium">Siigo</th>
+                      <th className="px-3 py-2 font-medium"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => (
+                      <tr key={r.id} className="border-t border-border hover:bg-muted/20">
+                        <td className="px-3 py-2 font-medium">
+                          {r.invoice_number ?? r.order_number ?? "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div>{r.customer_name ?? "—"}</div>
+                          {r.customer_doc_number && (
+                            <div className="text-[10px] text-muted-foreground">{r.customer_doc_number}</div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">{r.brand_name ?? "—"}</td>
+                        <td className="px-3 py-2">{r.seller_label ?? "—"}</td>
+                        <td className="px-3 py-2 tabular-nums">
+                          {new Date(r.issued_at).toLocaleDateString("es-CO")}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.total)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-300">
+                          {formatMoney(r.paid_total)}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums font-medium">{formatMoney(r.balance)}</td>
+                        <td className="px-3 py-2"><PaymentBadge s={r.payment_status} /></td>
+                        <td className="px-3 py-2"><ElectronicBadge s={r.electronic_invoice_status} n={r.electronic_invoice_number} /></td>
+                        <td className="px-3 py-2 text-right">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedId(r.id)}>Ver</Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {selectedId && (
         <InvoiceDetailDialog
@@ -207,6 +254,159 @@ function TreasuryPage() {
           onClose={() => setSelectedId(null)}
         />
       )}
+    </div>
+  );
+}
+
+function ReconciliationView({ brandId }: { brandId: string | null }) {
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const [from, setFrom] = useState(fmt(firstOfMonth));
+  const [to, setTo] = useState(fmt(today));
+
+  const reconFn = useServerFn(getTreasuryReconciliation);
+  const q = useQuery({
+    queryKey: ["treasury-recon", brandId, from, to],
+    queryFn: () => reconFn({ data: { brandId, from, to } }),
+    enabled: !!from && !!to,
+  });
+
+  const setPreset = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days + 1);
+    setFrom(fmt(start));
+    setTo(fmt(end));
+  };
+  const setThisMonth = () => {
+    const d = new Date();
+    setFrom(fmt(new Date(d.getFullYear(), d.getMonth(), 1)));
+    setTo(fmt(d));
+  };
+  const setLastMonth = () => {
+    const d = new Date();
+    const start = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    const end = new Date(d.getFullYear(), d.getMonth(), 0);
+    setFrom(fmt(start));
+    setTo(fmt(end));
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="min-w-0">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Desde</label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="text-xs w-full" />
+          </div>
+          <div className="min-w-0">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Hasta</label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="text-xs w-full" />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-2 flex flex-wrap items-end gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => setPreset(7)}>7 días</Button>
+            <Button variant="outline" size="sm" onClick={() => setPreset(30)}>30 días</Button>
+            <Button variant="outline" size="sm" onClick={setThisMonth}>Este mes</Button>
+            <Button variant="outline" size="sm" onClick={setLastMonth}>Mes anterior</Button>
+          </div>
+        </div>
+      </div>
+
+      {q.isLoading || !q.data ? (
+        <div className="p-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <ReconContent data={q.data} />
+      )}
+    </div>
+  );
+}
+
+function ReconContent({ data }: { data: ReconciliationSummary }) {
+  const diff = data.invoices_in_range.total - data.payments_in_range.on_range_invoices;
+  return (
+    <div className="space-y-4">
+      {/* Range KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KPI
+          label={`Facturado (${data.invoices_in_range.count})`}
+          value={formatMoney(data.invoices_in_range.total)}
+        />
+        <KPI
+          label={`Pagos recibidos (${data.payments_in_range.count})`}
+          value={formatMoney(data.payments_in_range.total)}
+          tone="pos"
+        />
+        <KPI
+          label="Saldo abierto de facturas del período"
+          value={formatMoney(data.open_balance_of_range_invoices)}
+          tone={data.open_balance_of_range_invoices > 0 ? "warn" : "muted"}
+        />
+        <KPI
+          label="Facturado − Recaudado (del período)"
+          value={formatMoney(diff)}
+          tone={diff > 0 ? "warn" : "pos"}
+        />
+      </div>
+
+      {/* Payment split */}
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Origen de los pagos recibidos</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+          <ReconRow label="Aplicados a facturas del período" value={data.payments_in_range.on_range_invoices} />
+          <ReconRow label="Aplicados a facturas de períodos anteriores" value={data.payments_in_range.on_prior_invoices} />
+          <ReconRow label="Sin factura asociada (anticipos)" value={data.payments_in_range.unlinked} />
+        </div>
+      </div>
+
+      {/* By brand */}
+      <div className="rounded-xl border border-border bg-surface overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-xs uppercase tracking-wider text-muted-foreground">Por marca</h3>
+        </div>
+        {data.by_brand.length === 0 ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">Sin facturas emitidas en el período.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-muted/40 text-muted-foreground">
+                <tr className="text-left">
+                  <th className="px-3 py-2 font-medium">Marca</th>
+                  <th className="px-3 py-2 font-medium text-right">Facturas</th>
+                  <th className="px-3 py-2 font-medium text-right">Facturado</th>
+                  <th className="px-3 py-2 font-medium text-right">Recaudado (período)</th>
+                  <th className="px-3 py-2 font-medium text-right">Saldo abierto</th>
+                  <th className="px-3 py-2 font-medium text-right">% Recaudo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.by_brand.map((b) => {
+                  const pct = b.invoiced_total > 0 ? (b.collected_in_range / b.invoiced_total) * 100 : 0;
+                  return (
+                    <tr key={b.brand_id} className="border-t border-border">
+                      <td className="px-3 py-2 font-medium">{b.brand_name ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{b.invoices_count}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatMoney(b.invoiced_total)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-300">{formatMoney(b.collected_in_range)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-medium">{formatMoney(b.balance_open)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{pct.toFixed(1)}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ReconRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-border p-3">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-base font-display font-semibold tabular-nums mt-1">{formatMoney(value)}</p>
     </div>
   );
 }
