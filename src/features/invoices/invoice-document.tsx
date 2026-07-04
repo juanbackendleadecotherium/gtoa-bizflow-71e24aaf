@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
-import { getBrandLogo } from "./brand-logos";
+import { getBrandLogo, getBrandInvoiceColor } from "./brand-logos";
 import { numberToSpanishWords } from "./number-to-words";
 
 export type InvoiceBrandSnapshot = {
