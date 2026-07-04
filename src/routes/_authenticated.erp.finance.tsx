@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Wallet, Trophy, Trash2, Loader2 } from "lucide-react";
+import { LayoutDashboard, Wallet, Trophy, Trash2, Loader2, Target, DollarSign } from "lucide-react";
 import { useEffect } from "react";
 import { useBrand } from "@/features/brands/brand-context";
 
@@ -11,6 +11,8 @@ export const Route = createFileRoute("/_authenticated/erp/finance")({
 const TABS = [
   { to: "/erp/finance", label: "Resumen", icon: LayoutDashboard, exact: true },
   { to: "/erp/finance/receivables", label: "Cartera por cobrar", icon: Wallet },
+  { to: "/erp/finance/goals", label: "Metas de ventas", icon: Target },
+  { to: "/erp/finance/commissions", label: "Comisiones", icon: DollarSign },
   { to: "/erp/finance/sellers", label: "Rendimiento por vendedor", icon: Trophy },
   { to: "/erp/finance/deletions", label: "Eliminaciones", icon: Trash2 },
 ];

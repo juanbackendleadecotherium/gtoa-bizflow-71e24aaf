@@ -44,6 +44,7 @@ import { Route as AuthenticatedErpFinanceSellersRouteImport } from './routes/_au
 import { Route as AuthenticatedErpFinanceReceivablesRouteImport } from './routes/_authenticated.erp.finance.receivables'
 import { Route as AuthenticatedErpFinanceGoalsRouteImport } from './routes/_authenticated.erp.finance.goals'
 import { Route as AuthenticatedErpFinanceDeletionsRouteImport } from './routes/_authenticated.erp.finance.deletions'
+import { Route as AuthenticatedErpFinanceCommissionsRouteImport } from './routes/_authenticated.erp.finance.commissions'
 import { Route as AuthenticatedErpAnalyticsOperationsRouteImport } from './routes/_authenticated.erp.analytics.operations'
 
 const AuthRoute = AuthRouteImport.update({
@@ -247,6 +248,12 @@ const AuthenticatedErpFinanceDeletionsRoute =
     path: '/deletions',
     getParentRoute: () => AuthenticatedErpFinanceRoute,
   } as any)
+const AuthenticatedErpFinanceCommissionsRoute =
+  AuthenticatedErpFinanceCommissionsRouteImport.update({
+    id: '/commissions',
+    path: '/commissions',
+    getParentRoute: () => AuthenticatedErpFinanceRoute,
+  } as any)
 const AuthenticatedErpAnalyticsOperationsRoute =
   AuthenticatedErpAnalyticsOperationsRouteImport.update({
     id: '/operations',
@@ -266,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/erp/warehouse': typeof AuthenticatedErpWarehouseRoute
   '/erp/': typeof AuthenticatedErpIndexRoute
   '/erp/analytics/operations': typeof AuthenticatedErpAnalyticsOperationsRoute
+  '/erp/finance/commissions': typeof AuthenticatedErpFinanceCommissionsRoute
   '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/goals': typeof AuthenticatedErpFinanceGoalsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
@@ -299,6 +307,7 @@ export interface FileRoutesByTo {
   '/erp/warehouse': typeof AuthenticatedErpWarehouseRoute
   '/erp': typeof AuthenticatedErpIndexRoute
   '/erp/analytics/operations': typeof AuthenticatedErpAnalyticsOperationsRoute
+  '/erp/finance/commissions': typeof AuthenticatedErpFinanceCommissionsRoute
   '/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/erp/finance/goals': typeof AuthenticatedErpFinanceGoalsRoute
   '/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
@@ -338,6 +347,7 @@ export interface FileRoutesById {
   '/_authenticated/erp/warehouse': typeof AuthenticatedErpWarehouseRoute
   '/_authenticated/erp/': typeof AuthenticatedErpIndexRoute
   '/_authenticated/erp/analytics/operations': typeof AuthenticatedErpAnalyticsOperationsRoute
+  '/_authenticated/erp/finance/commissions': typeof AuthenticatedErpFinanceCommissionsRoute
   '/_authenticated/erp/finance/deletions': typeof AuthenticatedErpFinanceDeletionsRoute
   '/_authenticated/erp/finance/goals': typeof AuthenticatedErpFinanceGoalsRoute
   '/_authenticated/erp/finance/receivables': typeof AuthenticatedErpFinanceReceivablesRoute
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/erp/warehouse'
     | '/erp/'
     | '/erp/analytics/operations'
+    | '/erp/finance/commissions'
     | '/erp/finance/deletions'
     | '/erp/finance/goals'
     | '/erp/finance/receivables'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/erp/warehouse'
     | '/erp'
     | '/erp/analytics/operations'
+    | '/erp/finance/commissions'
     | '/erp/finance/deletions'
     | '/erp/finance/goals'
     | '/erp/finance/receivables'
@@ -448,6 +460,7 @@ export interface FileRouteTypes {
     | '/_authenticated/erp/warehouse'
     | '/_authenticated/erp/'
     | '/_authenticated/erp/analytics/operations'
+    | '/_authenticated/erp/finance/commissions'
     | '/_authenticated/erp/finance/deletions'
     | '/_authenticated/erp/finance/goals'
     | '/_authenticated/erp/finance/receivables'
@@ -727,6 +740,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErpFinanceDeletionsRouteImport
       parentRoute: typeof AuthenticatedErpFinanceRoute
     }
+    '/_authenticated/erp/finance/commissions': {
+      id: '/_authenticated/erp/finance/commissions'
+      path: '/commissions'
+      fullPath: '/erp/finance/commissions'
+      preLoaderRoute: typeof AuthenticatedErpFinanceCommissionsRouteImport
+      parentRoute: typeof AuthenticatedErpFinanceRoute
+    }
     '/_authenticated/erp/analytics/operations': {
       id: '/_authenticated/erp/analytics/operations'
       path: '/operations'
@@ -753,6 +773,7 @@ const AuthenticatedErpAnalyticsRouteWithChildren =
   )
 
 interface AuthenticatedErpFinanceRouteChildren {
+  AuthenticatedErpFinanceCommissionsRoute: typeof AuthenticatedErpFinanceCommissionsRoute
   AuthenticatedErpFinanceDeletionsRoute: typeof AuthenticatedErpFinanceDeletionsRoute
   AuthenticatedErpFinanceGoalsRoute: typeof AuthenticatedErpFinanceGoalsRoute
   AuthenticatedErpFinanceReceivablesRoute: typeof AuthenticatedErpFinanceReceivablesRoute
@@ -763,6 +784,8 @@ interface AuthenticatedErpFinanceRouteChildren {
 
 const AuthenticatedErpFinanceRouteChildren: AuthenticatedErpFinanceRouteChildren =
   {
+    AuthenticatedErpFinanceCommissionsRoute:
+      AuthenticatedErpFinanceCommissionsRoute,
     AuthenticatedErpFinanceDeletionsRoute:
       AuthenticatedErpFinanceDeletionsRoute,
     AuthenticatedErpFinanceGoalsRoute: AuthenticatedErpFinanceGoalsRoute,
