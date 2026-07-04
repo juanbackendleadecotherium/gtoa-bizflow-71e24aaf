@@ -43,7 +43,7 @@ export function PartialShipmentToggle({
       const { error } = await supabase.rpc("toggle_item_partial_shipment", {
         p_item_id: itemId,
         p_enabled: !enabled,
-        p_note: note.trim() || null,
+        p_note: note.trim() || undefined,
       });
       if (error) throw error;
     },
