@@ -103,6 +103,19 @@ function OrderDetail() {
     },
   });
 
+  // Suma de pagos registrados: alimenta el % de Plan Separe y el gate para producción.
+  const paymentsSumQuery = useQuery({
+    queryKey: ["order-payments-sum", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_payments")
+        .select("amount")
+        .eq("order_id", id);
+      if (error) throw error;
+      return (data ?? []).reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+    },
+  });
+
   const [newStatus, setNewStatus] = useState("");
   const [statusNote, setStatusNote] = useState("");
 
