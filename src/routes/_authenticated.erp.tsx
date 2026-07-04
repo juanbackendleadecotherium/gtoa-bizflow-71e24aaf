@@ -67,6 +67,7 @@ const NAV: NavItem[] = [
   { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo },
   { label: "Finanzas", to: "/erp/finance", icon: Wallet, adminOnly: true },
   { label: "Pagos a proveedores", to: "/erp/finance/supplier-payments", icon: DollarSign, financeOnly: true },
+  { label: "Comisiones", to: "/erp/finance/commissions", icon: DollarSign, adminOnly: true },
   { label: "Estados", to: "/erp/settings/statuses", icon: Settings, adminOnly: true },
   { label: "Proveedores", to: "/erp/settings/suppliers", icon: Users, adminOnly: true },
   { label: "Bodegas y zonas", to: "/erp/settings/warehouses", icon: Building2, adminOnly: true },
