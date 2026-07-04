@@ -43,7 +43,7 @@ function OrdersPage() {
     queryFn: async () => {
       let q = supabase
         .from("orders")
-        .select("id, order_number, invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, customer_name, customer_phone, customer_doc_number, status:order_statuses(name,color), invoices(id), items:order_items(description, quantity, sort_order)")
+        .select("id, order_number, invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, customer_name, customer_phone, customer_doc_number, sale_type, separe_completed_at, approval_status, status:order_statuses(name,color), invoices(id), items:order_items(description, quantity, sort_order)")
         .eq("brand_id", selectedBrandId!)
         .order("created_at", { ascending: false });
       if (statusFilter !== "all") q = q.eq("status_id", statusFilter);
