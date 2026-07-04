@@ -25,6 +25,7 @@ import { useMyPendingTasksCount } from "@/features/seller-tasks/seller-tasks-pan
 import { countActivePickups } from "@/lib/pickup-orders.functions";
 import { usePickupCountRealtime } from "@/features/logistics/use-logistics-realtime";
 import { getPendingSupplierPaymentsCount } from "@/lib/supplier-advance-payments.functions";
+import { getPendingCommissionsCount } from "@/lib/commissions.functions";
 
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
