@@ -57,7 +57,7 @@ function OrderDetail() {
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
-          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id)
+          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at)
         `)
         .eq("id", id).maybeSingle();
       if (error) throw error;
