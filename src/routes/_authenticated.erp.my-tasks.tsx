@@ -287,7 +287,7 @@ function MyTasks() {
                           >
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
                           </Link>
-                        ) : isCommissionApproval ? (
+                        ) : (isCommissionApproval || isCommissionReadyToPay) ? (
                           <Link
                             to="/erp/finance/commissions"
                             className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
