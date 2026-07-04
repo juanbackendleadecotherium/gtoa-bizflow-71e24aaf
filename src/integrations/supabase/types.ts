@@ -381,6 +381,47 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_electronic_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          external_number: string | null
+          id: string
+          invoice_id: string
+          note: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          external_number?: string | null
+          id?: string
+          invoice_id: string
+          note?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          external_number?: string | null
+          id?: string
+          invoice_id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_electronic_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_versions: {
         Row: {
           advance_snapshot: number
@@ -488,6 +529,11 @@ export type Database = {
           created_at: string
           customer_snapshot: Json
           discount_snapshot: number
+          electronic_invoice_issued_at: string | null
+          electronic_invoice_issued_by: string | null
+          electronic_invoice_note: string | null
+          electronic_invoice_number: string | null
+          electronic_invoice_status: string
           id: string
           invoice_number: string
           issued_at: string
@@ -513,6 +559,11 @@ export type Database = {
           created_at?: string
           customer_snapshot?: Json
           discount_snapshot?: number
+          electronic_invoice_issued_at?: string | null
+          electronic_invoice_issued_by?: string | null
+          electronic_invoice_note?: string | null
+          electronic_invoice_number?: string | null
+          electronic_invoice_status?: string
           id?: string
           invoice_number: string
           issued_at?: string
@@ -538,6 +589,11 @@ export type Database = {
           created_at?: string
           customer_snapshot?: Json
           discount_snapshot?: number
+          electronic_invoice_issued_at?: string | null
+          electronic_invoice_issued_by?: string | null
+          electronic_invoice_note?: string | null
+          electronic_invoice_number?: string | null
+          electronic_invoice_status?: string
           id?: string
           invoice_number?: string
           issued_at?: string
@@ -738,6 +794,57 @@ export type Database = {
           total?: number
         }
         Relationships: []
+      }
+      order_delivery_deferrals: {
+        Row: {
+          brand_id: string
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          id: string
+          new_date: string
+          order_id: string
+          previous_date: string | null
+          reason: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          new_date: string
+          order_id: string
+          previous_date?: string | null
+          reason: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          new_date?: string
+          order_id?: string
+          previous_date?: string | null
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_delivery_deferrals_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_delivery_deferrals_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_item_supplier_payments: {
         Row: {
@@ -1138,15 +1245,20 @@ export type Database = {
           customer_name: string
           customer_person_type: string | null
           customer_phone: string | null
+          deferred_at: string | null
+          deferred_by: string | null
+          deferred_reason: string | null
           discount: number
           estimated_delivery_date: string | null
           id: string
           invoice_number: string | null
+          is_deferred_delivery: boolean
           notes: string | null
           order_number: string
           payment_method: string | null
           payment_proof_url: string | null
           sale_date: string | null
+          scheduled_delivery_date: string | null
           scheduled_logistics_at: string | null
           scheduled_logistics_by: string | null
           scheduled_logistics_date: string | null
@@ -1178,15 +1290,20 @@ export type Database = {
           customer_name: string
           customer_person_type?: string | null
           customer_phone?: string | null
+          deferred_at?: string | null
+          deferred_by?: string | null
+          deferred_reason?: string | null
           discount?: number
           estimated_delivery_date?: string | null
           id?: string
           invoice_number?: string | null
+          is_deferred_delivery?: boolean
           notes?: string | null
           order_number: string
           payment_method?: string | null
           payment_proof_url?: string | null
           sale_date?: string | null
+          scheduled_delivery_date?: string | null
           scheduled_logistics_at?: string | null
           scheduled_logistics_by?: string | null
           scheduled_logistics_date?: string | null
@@ -1218,15 +1335,20 @@ export type Database = {
           customer_name?: string
           customer_person_type?: string | null
           customer_phone?: string | null
+          deferred_at?: string | null
+          deferred_by?: string | null
+          deferred_reason?: string | null
           discount?: number
           estimated_delivery_date?: string | null
           id?: string
           invoice_number?: string | null
+          is_deferred_delivery?: boolean
           notes?: string | null
           order_number?: string
           payment_method?: string | null
           payment_proof_url?: string | null
           sale_date?: string | null
+          scheduled_delivery_date?: string | null
           scheduled_logistics_at?: string | null
           scheduled_logistics_by?: string | null
           scheduled_logistics_date?: string | null
@@ -2339,6 +2461,10 @@ export type Database = {
         Args: { _item_id: string }
         Returns: undefined
       }
+      defer_order_delivery: {
+        Args: { p_new_date: string; p_order_id: string; p_reason: string }
+        Returns: undefined
+      }
       delete_order_with_reason: {
         Args: { p_order_id: string; p_reason: string }
         Returns: undefined
@@ -2376,6 +2502,15 @@ export type Database = {
       invoice_can_schedule_logistics: {
         Args: { _order_id: string }
         Returns: boolean
+      }
+      mark_invoice_electronic: {
+        Args: {
+          p_external_number: string
+          p_invoice_id: string
+          p_issued_at: string
+          p_note: string
+        }
+        Returns: undefined
       }
       mark_order_item_finished: {
         Args: { _item_id: string }
@@ -2415,6 +2550,10 @@ export type Database = {
       }
       reject_production_with_reason: {
         Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      revert_invoice_electronic: {
+        Args: { p_invoice_id: string; p_reason: string }
         Returns: undefined
       }
       set_logistics_availability_bulk: {

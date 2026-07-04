@@ -31,6 +31,7 @@ import { ProductionSection } from "@/features/production/send-to-production-butt
 import { OrderSellerTasksBadge } from "@/features/seller-tasks/seller-tasks-panel";
 import { ScheduleLogisticsCard } from "@/features/orders/schedule-logistics-card";
 import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/features/orders/delivery-urgency";
+import { DeliveryDeferralCard } from "@/features/orders/delivery-deferral-card";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -48,7 +49,7 @@ function OrderDetail() {
       const { data, error } = await supabase
         .from("orders")
         .select(`
-          id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date,
+          id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date, scheduled_delivery_date, is_deferred_delivery, deferred_reason, deferred_at,
           payment_method, advance_amount, advance_deposit_account, payment_proof_url,
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
@@ -361,6 +362,15 @@ function OrderDetail() {
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
+          <DeliveryDeferralCard
+            orderId={o.id}
+            estimatedDate={o.estimated_delivery_date}
+            scheduledDate={(o as any).scheduled_delivery_date ?? null}
+            isDeferred={Boolean((o as any).is_deferred_delivery)}
+            deferredReason={(o as any).deferred_reason ?? null}
+            canEdit
+            onDone={() => orderQuery.refetch()}
+          />
           {(() => {
             const missing = items.filter(
               (it: any) => !it.production_order_id && (!Array.isArray(it.planimetry_files) || it.planimetry_files.length === 0),
