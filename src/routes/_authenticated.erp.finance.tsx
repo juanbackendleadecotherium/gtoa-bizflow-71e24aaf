@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Wallet, Trophy, Trash2, Loader2, Target, DollarSign, FileText } from "lucide-react";
+import { LayoutDashboard, Wallet, Trophy, Trash2, Loader2, Target, DollarSign, FileText, ShieldCheck } from "lucide-react";
 import { useEffect } from "react";
 import { useBrand } from "@/features/brands/brand-context";
 
@@ -12,6 +12,7 @@ const TABS = [
   { to: "/erp/finance", label: "Resumen", icon: LayoutDashboard, exact: true },
   { to: "/erp/finance/receivables", label: "Cartera por cobrar", icon: Wallet },
   { to: "/erp/finance/treasury", label: "Tesorería", icon: FileText },
+  { to: "/erp/finance/approvals", label: "Aprobaciones", icon: ShieldCheck },
   { to: "/erp/finance/goals", label: "Metas de ventas", icon: Target },
   { to: "/erp/finance/commissions", label: "Comisiones", icon: DollarSign },
   { to: "/erp/finance/sellers", label: "Rendimiento por vendedor", icon: Trophy },
