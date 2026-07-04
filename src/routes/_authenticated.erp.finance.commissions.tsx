@@ -149,8 +149,9 @@ function CommissionsPage() {
               </button>
               {selected.size > 0 && (
                 <BulkPayDialog
-                  count={selected.size}
+                  rows={selectedRows}
                   total={selectedTotal}
+                  loading={payBulk.isPending}
                   onSubmit={(reference) => payBulk.mutate({ ids: [...selected], reference })}
                 />
               )}
