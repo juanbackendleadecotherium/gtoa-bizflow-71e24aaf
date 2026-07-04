@@ -95,6 +95,50 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_label: string | null
+          commission_request_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          reason: string | null
+          reference: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_label?: string | null
+          commission_request_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          reference?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_label?: string | null
+          commission_request_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_audit_log_commission_request_id_fkey"
+            columns: ["commission_request_id"]
+            isOneToOne: false
+            referencedRelation: "commission_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commission_requests: {
         Row: {
           approved_at: string | null
@@ -2277,6 +2321,7 @@ export type Database = {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
+      commission_actor_label: { Args: { _uid: string }; Returns: string }
       commission_tier_for: {
         Args: { _amount: number; _brand_id: string }
         Returns: number
@@ -2305,6 +2350,17 @@ export type Database = {
       effective_production_start_for_item: {
         Args: { _item_id: string }
         Returns: string
+      }
+      get_commission_audit: {
+        Args: { _id: string }
+        Returns: {
+          action: string
+          actor_label: string
+          created_at: string
+          id: string
+          reason: string
+          reference: string
+        }[]
       }
       has_brand_access: {
         Args: { _brand_id: string; _user_id: string }
@@ -2348,6 +2404,10 @@ export type Database = {
       pay_commission: {
         Args: { _id: string; _reference?: string }
         Returns: undefined
+      }
+      pay_commissions_bulk: {
+        Args: { _ids: string[]; _reference?: string }
+        Returns: number
       }
       reject_commission: {
         Args: { _id: string; _reason: string }
