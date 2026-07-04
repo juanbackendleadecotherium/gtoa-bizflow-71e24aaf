@@ -897,9 +897,39 @@ export function NewCustomerDialog({
           <SectionCard
             icon={<CreditCard className="h-4 w-4" />}
             title="Pago"
-            subtitle="Modalidad y abono inicial (mínimo 50% del total)."
+            subtitle="Elige tipo de venta y registra el abono."
           >
-            <div className="grid sm:grid-cols-2 gap-4">
+            {/* Tipo de venta */}
+            <FieldBlock label="Tipo de venta">
+              <div className="grid sm:grid-cols-2 gap-2">
+                <button type="button"
+                  onClick={() => { setO("sale_type", "normal"); setO("request_approval", false); }}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    !isPlanSepare
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}>
+                  <div className="text-sm font-medium">Venta normal</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Requiere 50% de anticipo para entrar a producción.
+                  </div>
+                </button>
+                <button type="button"
+                  onClick={() => { setO("sale_type", "plan_separe"); setO("request_approval", false); }}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    isPlanSepare
+                      ? "border-violet-500 bg-violet-500/5"
+                      : "border-border hover:border-primary/50"
+                  }`}>
+                  <div className="text-sm font-medium">Plan Separe</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Congela precio con abono parcial. Producción arranca al 50%.
+                  </div>
+                </button>
+              </div>
+            </FieldBlock>
+
+            <div className="grid sm:grid-cols-2 gap-4 mt-3">
               <FieldBlock label="Modalidad de pago *">
                 <Select
                   value={draft.order.payment_method || undefined}
@@ -917,36 +947,74 @@ export function NewCustomerDialog({
                   </SelectContent>
                 </Select>
               </FieldBlock>
-              <FieldBlock label={`Abono * (mín. ${subtotal > 0 ? formatMoney(minAdvance) : "50% del total"})`}>
+              <FieldBlock label={isPlanSepare
+                ? "Abono inicial (opcional en Plan Separe)"
+                : `Abono * (mín. ${subtotal > 0 ? formatMoney(minAdvance) : "50% del total"})`}>
                 <MoneyInput
                   value={draft.order.advance_amount}
                   onValueChange={(n) => setO("advance_amount", n)}
                 />
             </FieldBlock>
             </div>
-            <div className="mt-3">
-              <FieldBlock label="Cuenta destino del abono *">
-                <Select
-                  value={draft.order.advance_deposit_account || undefined}
-                  onValueChange={(v) => setO("advance_deposit_account", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="¿A qué cuenta llegó el abono?" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEPOSIT_ACCOUNTS.map((a) => (
-                      <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldBlock>
-            </div>
+            {(draft.order.advance_amount || 0) > 0 && (
+              <div className="mt-3">
+                <FieldBlock label="Cuenta destino del abono *">
+                  <Select
+                    value={draft.order.advance_deposit_account || undefined}
+                    onValueChange={(v) => setO("advance_deposit_account", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="¿A qué cuenta llegó el abono?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEPOSIT_ACCOUNTS.map((a) => (
+                        <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldBlock>
+              </div>
+            )}
+
+            {/* Aprobación gerencial — solo si es Venta normal con anticipo < 50% */}
+            {!isPlanSepare && subtotal > 0 && (draft.order.advance_amount || 0) < minAdvance - 0.01 && (
+              <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={draft.order.request_approval}
+                    onChange={(e) => setO("request_approval", e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-amber-500/50"
+                  />
+                  <span className="text-xs">
+                    <span className="font-medium text-amber-700 dark:text-amber-400">
+                      Solicitar excepción de anticipo (aprobación gerencial)
+                    </span>
+                    <br />
+                    <span className="text-muted-foreground">
+                      Luisa o Chiqui deberán aprobar antes de enviar a producción.
+                    </span>
+                  </span>
+                </label>
+                {draft.order.request_approval && (
+                  <Textarea
+                    placeholder="Motivo de la excepción (obligatorio)…"
+                    value={draft.order.approval_note}
+                    onChange={(e) => setO("approval_note", e.target.value)}
+                    rows={2}
+                  />
+                )}
+              </div>
+            )}
+
             {subtotal > 0 && !advanceOk && (
               <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
                 El abono debe ser mínimo el 50% del total ({formatMoney(minAdvance)}). Faltan{" "}
                 <span className="font-medium">{formatMoney(Math.max(0, minAdvance - (draft.order.advance_amount || 0)))}</span>.
+                Marca <b>Plan Separe</b> o solicita aprobación gerencial para excepción.
               </div>
             )}
+
 
             {subtotal > 0 && (
               <div className="mt-3 space-y-2">
