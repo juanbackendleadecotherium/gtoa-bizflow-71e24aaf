@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { Loader2, Search, FileText, Send, CheckCircle2, XCircle, ExternalLink, DollarSign, RotateCcw } from "lucide-react";
+import { Loader2, Search, FileText, Send, CheckCircle2, XCircle, ExternalLink, DollarSign, RotateCcw, Scale } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useBrand } from "@/features/brands/brand-context";
 import { formatMoney } from "@/features/orders/order-items-editor";
@@ -11,8 +11,9 @@ import {
   getTreasuryInvoice,
   markInvoiceElectronic,
   revertInvoiceElectronic,
+  getTreasuryReconciliation,
   type TreasuryInvoiceRow,
-  type TreasuryInvoiceDetail,
+  type ReconciliationSummary,
 } from "@/lib/treasury.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
