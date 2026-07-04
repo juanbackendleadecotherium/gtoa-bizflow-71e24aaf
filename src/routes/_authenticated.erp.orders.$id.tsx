@@ -434,6 +434,8 @@ function OrderDetail() {
                   return (
                     <OrderItemReadCard
                       key={it.id}
+                      itemId={it.id}
+                      orderId={o.id}
                       index={idx}
                       description={it.description ?? ""}
                       quantity={Number(it.quantity)}
@@ -442,6 +444,9 @@ function OrderDetail() {
                       images={imgs}
                       planimetryFiles={planiFiles}
                       sentToProduction={!!it.production_order_id}
+                      partialEnabled={!!it.partial_shipment_enabled}
+                      partialDeliveredAt={it.partial_delivered_at}
+                      productionFinishedAt={it.production_finished_at}
                     />
                   );
                 })}
