@@ -147,6 +147,8 @@ function OrdersPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         {o.status ? <StatusBadge name={o.status.name} color={o.status.color} /> : "—"}
                         <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
+                        {o.sale_type === "plan_separe" && <SaleTypeBadge saleType={o.sale_type} separeCompletedAt={o.separe_completed_at} />}
+                        <ApprovalStatusBadge status={o.approval_status} />
                         {o.invoices?.length > 0 && <InvoicedBadge />}
                       </div>
                     </td>
