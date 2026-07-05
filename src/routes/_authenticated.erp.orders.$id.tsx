@@ -45,6 +45,7 @@ function OrderDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { selectedBrandId } = useBrand();
+  const { isSellerRestricted } = useSellerRestricted();
 
   const orderQuery = useQuery({
     queryKey: ["order", id],
