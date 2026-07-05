@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 /**
  * Tarjeta accionable dentro de "Mis tareas" del admin para aprobar/rechazar
@@ -34,7 +35,6 @@ export function ApprovalDecisionCard({
 }) {
   const qc = useQueryClient();
   const [note, setNote] = useState("");
-  const [expanded, setExpanded] = useState(false);
 
   const resolve = useMutation({
     mutationFn: async (decision: "aprobada" | "rechazada") => {
@@ -53,10 +53,11 @@ export function ApprovalDecisionCard({
     onSuccess: (decision) => {
       toast.success(decision === "aprobada" ? "Venta aprobada" : "Venta rechazada y anulada");
       setNote("");
-      setExpanded(false);
       qc.invalidateQueries({ queryKey: ["my-tasks"] });
       qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
       qc.invalidateQueries({ queryKey: ["order-approvals-pending"] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      if (orderId) qc.invalidateQueries({ queryKey: ["order", orderId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -112,14 +113,10 @@ export function ApprovalDecisionCard({
         )}
       </div>
 
-      {!expanded ? (
-        <div className="flex gap-2 flex-wrap">
-          <Button size="sm" className="gap-1" onClick={() => setExpanded(true)}>
-            <ShieldCheck className="h-3.5 w-3.5" /> Decidir
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-2 pt-2 border-t border-amber-500/30">
+      <div className="space-y-2 pt-2 border-t border-amber-500/30">
+          <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Nota de gerencia
+          </Label>
           <Textarea
             placeholder="Comentario (opcional al aprobar, obligatorio al rechazar)…"
             value={note}
@@ -131,32 +128,28 @@ export function ApprovalDecisionCard({
             <Button
               size="sm"
               className="gap-1"
-              disabled={resolve.isPending}
+              disabled={resolve.isPending || !orderId}
               onClick={() => resolve.mutate("aprobada")}
             >
               {resolve.isPending && resolve.variables === "aprobada"
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 : <CheckCircle2 className="h-3.5 w-3.5" />}
-              Aprobar
+              Sí, aprobar
             </Button>
             <Button
               size="sm"
               variant="outline"
               className="gap-1 border-rose-500/40 text-rose-600 hover:bg-rose-500/10"
-              disabled={resolve.isPending}
+              disabled={resolve.isPending || !orderId}
               onClick={() => resolve.mutate("rechazada")}
             >
               {resolve.isPending && resolve.variables === "rechazada"
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 : <XCircle className="h-3.5 w-3.5" />}
-              Rechazar y anular venta
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setExpanded(false)} disabled={resolve.isPending}>
-              Cancelar
+              No, anular venta
             </Button>
           </div>
         </div>
-      )}
     </div>
   );
 }
