@@ -752,7 +752,7 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
                             orderItemId={it.id}
                             brandId={row.brand_id}
                             orderId={it.order_id ?? row.order_id}
-                            suggestedAmount={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
+                            suggestedAmount={effCost}
                             pct={Number(sup.advance_payment_pct ?? 50)}
                           />
                         ) : (
