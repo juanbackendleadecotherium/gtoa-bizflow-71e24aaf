@@ -36,7 +36,6 @@ export function SaleFlowCard({
 }) {
   const qc = useQueryClient();
   const { isAdmin } = useBrand();
-  const [note, setNote] = useState("");
   const [decisionNote, setDecisionNote] = useState("");
 
   const total = Number(order.total ?? 0);
@@ -44,23 +43,6 @@ export function SaleFlowCard({
   const isSepare = order.sale_type === "plan_separe";
   const separeDone = !!order.separe_completed_at;
 
-  const requestApproval = useMutation({
-    mutationFn: async () => {
-      if (!note.trim()) throw new Error("Escribe el motivo para gerencia");
-      const { error } = await supabase.rpc("request_management_approval", {
-        p_order_id: order.id,
-        p_note: note.trim(),
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Solicitud enviada a gerencia");
-      setNote("");
-      qc.invalidateQueries({ queryKey: ["order", order.id] });
-      qc.invalidateQueries({ queryKey: ["order-approvals-pending"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const resolve = useMutation({
     mutationFn: async (decision: "aprobada" | "rechazada") => {
