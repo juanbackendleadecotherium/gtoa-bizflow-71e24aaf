@@ -365,6 +365,18 @@ function OrderDetail() {
           })()}
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {(o as any).approval_status === "pendiente" && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/60 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Pendiente de aprobación por gerencia
+            </span>
+          )}
+          {(o as any).approval_status === "rechazada" && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/60 bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+              Aprobación rechazada
+            </span>
+          )}
           {status && <StatusBadge name={status.name} color={status.color} />}
           {!editing ? (
             <>
