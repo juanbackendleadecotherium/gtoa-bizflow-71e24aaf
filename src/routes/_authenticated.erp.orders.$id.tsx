@@ -223,13 +223,15 @@ function OrderDetail() {
             || orig.description !== it.description
             || Number(orig.quantity) !== Number(it.quantity)
             || Number(orig.unit_price) !== Number(it.unit_price)
-            || Number(orig.sort_order) !== i;
+            || Number(orig.sort_order) !== i
+            || Boolean(orig.is_standard_product) !== Boolean(it.is_standard_product);
           if (changed) {
             const { error } = await supabase.from("order_items").update({
               description: it.description,
               quantity: it.quantity,
               unit_price: it.unit_price,
               sort_order: i,
+              is_standard_product: Boolean(it.is_standard_product),
             }).eq("id", it.id);
             if (error) throw error;
           }
@@ -240,10 +242,12 @@ function OrderDetail() {
             quantity: it.quantity,
             unit_price: it.unit_price,
             sort_order: i,
+            is_standard_product: Boolean(it.is_standard_product),
           }).select("id").single();
           if (error) throw error;
           itemId = inserted.id;
         }
+
 
         if (itemId && imagesChanged) {
           let uploadedUrls: string[] = [];
