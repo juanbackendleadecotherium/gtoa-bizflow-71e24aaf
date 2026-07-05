@@ -349,15 +349,17 @@ export function ProductionSection({
   // debe cancelar la orden de producción correspondiente (sólo posible mientras
   // esté en estado "Pendiente", antes de que producción la acepte).
   const getItemLock = (it: ItemRow): { disabled: boolean; reason?: string } => {
-    if ((it.planimetry_files?.length ?? 0) === 0) {
-      return { disabled: true, reason: "Sin planimetría" };
-    }
     if (it.production_order_id) {
       const code = codeById.get(it.production_order_id);
       return { disabled: true, reason: code ? `Ya en producción · ${code}` : "Ya en producción" };
     }
+    // Los productos marcados como estándar no requieren planimetría.
+    if (!it.is_standard_product && (it.planimetry_files?.length ?? 0) === 0) {
+      return { disabled: true, reason: "Sin planimetría" };
+    }
     return { disabled: false };
   };
+
 
   // Re-seed selection when dialog opens.
   useEffect(() => {
