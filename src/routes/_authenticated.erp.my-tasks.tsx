@@ -172,6 +172,19 @@ function MyTasks() {
             <div className="py-12 text-center">
               <Loader2 className="h-5 w-5 animate-spin inline text-muted-foreground" />
             </div>
+          ) : q.isError ? (
+            <div className="rounded-xl border border-red-500/50 bg-red-500/5 p-6 text-center">
+              <AlertOctagon className="h-6 w-6 text-red-600 dark:text-red-400 mx-auto mb-2" />
+              <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                No se pudieron cargar tus tareas
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {(q.error as Error)?.message ?? "Error desconocido"}
+              </p>
+              <Button size="sm" variant="outline" className="mt-3" onClick={() => q.refetch()}>
+                Reintentar
+              </Button>
+            </div>
           ) : tasks.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border p-12 text-center">
               <ListTodo className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
