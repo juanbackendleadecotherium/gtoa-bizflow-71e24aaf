@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { toast } from "sonner";
 import { computeDeadlineState } from "@/features/seller-tasks/planimetry-deadline";
 import { SupplierFinalPaymentCard } from "@/features/seller-tasks/supplier-final-payment-card";
+import { ApprovalDecisionCard } from "@/features/seller-tasks/approval-decision-card";
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
