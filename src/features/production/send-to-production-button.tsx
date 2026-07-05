@@ -310,7 +310,7 @@ export function ProductionSection({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, images, sort_order, production_order_id, planimetry_files")
+        .select("id, description, quantity, images, sort_order, production_order_id, planimetry_files, is_standard_product")
         .eq("order_id", orderId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -318,7 +318,9 @@ export function ProductionSection({
         ...it,
         images: Array.isArray(it.images) ? it.images : [],
         planimetry_files: Array.isArray(it.planimetry_files) ? it.planimetry_files : [],
+        is_standard_product: Boolean(it.is_standard_product),
       })) as ItemRow[];
+
     },
   });
 
