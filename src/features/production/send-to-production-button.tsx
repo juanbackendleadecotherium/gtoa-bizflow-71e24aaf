@@ -29,7 +29,9 @@ type ItemRow = {
   sort_order: number;
   production_order_id: string | null;
   planimetry_files: Array<{ url: string; name: string; mime: string }>;
+  is_standard_product: boolean;
 };
+
 
 // Max edge (px) for images embedded into the production PDF. Phone photos
 // arrive at 4000+ px and bloat the PDF; 1400 px is plenty for print at the
@@ -90,7 +92,7 @@ async function buildPlanData(
     supabase.from("orders").select(`
       order_number, invoice_number, sale_date, estimated_delivery_date, notes,
       customer_name, customer_phone, customer_city, created_by,
-      items:order_items(id, description, quantity, images, sort_order, planimetry_files)
+      items:order_items(id, description, quantity, images, sort_order, planimetry_files, is_standard_product)
     `).eq("id", orderId).maybeSingle(),
     supabase.from("brands").select("name, slug, legal_name, logo_url, primary_color").eq("id", brandId).maybeSingle(),
     supabase.auth.getUser(),
@@ -135,7 +137,9 @@ async function buildPlanData(
         images: resolved.filter((u): u is string => !!u),
         planimetryImages: resolvedPlani.filter((u): u is string => !!u),
         planimetryPdfNames: planiPdfs.map((f) => f.name),
+        isStandardProduct: Boolean(it.is_standard_product),
       };
+
     }),
   );
 
@@ -306,7 +310,7 @@ export function ProductionSection({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, images, sort_order, production_order_id, planimetry_files")
+        .select("id, description, quantity, images, sort_order, production_order_id, planimetry_files, is_standard_product")
         .eq("order_id", orderId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -314,7 +318,9 @@ export function ProductionSection({
         ...it,
         images: Array.isArray(it.images) ? it.images : [],
         planimetry_files: Array.isArray(it.planimetry_files) ? it.planimetry_files : [],
+        is_standard_product: Boolean(it.is_standard_product),
       })) as ItemRow[];
+
     },
   });
 
@@ -343,15 +349,17 @@ export function ProductionSection({
   // debe cancelar la orden de producción correspondiente (sólo posible mientras
   // esté en estado "Pendiente", antes de que producción la acepte).
   const getItemLock = (it: ItemRow): { disabled: boolean; reason?: string } => {
-    if ((it.planimetry_files?.length ?? 0) === 0) {
-      return { disabled: true, reason: "Sin planimetría" };
-    }
     if (it.production_order_id) {
       const code = codeById.get(it.production_order_id);
       return { disabled: true, reason: code ? `Ya en producción · ${code}` : "Ya en producción" };
     }
+    // Los productos marcados como estándar no requieren planimetría.
+    if (!it.is_standard_product && (it.planimetry_files?.length ?? 0) === 0) {
+      return { disabled: true, reason: "Sin planimetría" };
+    }
     return { disabled: false };
   };
+
 
   // Re-seed selection when dialog opens.
   useEffect(() => {
@@ -614,6 +622,11 @@ export function ProductionSection({
                               </p>
                               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                 <span className="text-[11px] text-muted-foreground shrink-0">Cant: {it.quantity}</span>
+                                {it.is_standard_product && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold">
+                                    Estándar
+                                  </span>
+                                )}
                                 {lock.disabled ? (
                                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 font-medium">
                                     {lock.reason}
@@ -628,6 +641,7 @@ export function ProductionSection({
                                   </span>
                                 )}
                               </div>
+
                             </div>
                           </Label>
                         </li>
@@ -701,8 +715,15 @@ export function ProductionSection({
                         <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px] text-muted-foreground">
                           <span>Cant: <span className="font-medium text-foreground">{it.quantity}</span></span>
                           <span>·</span>
-                          <span>{it.planimetry_files.length} planimetría{it.planimetry_files.length === 1 ? "" : "s"} adjunta{it.planimetry_files.length === 1 ? "" : "s"}</span>
+                          {it.is_standard_product ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold">
+                              Estándar · sin planimetría
+                            </span>
+                          ) : (
+                            <span>{it.planimetry_files.length} planimetría{it.planimetry_files.length === 1 ? "" : "s"} adjunta{it.planimetry_files.length === 1 ? "" : "s"}</span>
+                          )}
                         </div>
+
                       </div>
                     </li>
                   ))}

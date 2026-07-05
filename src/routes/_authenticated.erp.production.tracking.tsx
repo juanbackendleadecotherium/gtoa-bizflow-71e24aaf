@@ -18,6 +18,8 @@ import { SupplierAdvancePaymentCard } from "@/features/production/supplier-advan
 import { SupplierQuickPaymentCheck } from "@/features/production/supplier-quick-payment-check";
 import { FinishItemButton } from "@/features/production/finish-item-button";
 import { InvoiceProgressPill } from "@/features/production/invoice-progress-pill";
+import { getEffectiveCost, hasNegotiation } from "@/features/production/effective-cost";
+
 
 
 export const Route = createFileRoute("/_authenticated/erp/production/tracking")({
@@ -125,7 +127,7 @@ function TrackingPage() {
       let query = supabase
         .from("production_orders")
         .select(`
-          id, code, novedad, status, supplier_id, manufacturing_cost, margin_pct, brand_id,
+          id, code, novedad, status, supplier_id, manufacturing_cost, negotiated_cost, margin_pct, brand_id,
           invoice_date, planimetry_sent_date, quotation_date, production_start_date,
           supplier_promised_date, supplier_actual_date, client_promised_date, client_actual_date,
           assigned_to_label, notes, created_at, order_id,
@@ -155,7 +157,7 @@ function TrackingPage() {
         poIds.length
           ? supabase
               .from("order_items")
-              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_id, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date, quotation_date, manufacturing_cost, production_finished_at, production_finished_by_email, order_id")
+              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_id, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date, quotation_date, manufacturing_cost, negotiated_cost, production_finished_at, production_finished_by_email, order_id, is_standard_product")
               .in("production_order_id", poIds)
               .order("sort_order", { ascending: true })
           : Promise.resolve({ data: [], error: null } as any),
@@ -380,12 +382,14 @@ function TrackingRow({
   const saleTotal = Number(r.po_sale_total) || 0;
   const invoiceTotal = Number(r.order?.total) || 0;
   const itemsList: any[] = r.items ?? [];
-  const itemsWithCost = itemsList.filter((it) => it.manufacturing_cost != null);
-  const aggCost = itemsList.length > 0 && itemsWithCost.length === itemsList.length
-    ? itemsList.reduce((acc, it) => acc + Number(it.manufacturing_cost), 0)
+  const effectiveCosts = itemsList.map((it) => getEffectiveCost(it));
+  const allHaveCost = itemsList.length > 0 && effectiveCosts.every((c) => c != null);
+  const aggCost = allHaveCost
+    ? effectiveCosts.reduce((acc, c) => acc + Number(c ?? 0), 0)
     : null;
-  const cost = aggCost ?? (r.manufacturing_cost == null ? null : Number(r.manufacturing_cost));
+  const cost = aggCost ?? getEffectiveCost(r);
   const liveMargin = cost != null && saleTotal > 0 ? ((saleTotal - cost) / saleTotal) * 100 : null;
+
   const margin = liveMargin ?? (r.margin_pct == null ? null : Number(r.margin_pct));
   const cls = marginCls(margin);
 
@@ -617,11 +621,21 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
           <p className="text-xs text-muted-foreground italic">Sin productos vinculados.</p>
         ) : (
           <ul className="space-y-2">
-            {r.items.map((it: any) => (
+            {r.items.map((it: any) => {
+              const effCost = getEffectiveCost(it);
+              const negotiated = hasNegotiation(it);
+              return (
               <li key={it.id} className="rounded-lg border border-border bg-surface p-3 space-y-2.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium leading-tight">{firstLine(it.description) || "Producto"}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs font-medium leading-tight">{firstLine(it.description) || "Producto"}</p>
+                      {it.is_standard_product && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold uppercase tracking-wide">
+                          Estándar
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       ×{Number(it.quantity)} · {fmtMoney(Number(it.unit_price))} c/u
                       {it.production_due_date && (
@@ -657,16 +671,30 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
 
                 <div>
                   <label className="block">
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Costo proveedor (COP)</span>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium flex items-center gap-1.5">
+                      Costo proveedor (COP)
+                      {negotiated && (
+                        <span
+                          title={`Precio negociado. Original: ${fmtMoney(Number(it.manufacturing_cost))}`}
+                          className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wide"
+                        >
+                          Negociado
+                        </span>
+                      )}
+                    </span>
                     <InlineMoney
-                      value={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : 0}
-                      hasValue={it.manufacturing_cost != null}
-                      onSave={(n, hasValue) =>
-                        patchItem.mutate({ id: it.id, patch: { manufacturing_cost: hasValue ? n : null } })
-                      }
+                      value={effCost ?? 0}
+                      hasValue={effCost != null}
+                      onSave={(n, hasValue) => {
+                        // Editar el precio en el seguimiento actualiza el precio vigente:
+                        // si hubo negociación, se pisa el negociado; si no, el original.
+                        const field = negotiated ? "negotiated_cost" : "manufacturing_cost";
+                        patchItem.mutate({ id: it.id, patch: { [field]: hasValue ? n : null } });
+                      }}
                     />
                   </label>
                 </div>
+
 
                 <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
                   <DateField
@@ -724,7 +752,7 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
                             orderItemId={it.id}
                             brandId={row.brand_id}
                             orderId={it.order_id ?? row.order_id}
-                            suggestedAmount={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
+                            suggestedAmount={effCost}
                             pct={Number(sup.advance_payment_pct ?? 50)}
                           />
                         ) : (
@@ -740,7 +768,7 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
                     <SupplierQuickPaymentCheck
                       orderItemId={it.id}
                       supplierName={sup.name}
-                      suggestedCost={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
+                      suggestedCost={effCost}
                     />
                   );
                 })()}
@@ -760,8 +788,9 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
                   </div>
                 )}
               </li>
+              );
+            })}
 
-            ))}
           </ul>
         )}
         {r.notes && (

@@ -1,0 +1,1 @@
+ALTER TABLE public.order_items ADD COLUMN IF NOT EXISTS is_standard_product boolean NOT NULL DEFAULT false;

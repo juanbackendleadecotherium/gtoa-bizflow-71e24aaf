@@ -7,7 +7,9 @@ export type PlanimetryItem = {
   images: string[];
   planimetryImages?: string[];
   planimetryPdfNames?: string[];
+  isStandardProduct?: boolean;
 };
+
 
 export type PlanimetryDocumentData = {
   production_code: string;
@@ -323,7 +325,14 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
 
                 <Text style={styles.heroProductName}>{title}</Text>
 
-                {(it.planimetryImages?.length ?? 0) > 0 ? (
+                {it.isStandardProduct ? (
+                  <View style={styles.planiBlock}>
+                    <Text style={styles.sectionLabel}>Planimetría del producto</Text>
+                    <Text style={styles.planiPdfNote}>
+                      Producto estándar — no requiere planimetría adjunta.
+                    </Text>
+                  </View>
+                ) : (it.planimetryImages?.length ?? 0) > 0 ? (
                   <View style={styles.planiBlock}>
                     <Text style={styles.sectionLabel}>Planimetría del producto</Text>
                     {it.planimetryImages!.length === 1 ? (
@@ -348,11 +357,12 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                   </View>
                 ) : null}
 
-                {it.planimetryPdfNames && it.planimetryPdfNames.length > 0 ? (
+                {!it.isStandardProduct && it.planimetryPdfNames && it.planimetryPdfNames.length > 0 ? (
                   <Text style={styles.planiPdfNote}>
                     Planimetría adjunta en PDF: {it.planimetryPdfNames.join(", ")}
                   </Text>
                 ) : null}
+
               </View>
 
               {/* RIGHT COLUMN */}

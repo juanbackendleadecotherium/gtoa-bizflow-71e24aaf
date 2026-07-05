@@ -1043,6 +1043,7 @@ export type Database = {
           description: string
           id: string
           images: Json
+          is_standard_product: boolean
           line_total: number
           manufacturing_cost: number | null
           margin_pct: number | null
@@ -1076,6 +1077,7 @@ export type Database = {
           description: string
           id?: string
           images?: Json
+          is_standard_product?: boolean
           line_total?: number
           manufacturing_cost?: number | null
           margin_pct?: number | null
@@ -1109,6 +1111,7 @@ export type Database = {
           description?: string
           id?: string
           images?: Json
+          is_standard_product?: boolean
           line_total?: number
           manufacturing_cost?: number | null
           margin_pct?: number | null

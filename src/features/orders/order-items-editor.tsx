@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+
 import {
   Dialog,
   DialogContent,
@@ -218,7 +220,8 @@ export function OrderItemsEditor({
     !!onPendingPlanimetryChange;
 
   const add = () => {
-    onChange([...items, { description: "", quantity: 1, unit_price: 0, sort_order: items.length }]);
+    onChange([...items, { description: "", quantity: 1, unit_price: 0, sort_order: items.length, is_standard_product: false }]);
+
     if (imagesEnabled) {
       onExistingImagesChange!([...(existingImages ?? []), []]);
       onPendingImagesChange!([...(pendingImages ?? []), []]);
@@ -380,40 +383,57 @@ export function OrderItemsEditor({
                 const pe = pendingPlanimetry?.[idx] ?? [];
                 const count = ex.length + pe.length;
                 const missing = count === 0;
+                const isStandard = Boolean(it.is_standard_product);
                 return (
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5 gap-2">
-                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        Planimetría del producto
-                        {missing ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 normal-case tracking-normal text-[10px] font-semibold">
-                            <AlertTriangle className="h-3 w-3" /> Pendiente
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 normal-case tracking-normal text-[10px] font-semibold">
-                            ✓ {count} archivo{count === 1 ? "" : "s"}
-                          </span>
-                        )}
-                      </Label>
-                    </div>
-                    <PlanimetryFilesUploader
-                      existing={ex}
-                      pending={pe}
-                      onChangePending={(next) => {
-                        const arr = (pendingPlanimetry ?? []).slice();
-                        arr[idx] = next;
-                        onPendingPlanimetryChange!(arr);
-                      }}
-                      onRemoveExisting={(url) => {
-                        const arr = (existingPlanimetry ?? []).slice();
-                        arr[idx] = (arr[idx] ?? []).filter((f) => f.url !== url);
-                        onExistingPlanimetryChange!(arr);
-                      }}
-                      hint="Imagen o PDF con medidas, vistas y especificaciones técnicas. Obligatoria para enviar este producto a producción."
-                    />
+                  <div className="space-y-2">
+                    <label className="flex items-start gap-2 rounded-md border border-border bg-muted/20 px-2.5 py-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                      <Checkbox
+                        checked={isStandard}
+                        onCheckedChange={(v) => update(idx, { is_standard_product: v === true })}
+                        className="mt-0.5"
+                      />
+                      <span className="text-[11px] leading-snug">
+                        <span className="font-semibold">Producto estándar</span>
+                        <span className="text-muted-foreground"> — no requiere planimetría. Este ítem podrá enviarse a producción sin adjuntar planos.</span>
+                      </span>
+                    </label>
+                    {!isStandard && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5 gap-2">
+                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                            Planimetría del producto
+                            {missing ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 normal-case tracking-normal text-[10px] font-semibold">
+                                <AlertTriangle className="h-3 w-3" /> Pendiente
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 normal-case tracking-normal text-[10px] font-semibold">
+                                ✓ {count} archivo{count === 1 ? "" : "s"}
+                              </span>
+                            )}
+                          </Label>
+                        </div>
+                        <PlanimetryFilesUploader
+                          existing={ex}
+                          pending={pe}
+                          onChangePending={(next) => {
+                            const arr = (pendingPlanimetry ?? []).slice();
+                            arr[idx] = next;
+                            onPendingPlanimetryChange!(arr);
+                          }}
+                          onRemoveExisting={(url) => {
+                            const arr = (existingPlanimetry ?? []).slice();
+                            arr[idx] = (arr[idx] ?? []).filter((f) => f.url !== url);
+                            onExistingPlanimetryChange!(arr);
+                          }}
+                          hint="Imagen o PDF con medidas, vistas y especificaciones técnicas. Obligatoria para enviar este producto a producción."
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })()}
+
 
             </div>
           );

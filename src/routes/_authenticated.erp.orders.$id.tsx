@@ -58,7 +58,7 @@ function OrderDetail() {
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
-          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at)
+          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at, is_standard_product)
         `)
         .eq("id", id).maybeSingle();
       if (error) throw error;
@@ -148,7 +148,9 @@ function OrderDetail() {
     setEditItems(its.map((it) => ({
       id: it.id, description: it.description, quantity: Number(it.quantity),
       unit_price: Number(it.unit_price), sort_order: it.sort_order,
+      is_standard_product: Boolean(it.is_standard_product),
     })));
+
     setEditExistingImages(its.map((it) => (Array.isArray(it.images) ? [...it.images] : [])));
     setEditPendingImages(its.map(() => []));
     setEditExistingPlanimetry(
@@ -221,13 +223,15 @@ function OrderDetail() {
             || orig.description !== it.description
             || Number(orig.quantity) !== Number(it.quantity)
             || Number(orig.unit_price) !== Number(it.unit_price)
-            || Number(orig.sort_order) !== i;
+            || Number(orig.sort_order) !== i
+            || Boolean(orig.is_standard_product) !== Boolean(it.is_standard_product);
           if (changed) {
             const { error } = await supabase.from("order_items").update({
               description: it.description,
               quantity: it.quantity,
               unit_price: it.unit_price,
               sort_order: i,
+              is_standard_product: Boolean(it.is_standard_product),
             }).eq("id", it.id);
             if (error) throw error;
           }
@@ -238,10 +242,12 @@ function OrderDetail() {
             quantity: it.quantity,
             unit_price: it.unit_price,
             sort_order: i,
+            is_standard_product: Boolean(it.is_standard_product),
           }).select("id").single();
           if (error) throw error;
           itemId = inserted.id;
         }
+
 
         if (itemId && imagesChanged) {
           let uploadedUrls: string[] = [];
