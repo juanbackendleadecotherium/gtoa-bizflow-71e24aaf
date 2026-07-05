@@ -33,6 +33,12 @@ type Task = {
   order_item_id: string | null;
   brand_id: string;
   planimetry_due_at: string | null;
+  order?: {
+    order_number: string | null;
+    invoice_number: string | null;
+    customer_name: string | null;
+    brand?: { name: string | null; slug: string | null } | null;
+  } | null;
 };
 
 function MyTasks() {
@@ -53,12 +59,12 @@ function MyTasks() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("seller_tasks")
-        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, order_item_id, brand_id, planimetry_due_at")
+        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, order_item_id, brand_id, planimetry_due_at, order:orders!order_id(order_number, invoice_number, customer_name, brand:brands!brand_id(name, slug))")
         .eq("seller_id", userId!)
         .eq("status", tab)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Task[];
+      return (data ?? []) as unknown as Task[];
     },
   });
 
