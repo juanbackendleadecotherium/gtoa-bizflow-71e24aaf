@@ -323,6 +323,9 @@ function OrderDetail() {
   if (!o) return <p className="text-sm text-muted-foreground">Pedido no encontrado.</p>;
 
   const items = ((o.items as any[] | null) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
+  const planimetryLockedByIndex = items.map((it) =>
+    isSellerRestricted && isProductionLocked(it.production_order?.status),
+  );
   const status = o.status as any;
 
   return (
