@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { computeDeadlineState } from "@/features/seller-tasks/planimetry-deadline";
 import { SupplierFinalPaymentCard } from "@/features/seller-tasks/supplier-final-payment-card";
 import { ApprovalDecisionCard } from "@/features/seller-tasks/approval-decision-card";
+import { useBrand } from "@/features/brands/brand-context";
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
@@ -46,6 +47,7 @@ type Task = {
 function MyTasks() {
   const session = useSession();
   const qc = useQueryClient();
+  const { isAdmin } = useBrand();
   const userId = session.session?.user.id;
   const [tab, setTab] = useState<"pendiente" | "resuelta">("pendiente");
   const [page, setPage] = useState(1);
@@ -261,7 +263,7 @@ function MyTasks() {
                     </li>
                   );
                 }
-                if (t.type === "approval_pending" && t.status === "pendiente" && t.title === "Aprobación de venta solicitada") {
+                if (isAdmin && t.type === "approval_pending" && t.status === "pendiente") {
                   return (
                     <li key={t.id}>
                       <ApprovalDecisionCard
