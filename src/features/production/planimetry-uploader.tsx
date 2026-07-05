@@ -34,12 +34,15 @@ export function PlanimetryUploader({
   items,
   canDelete,
   onChange,
+  readOnly = false,
 }: {
   productionOrderId: string;
   brandId: string;
   items: Planimetry[];
   canDelete: boolean;
   onChange: () => void;
+  /** Modo sólo lectura: oculta subir/reemplazar/anotar/borrar. */
+  readOnly?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
