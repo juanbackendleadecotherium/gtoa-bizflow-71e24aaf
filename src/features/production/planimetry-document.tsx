@@ -7,7 +7,9 @@ export type PlanimetryItem = {
   images: string[];
   planimetryImages?: string[];
   planimetryPdfNames?: string[];
+  isStandardProduct?: boolean;
 };
+
 
 export type PlanimetryDocumentData = {
   production_code: string;
