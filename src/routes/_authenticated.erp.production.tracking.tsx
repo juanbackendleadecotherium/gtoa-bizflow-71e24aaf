@@ -621,11 +621,21 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
           <p className="text-xs text-muted-foreground italic">Sin productos vinculados.</p>
         ) : (
           <ul className="space-y-2">
-            {r.items.map((it: any) => (
+            {r.items.map((it: any) => {
+              const effCost = getEffectiveCost(it);
+              const negotiated = hasNegotiation(it);
+              return (
               <li key={it.id} className="rounded-lg border border-border bg-surface p-3 space-y-2.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium leading-tight">{firstLine(it.description) || "Producto"}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs font-medium leading-tight">{firstLine(it.description) || "Producto"}</p>
+                      {it.is_standard_product && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold uppercase tracking-wide">
+                          Estándar
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       ×{Number(it.quantity)} · {fmtMoney(Number(it.unit_price))} c/u
                       {it.production_due_date && (
@@ -661,16 +671,30 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
 
                 <div>
                   <label className="block">
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Costo proveedor (COP)</span>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium flex items-center gap-1.5">
+                      Costo proveedor (COP)
+                      {negotiated && (
+                        <span
+                          title={`Precio negociado. Original: ${fmtMoney(Number(it.manufacturing_cost))}`}
+                          className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wide"
+                        >
+                          Negociado
+                        </span>
+                      )}
+                    </span>
                     <InlineMoney
-                      value={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : 0}
-                      hasValue={it.manufacturing_cost != null}
-                      onSave={(n, hasValue) =>
-                        patchItem.mutate({ id: it.id, patch: { manufacturing_cost: hasValue ? n : null } })
-                      }
+                      value={effCost ?? 0}
+                      hasValue={effCost != null}
+                      onSave={(n, hasValue) => {
+                        // Editar el precio en el seguimiento actualiza el precio vigente:
+                        // si hubo negociación, se pisa el negociado; si no, el original.
+                        const field = negotiated ? "negotiated_cost" : "manufacturing_cost";
+                        patchItem.mutate({ id: it.id, patch: { [field]: hasValue ? n : null } });
+                      }}
                     />
                   </label>
                 </div>
+
 
                 <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
                   <DateField
