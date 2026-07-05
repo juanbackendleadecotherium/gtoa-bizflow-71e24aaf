@@ -788,8 +788,9 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
                   </div>
                 )}
               </li>
+              );
+            })}
 
-            ))}
           </ul>
         )}
         {r.notes && (
