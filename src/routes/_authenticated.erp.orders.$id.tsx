@@ -323,10 +323,17 @@ function OrderDetail() {
   if (!o) return <p className="text-sm text-muted-foreground">Pedido no encontrado.</p>;
 
   const items = ((o.items as any[] | null) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
-  const planimetryLockedByIndex = items.map((it) =>
-    isSellerRestricted && isProductionLocked(it.production_order?.status),
-  );
   const status = o.status as any;
+  // Aprobación gerencial pendiente/rechazada: el vendedor queda en stand-by
+  // total — no puede editar productos, subir planimetría ni enviar a producción.
+  const approvalBlocksSeller =
+    isSellerRestricted &&
+    (o.approval_status === "pendiente" || o.approval_status === "rechazada");
+  const planimetryLockedByIndex = items.map((it) =>
+    approvalBlocksSeller || (isSellerRestricted && isProductionLocked(it.production_order?.status)),
+  );
+
+
 
   return (
     <>
@@ -361,15 +368,20 @@ function OrderDetail() {
           {status && <StatusBadge name={status.name} color={status.color} />}
           {!editing ? (
             <>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
-                <Pencil className="h-4 w-4" /> Editar
-              </Button>
-              <Button variant="outline" size="icon" className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                onClick={() => setDeleteOpen(true)}
-                aria-label="Eliminar venta">
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {!approvalBlocksSeller && (
+                <>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
+                    <Pencil className="h-4 w-4" /> Editar
+                  </Button>
+                  <Button variant="outline" size="icon" className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                    onClick={() => setDeleteOpen(true)}
+                    aria-label="Eliminar venta">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </>
+
           ) : (
             <div className="flex w-full sm:w-auto gap-2">
               <Button variant="ghost" size="sm" className="gap-2 flex-1 sm:flex-none" onClick={() => {
@@ -388,8 +400,27 @@ function OrderDetail() {
         </div>
       </div>
 
+      {approvalBlocksSeller && (
+        <div className="mb-5 rounded-xl border-2 border-amber-500/60 bg-amber-500/10 p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+              {o.approval_status === "pendiente"
+                ? "Venta en espera de aprobación gerencial"
+                : "Aprobación gerencial rechazada"}
+            </p>
+            <p className="text-xs text-amber-800/90 dark:text-amber-200/80 mt-0.5">
+              {o.approval_status === "pendiente"
+                ? "Esta venta quedó pendiente de aprobación porque el anticipo es menor al 50%. Hasta que gerencia apruebe, no puedes editarla, subir planimetría ni enviarla a producción."
+                : "Gerencia rechazó la solicitud de excepción de anticipo. Contacta a gerencia antes de continuar con esta venta."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
+
           <DeliveryDeferralCard
             orderId={o.id}
             estimatedDate={o.estimated_delivery_date}

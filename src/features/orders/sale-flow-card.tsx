@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Bookmark, ShieldCheck, Clock3, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Bookmark, Clock3, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,6 @@ export function SaleFlowCard({
 }) {
   const qc = useQueryClient();
   const { isAdmin } = useBrand();
-  const [note, setNote] = useState("");
   const [decisionNote, setDecisionNote] = useState("");
 
   const total = Number(order.total ?? 0);
@@ -44,23 +43,6 @@ export function SaleFlowCard({
   const isSepare = order.sale_type === "plan_separe";
   const separeDone = !!order.separe_completed_at;
 
-  const requestApproval = useMutation({
-    mutationFn: async () => {
-      if (!note.trim()) throw new Error("Escribe el motivo para gerencia");
-      const { error } = await supabase.rpc("request_management_approval", {
-        p_order_id: order.id,
-        p_note: note.trim(),
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Solicitud enviada a gerencia");
-      setNote("");
-      qc.invalidateQueries({ queryKey: ["order", order.id] });
-      qc.invalidateQueries({ queryKey: ["order-approvals-pending"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const resolve = useMutation({
     mutationFn: async (decision: "aprobada" | "rechazada") => {
@@ -83,11 +65,6 @@ export function SaleFlowCard({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const showApprovalCTA =
-    !isSepare &&
-    total > 0 &&
-    paidTotal < total * 0.5 - 0.01 &&
-    (order.approval_status === "no_requerida" || order.approval_status === "rechazada");
 
   return (
     <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
@@ -181,31 +158,6 @@ export function SaleFlowCard({
         </div>
       )}
 
-      {/* CTA para solicitar aprobación (excepción de anticipo) */}
-      {showApprovalCTA && (
-        <div className="rounded-lg border border-border p-3 space-y-2">
-          <p className="text-xs flex items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-            <span className="font-medium">Solicitar excepción de anticipo</span>
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            El anticipo actual está por debajo del 50%. Explica a gerencia por qué esta venta debe entrar a producción sin cumplir el mínimo.
-          </p>
-          <Textarea
-            placeholder="Motivo (ej. cliente estratégico, plazo especial…)"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            className="text-xs"
-          />
-          <Button size="sm" variant="outline" className="gap-1"
-            disabled={requestApproval.isPending || !note.trim()}
-            onClick={() => requestApproval.mutate()}>
-            {requestApproval.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-            Solicitar aprobación gerencial
-          </Button>
-        </div>
-      )}
     </section>
   );
 }
