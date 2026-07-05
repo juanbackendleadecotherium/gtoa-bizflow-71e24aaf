@@ -437,6 +437,7 @@ function OrderDetail() {
                 pendingPlanimetry={editPendingPlanimetry}
                 onExistingPlanimetryChange={setEditExistingPlanimetry}
                 onPendingPlanimetryChange={setEditPendingPlanimetry}
+                planimetryReadOnlyByIndex={planimetryLockedByIndex}
               />
             ) : (
               <div className="space-y-3">
