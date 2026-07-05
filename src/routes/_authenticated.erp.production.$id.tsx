@@ -325,24 +325,28 @@ function ProductionDetail() {
                   </Select>
                 )}
               </div>
-              <div>
-                <Label className="text-xs">Encargado</Label>
-                <Input
-                  value={form.assigned_to_label}
-                  onChange={(e) => update("assigned_to_label", e.target.value)}
-                  placeholder="Nombre del responsable"
-                  disabled={isSellerOnly}
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Entrega estimada</Label>
-                <Input
-                  type="date"
-                  value={form.due_date ?? ""}
-                  onChange={(e) => update("due_date", e.target.value)}
-                  disabled={isSellerOnly}
-                />
-              </div>
+              {!sellerLocked && (
+                <div>
+                  <Label className="text-xs">Encargado</Label>
+                  <Input
+                    value={form.assigned_to_label}
+                    onChange={(e) => update("assigned_to_label", e.target.value)}
+                    placeholder="Nombre del responsable"
+                    disabled={isSellerOnly}
+                  />
+                </div>
+              )}
+              {!sellerLocked && (
+                <div>
+                  <Label className="text-xs">Entrega estimada</Label>
+                  <Input
+                    type="date"
+                    value={form.due_date ?? ""}
+                    onChange={(e) => update("due_date", e.target.value)}
+                    disabled={isSellerOnly}
+                  />
+                </div>
+              )}
             </div>
             <div>
               <Label className="text-xs">Notas internas</Label>
