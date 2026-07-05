@@ -171,7 +171,7 @@ export function PlanimetryUploader({
                           </p>
                           {p.notes && <p className="text-xs text-muted-foreground italic mt-0.5 truncate">{p.notes}</p>}
                         </div>
-                        {p.mime_type === "application/pdf" && (
+                        {!readOnly && p.mime_type === "application/pdf" && (
                           <Button
                             size="icon"
                             variant="ghost"
@@ -184,7 +184,7 @@ export function PlanimetryUploader({
                         <Button size="icon" variant="ghost" onClick={() => handleDownload(p)}>
                           <Download className="h-4 w-4" />
                         </Button>
-                        {canDelete && (
+                        {!readOnly && canDelete && (
                           <Button size="icon" variant="ghost" onClick={() => handleDelete(p)} className="text-destructive">
                             <Trash2 className="h-4 w-4" />
                           </Button>
