@@ -92,7 +92,7 @@ async function buildPlanData(
     supabase.from("orders").select(`
       order_number, invoice_number, sale_date, estimated_delivery_date, notes,
       customer_name, customer_phone, customer_city, created_by,
-      items:order_items(id, description, quantity, images, sort_order, planimetry_files)
+      items:order_items(id, description, quantity, images, sort_order, planimetry_files, is_standard_product)
     `).eq("id", orderId).maybeSingle(),
     supabase.from("brands").select("name, slug, legal_name, logo_url, primary_color").eq("id", brandId).maybeSingle(),
     supabase.auth.getUser(),
