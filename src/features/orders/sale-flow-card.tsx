@@ -65,11 +65,6 @@ export function SaleFlowCard({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const showApprovalCTA =
-    !isSepare &&
-    total > 0 &&
-    paidTotal < total * 0.5 - 0.01 &&
-    (order.approval_status === "no_requerida" || order.approval_status === "rechazada");
 
   return (
     <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
