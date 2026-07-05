@@ -218,7 +218,8 @@ export function OrderItemsEditor({
     !!onPendingPlanimetryChange;
 
   const add = () => {
-    onChange([...items, { description: "", quantity: 1, unit_price: 0, sort_order: items.length }]);
+    onChange([...items, { description: "", quantity: 1, unit_price: 0, sort_order: items.length, is_standard_product: false }]);
+
     if (imagesEnabled) {
       onExistingImagesChange!([...(existingImages ?? []), []]);
       onPendingImagesChange!([...(pendingImages ?? []), []]);
