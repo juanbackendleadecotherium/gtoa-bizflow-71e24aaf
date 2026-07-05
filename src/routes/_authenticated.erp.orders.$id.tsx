@@ -400,8 +400,27 @@ function OrderDetail() {
         </div>
       </div>
 
+      {approvalBlocksSeller && (
+        <div className="mb-5 rounded-xl border-2 border-amber-500/60 bg-amber-500/10 p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+              {o.approval_status === "pendiente"
+                ? "Venta en espera de aprobación gerencial"
+                : "Aprobación gerencial rechazada"}
+            </p>
+            <p className="text-xs text-amber-800/90 dark:text-amber-200/80 mt-0.5">
+              {o.approval_status === "pendiente"
+                ? "Esta venta quedó pendiente de aprobación porque el anticipo es menor al 50%. Hasta que gerencia apruebe, no puedes editarla, subir planimetría ni enviarla a producción."
+                : "Gerencia rechazó la solicitud de excepción de anticipo. Contacta a gerencia antes de continuar con esta venta."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
+
           <DeliveryDeferralCard
             orderId={o.id}
             estimatedDate={o.estimated_delivery_date}
