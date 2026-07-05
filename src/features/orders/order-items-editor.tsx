@@ -391,6 +391,36 @@ export function OrderItemsEditor({
                 const count = ex.length + pe.length;
                 const missing = count === 0;
                 const isStandard = Boolean(it.is_standard_product);
+                const isReadOnly = Boolean(planimetryReadOnlyByIndex?.[idx]);
+                if (isReadOnly) {
+                  // OP en producción: el vendedor sólo ve los archivos existentes,
+                  // sin poder subir ni borrar. Ítems estándar tampoco muestran nada
+                  // editable — sólo la lista pasiva si hubiera archivos.
+                  if (ex.length === 0) return null;
+                  return (
+                    <div>
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                        Planimetría del producto · {ex.length} archivo{ex.length === 1 ? "" : "s"}
+                      </Label>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        {ex.map((f) => (
+                          <a
+                            key={f.url}
+                            href={f.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={f.name}
+                            className="aspect-square rounded-md border border-border overflow-hidden bg-muted/40 hover:border-accent/60 transition-colors flex items-center justify-center p-2 text-center"
+                          >
+                            <span className="text-[10px] text-muted-foreground line-clamp-3 break-all">
+                              {f.name}
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div className="space-y-2">
                     <label className="flex items-start gap-2 rounded-md border border-border bg-muted/20 px-2.5 py-2 cursor-pointer hover:bg-muted/30 transition-colors">
