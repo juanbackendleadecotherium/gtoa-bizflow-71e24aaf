@@ -68,6 +68,30 @@ export function ApprovalDecisionCard({
           <p className="text-sm font-semibold inline-flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" /> {title}
           </p>
+          {(orderNumber || invoiceNumber || brandName || customerName) && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {invoiceNumber && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium">
+                  <Receipt className="h-3 w-3 text-muted-foreground" /> Fact. {invoiceNumber}
+                </span>
+              )}
+              {orderNumber && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-mono text-muted-foreground">
+                  {orderNumber}
+                </span>
+              )}
+              {brandName && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium">
+                  <Tag className="h-3 w-3 text-muted-foreground" /> {brandName}
+                </span>
+              )}
+              {customerName && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[11px]">
+                  <User className="h-3 w-3 text-muted-foreground" /> {customerName}
+                </span>
+              )}
+            </div>
+          )}
           {reason && (
             <div className="mt-2 rounded-md p-2.5 border bg-amber-500/10 border-amber-500/30">
               <p className="text-sm text-foreground whitespace-pre-wrap">{reason}</p>
