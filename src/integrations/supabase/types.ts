@@ -2604,6 +2604,17 @@ export type Database = {
         }
         Returns: string
       }
+      create_approval_tasks: {
+        Args: {
+          p_brand_id: string
+          p_customer: string
+          p_invoice: string
+          p_order_id: string
+          p_pct: number
+          p_seller_id: string
+        }
+        Returns: undefined
+      }
       create_supplier_payment_tasks: {
         Args: { _item_id: string }
         Returns: undefined
