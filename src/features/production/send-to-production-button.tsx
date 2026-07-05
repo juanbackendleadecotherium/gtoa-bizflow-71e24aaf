@@ -622,6 +622,11 @@ export function ProductionSection({
                               </p>
                               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                 <span className="text-[11px] text-muted-foreground shrink-0">Cant: {it.quantity}</span>
+                                {it.is_standard_product && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold">
+                                    Estándar
+                                  </span>
+                                )}
                                 {lock.disabled ? (
                                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 font-medium">
                                     {lock.reason}
@@ -636,6 +641,7 @@ export function ProductionSection({
                                   </span>
                                 )}
                               </div>
+
                             </div>
                           </Label>
                         </li>
