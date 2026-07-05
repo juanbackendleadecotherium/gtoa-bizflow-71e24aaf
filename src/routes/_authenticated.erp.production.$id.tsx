@@ -220,6 +220,7 @@ function ProductionDetail() {
   }
   const p = prod.data;
   const order = p.order as any;
+  const sellerLocked = isSellerOnly && isProductionLocked(p.status);
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
