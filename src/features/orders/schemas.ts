@@ -6,7 +6,9 @@ export const orderItemSchema = z.object({
   quantity: z.coerce.number().min(0.01, "Cantidad > 0"),
   unit_price: z.coerce.number().min(0, ">= 0"),
   sort_order: z.number().default(0),
+  is_standard_product: z.boolean().default(false),
 });
+
 
 export const orderSchema = z.object({
   customer_id: z.string().uuid("Selecciona un cliente"),
