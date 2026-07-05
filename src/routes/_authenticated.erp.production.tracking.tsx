@@ -19,6 +19,7 @@ import { SupplierQuickPaymentCheck } from "@/features/production/supplier-quick-
 import { FinishItemButton } from "@/features/production/finish-item-button";
 import { InvoiceProgressPill } from "@/features/production/invoice-progress-pill";
 import { getEffectiveCost, hasNegotiation } from "@/features/production/effective-cost";
+import { useSellerRestricted } from "@/features/production/seller-restrictions";
 
 
 
@@ -66,6 +67,7 @@ function marginCls(margin: number | null) {
 function TrackingPage() {
   const { brands, selectedBrandId, setSelectedBrandId, loading, roles, isAdmin } = useBrand();
   const canFinish = isAdmin || roles.includes("operativo");
+  const { isSellerRestricted } = useSellerRestricted();
 
   const qc = useQueryClient();
   const [novedadFilter, setNovedadFilter] = useState<string>("all");
@@ -356,6 +358,7 @@ function TrackingPage() {
                 onPatch={(patch) => updateField.mutate({ id: r.id, patch })}
                 canFinish={canFinish}
                 isAdmin={isAdmin}
+                isSellerRestricted={isSellerRestricted}
               />
 
             ))}
@@ -367,7 +370,7 @@ function TrackingPage() {
 }
 
 function TrackingRow({
-  row, suppliers, expanded, onToggle, onPatch, canFinish, isAdmin,
+  row, suppliers, expanded, onToggle, onPatch, canFinish, isAdmin, isSellerRestricted,
 }: {
   row: any;
   suppliers: { id: string; name: string }[];
@@ -376,6 +379,7 @@ function TrackingRow({
   onPatch: (patch: Record<string, any>) => void;
   canFinish: boolean;
   isAdmin: boolean;
+  isSellerRestricted: boolean;
 }) {
 
   const r = row;
@@ -479,11 +483,15 @@ function TrackingRow({
           )}
         </div>
 
-        {/* Margen pill */}
+        {/* Margen pill (oculto para vendedor puro) */}
         <div className="text-center">
-          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums ${cls.pill}`}>
-            {margin == null ? "—" : `${margin.toFixed(0)}%`}
-          </span>
+          {isSellerRestricted ? (
+            <span className="text-[11px] text-muted-foreground">—</span>
+          ) : (
+            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums ${cls.pill}`}>
+              {margin == null ? "—" : `${margin.toFixed(0)}%`}
+            </span>
+          )}
         </div>
 
         {/* Entrega + desviación */}
@@ -503,7 +511,7 @@ function TrackingRow({
 
       {/* Panel expandido */}
       {expanded && (
-        <ExpandedPanel row={r} suppliers={suppliers} onPatch={onPatch} canFinish={canFinish} isAdmin={isAdmin} />
+        <ExpandedPanel row={r} suppliers={suppliers} onPatch={onPatch} canFinish={canFinish} isAdmin={isAdmin} isSellerRestricted={isSellerRestricted} />
       )}
     </div>
   );
@@ -569,7 +577,7 @@ function InlineMoney({
   );
 }
 
-function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: any; suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[]; onPatch: (patch: Record<string, any>) => void; canFinish: boolean; isAdmin: boolean }) {
+function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRestricted }: { row: any; suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[]; onPatch: (patch: Record<string, any>) => void; canFinish: boolean; isAdmin: boolean; isSellerRestricted: boolean }) {
   const r = row;
   const qc = useQueryClient();
   const { roles } = useBrand();
@@ -646,6 +654,7 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
                   <span className="text-xs font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
                 </div>
 
+                {!isSellerRestricted && (<>
                 <div className="grid sm:grid-cols-2 gap-2">
                   <label className="block">
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Proveedor</span>
@@ -772,6 +781,8 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
                     />
                   );
                 })()}
+                </>)}
+
 
                 {it.production_started_at && (
                   <div className="pt-1 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">

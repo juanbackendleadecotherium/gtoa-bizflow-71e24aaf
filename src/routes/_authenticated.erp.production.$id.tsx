@@ -17,6 +17,7 @@ import { PlanimetryUploader, type Planimetry } from "@/features/production/plani
 import { ReasonDialog } from "@/features/production/reason-dialog";
 import { ItemMarginsSection } from "@/features/production/item-margins-section";
 import { AuditTimeline } from "@/features/production/audit-timeline";
+import { isProductionLocked } from "@/features/production/seller-restrictions";
 
 export const Route = createFileRoute("/_authenticated/erp/production/$id")({
   component: ProductionDetail,
@@ -29,6 +30,7 @@ function ProductionDetail() {
   const { isAdmin, roles } = useBrand();
   const isProduction = isAdmin || roles.includes("operativo");
   const isSellerOnly = !isProduction && roles.includes("ventas");
+
 
 
   const prod = useQuery({
@@ -218,6 +220,7 @@ function ProductionDetail() {
   }
   const p = prod.data;
   const order = p.order as any;
+  const sellerLocked = isSellerOnly && isProductionLocked(p.status);
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -322,24 +325,28 @@ function ProductionDetail() {
                   </Select>
                 )}
               </div>
-              <div>
-                <Label className="text-xs">Encargado</Label>
-                <Input
-                  value={form.assigned_to_label}
-                  onChange={(e) => update("assigned_to_label", e.target.value)}
-                  placeholder="Nombre del responsable"
-                  disabled={isSellerOnly}
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Entrega estimada</Label>
-                <Input
-                  type="date"
-                  value={form.due_date ?? ""}
-                  onChange={(e) => update("due_date", e.target.value)}
-                  disabled={isSellerOnly}
-                />
-              </div>
+              {!sellerLocked && (
+                <div>
+                  <Label className="text-xs">Encargado</Label>
+                  <Input
+                    value={form.assigned_to_label}
+                    onChange={(e) => update("assigned_to_label", e.target.value)}
+                    placeholder="Nombre del responsable"
+                    disabled={isSellerOnly}
+                  />
+                </div>
+              )}
+              {!sellerLocked && (
+                <div>
+                  <Label className="text-xs">Entrega estimada</Label>
+                  <Input
+                    type="date"
+                    value={form.due_date ?? ""}
+                    onChange={(e) => update("due_date", e.target.value)}
+                    disabled={isSellerOnly}
+                  />
+                </div>
+              )}
             </div>
             <div>
               <Label className="text-xs">Notas internas</Label>
@@ -364,11 +371,13 @@ function ProductionDetail() {
           <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h2 className="text-sm font-medium text-muted-foreground">Planimetrías</h2>
-              <Button size="sm" variant="outline" onClick={() => regen.mutate()}
-                disabled={regen.isPending || !p.order_id} className="gap-1">
-                {regen.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Regenerar con formato actualizado
-              </Button>
+              {!sellerLocked && (
+                <Button size="sm" variant="outline" onClick={() => regen.mutate()}
+                  disabled={regen.isPending || !p.order_id} className="gap-1">
+                  {regen.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Regenerar con formato actualizado
+                </Button>
+              )}
             </div>
             {plan.isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -378,6 +387,7 @@ function ProductionDetail() {
                 brandId={p.brand_id}
                 items={plan.data ?? []}
                 canDelete={isAdmin}
+                readOnly={sellerLocked}
                 onChange={() => {
                   qc.invalidateQueries({ queryKey: ["planimetries", id] });
                   qc.invalidateQueries({ queryKey: ["production-audit", id] });

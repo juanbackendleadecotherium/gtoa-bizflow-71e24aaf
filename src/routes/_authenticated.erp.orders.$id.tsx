@@ -34,6 +34,7 @@ import { ScheduleLogisticsCard } from "@/features/orders/schedule-logistics-card
 import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/features/orders/delivery-urgency";
 import { DeliveryDeferralCard } from "@/features/orders/delivery-deferral-card";
 import { SaleFlowCard } from "@/features/orders/sale-flow-card";
+import { isProductionLocked, useSellerRestricted } from "@/features/production/seller-restrictions";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -44,6 +45,7 @@ function OrderDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { selectedBrandId } = useBrand();
+  const { isSellerRestricted } = useSellerRestricted();
 
   const orderQuery = useQuery({
     queryKey: ["order", id],
@@ -58,7 +60,7 @@ function OrderDetail() {
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
-          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at, is_standard_product)
+          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at, is_standard_product, production_order:production_orders!production_order_id(status))
         `)
         .eq("id", id).maybeSingle();
       if (error) throw error;
@@ -321,6 +323,9 @@ function OrderDetail() {
   if (!o) return <p className="text-sm text-muted-foreground">Pedido no encontrado.</p>;
 
   const items = ((o.items as any[] | null) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
+  const planimetryLockedByIndex = items.map((it) =>
+    isSellerRestricted && isProductionLocked(it.production_order?.status),
+  );
   const status = o.status as any;
 
   return (
@@ -432,6 +437,7 @@ function OrderDetail() {
                 pendingPlanimetry={editPendingPlanimetry}
                 onExistingPlanimetryChange={setEditExistingPlanimetry}
                 onPendingPlanimetryChange={setEditPendingPlanimetry}
+                planimetryReadOnlyByIndex={planimetryLockedByIndex}
               />
             ) : (
               <div className="space-y-3">

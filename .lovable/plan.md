@@ -1,60 +1,58 @@
-# Ajustes de producción: precio negociado + planimetría opcional
+# Restricciones al vendedor una vez que la OP está en producción
 
-## Ajuste 1 — Mostrar siempre el precio negociado
+## Regla de negocio
 
-Hoy varias vistas muestran únicamente `manufacturing_cost` (precio original del proveedor) e ignoran `negotiated_cost`. Se unifica todo con la regla: **efectivo = `negotiated_cost ?? manufacturing_cost`**.
+Un ítem se considera "en producción" cuando su OP existe y su estado ∈ `["en_proceso","control_calidad","listo","entregado"]` (la constante `ACCEPTED_STATUSES` ya definida en `production/tracking.tsx`). A partir de ese momento el rol **vendedor puro** (`roles.includes("ventas")` y no admin ni operativo) pierde capacidad de editar/borrar planimetría y deja de ver datos internos de producción de ese ítem. Los demás roles no cambian. La restricción se evalúa por ítem, no por venta.
 
-### Cambios de código (sin migración)
+## Cambios
 
-1. **Helper compartido** `src/features/production/effective-cost.ts`
-   - `getEffectiveCost(item)` → devuelve el costo vigente (negociado si existe, sino original).
-   - `hasNegotiation(item)` → boolean para mostrar badge "Negociado".
+### 1. Helper compartido
 
-2. **`src/routes/_authenticated.erp.production.tracking.tsx`**
-   - Añadir `negotiated_cost` al `select` de `production_orders` y de `order_items` (líneas 128 y 158).
-   - Reemplazar todas las referencias directas a `manufacturing_cost` por `getEffectiveCost(...)` en:
-     - Cálculo agregado `itemsWithCost` / `aggCost` (líneas 383‑387).
-     - Input y controles por ítem (líneas 662‑665, 727, 743) — el input editable sigue siendo el "costo original", pero el resumen y el `suggestedAmount/suggestedCost` deben usar el efectivo.
-   - Junto al precio mostrado, si hubo negociación, añadir badge pequeño "Negociado" con tooltip que muestra el original tachado.
+Crear `src/features/production/seller-restrictions.ts`:
 
-3. **`src/features/production/item-margins-section.tsx`**
-   - Ya calcula margen con `negotiated_cost ?? manufacturing_cost`. Verificar que el "KPI Costo total" y el margen global también usen esta regla (ya lo hacen — solo revisar).
+- `LOCKED_PRODUCTION_STATUSES = ["en_proceso","control_calidad","listo","entregado"] as const`
+- `isProductionLocked(status?: string | null)` → `boolean`
+- `useSellerRestricted()` → `{ isSellerRestricted: boolean }` que lee `useBrand()` y devuelve `true` sólo cuando el usuario tiene rol `ventas` y NO tiene `admin` ni `operativo`.
 
-4. **PDF planimetría — `src/features/production/send-to-production-button.tsx` + `planimetry-document.tsx`**
-   - Al armar `PlanimetryDocumentData`, pasar el precio efectivo. Si el PDF actualmente no muestra costo (sólo `unit_price` de venta), no se toca; si muestra costo del proveedor, cambiarlo por el efectivo. **A confirmar leyendo el documento actual antes de editar.**
+Así centralizamos el criterio y evitamos repetir la lógica de roles.
 
-5. **Analytics y pagos a proveedor** (`analytics-operations.functions.ts`, `supplier-advance-payments.functions.ts`) — ya usan la regla correcta. No se tocan.
+### 2. Detalle de venta — `src/routes/_authenticated.erp.orders.$id.tsx`
 
-## Ajuste 2 — Ítems estándar sin planimetría obligatoria
+- Añadir al `select` de `items:order_items(...)` la relación `production_order:production_orders!production_order_id(status)`.
+- Calcular `itemLocked = isSellerRestricted && isProductionLocked(it.production_order?.status)` por ítem.
+- Pasar `locked={itemLocked}` a `OrderItemReadCard` y bloquear el botón "Editar venta" a nivel de ítems bloqueados: si el vendedor entra en modo edición, los ítems con OP en producción muestran su planimetría en modo solo lectura (sin uploader, sin borrar). Los demás ítems se editan normal.
+- En `OrderItemReadCard` (mismo archivo), cuando `locked` es `true`, quitar cualquier acción de borrar planimetría — sólo se muestra la lista con enlaces de descarga.
 
-### Migración (una sola)
+### 3. Editor de ítems — `src/features/orders/order-items-editor.tsx`
 
-Añadir a `order_items`:
-- `is_standard_product` `boolean not null default false`
+- Aceptar por ítem un flag `planimetryReadOnly?: boolean` (derivado del padre).
+- Cuando es `true`: reemplazar `PlanimetryFilesUploader` por una lista pasiva de archivos existentes (sólo descarga, sin "eliminar", sin drop zone, sin selector). No afecta `is_standard_product` ni otras columnas.
 
-Sin cambios en RLS ni funciones RPC.
+### 4. Detalle de OP — `src/routes/_authenticated.erp.production.$id.tsx`
 
-### Cambios de código
+Ya usa `isSellerOnly`. Reforzar para el caso "OP aprobada":
 
-1. **Schema/formulario de ítem** — `src/features/orders/schemas.ts` y `src/features/orders/order-items-editor.tsx`
-   - Añadir campo `is_standard_product: z.boolean().default(false)` al `orderItemSchema`.
-   - En el editor, agregar un checkbox pequeño debajo del título del ítem: **"Producto estándar — no requiere planimetría"**.
-   - Persistirlo en el insert/update de `order_items` en `_authenticated.erp.orders.$id.tsx` (mutación que ya escribe items).
+- Calcular `sellerLocked = isSellerOnly && isProductionLocked(p.status)`.
+- Sección **Detalles**: cuando `sellerLocked`, ocultar los campos **Encargado** y **Entrega estimada** (son datos operativos internos del proveedor/planta). Mantener visible **Estado** y **Notas internas** (esta última ya es editable por vendedor y sirve para comunicación con el cliente).
+- Sección **Planimetrías**: cuando `sellerLocked`, ocultar el botón "Regenerar" y renderizar `PlanimetryUploader` en modo solo lectura. Añadir prop `readOnly?: boolean` a `PlanimetryUploader` que desactiva subir/anotar/reemplazar/borrar y sólo muestra los archivos con opción de descarga.
+- `ItemMarginsSection` ya está condicionada a `!isSellerOnly` → sin cambios.
+- Bitácora: el bloque "Enviada por / Rechazada por" es útil para el vendedor; se mantiene.
 
-2. **Validación en envío a producción** — `src/features/production/send-to-production-button.tsx`
-   - Añadir `is_standard_product` a los `select` de `order_items` (líneas 93 y 309).
-   - En `itemSendState` (línea ~341‑347), si `it.is_standard_product === true`, no bloquear por "Sin planimetría". Mantener el resto de bloqueos (ya vinculado, etc.).
-   - Ajustar el texto informativo del ítem para mostrar "Estándar — sin planimetría" en vez del contador de planimetrías.
+### 5. Seguimiento de producción — `src/routes/_authenticated.erp.production.tracking.tsx`
 
-3. **Etiqueta visual en seguimiento** — `src/routes/_authenticated.erp.production.tracking.tsx`
-   - Añadir `is_standard_product` al select de items (línea 158).
-   - Junto al título de cada ítem, mostrar un badge **"Estándar"** (variante neutra) cuando `is_standard_product === true`.
+Si el vendedor puro tiene acceso a esta ruta (hoy no está bloqueada), aplicar filtro visual sobre columnas sensibles cuando `isSellerRestricted`:
 
-4. **PDF planimetría** — `planimetry-document.tsx` / `send-to-production-button.tsx`
-   - Filtrar los ítems estándar antes de generar la sección de planimetría, o mostrarlos con la nota "Producto estándar — sin planimetría requerida" en lugar del bloque de imágenes.
+- Ocultar columnas y campos de: costo (`getEffectiveCost`, márgenes, `MoneyInput` de costo), cantidad de producción distinta a la vendida, proveedor asignado, pagos a proveedor, anticipos.
+- Mantener visibles: código de OP, cliente, producto, estado / etapa, fechas de entrega, novedad.
+- El `ExpandedPanel` para el vendedor sólo muestra estado de avance del ítem y planimetría en modo solo lectura.
+
+### 6. Uploader de planimetría — `src/features/production/planimetry-uploader.tsx`
+
+- Añadir prop opcional `readOnly?: boolean` (default `false`).
+- Cuando `true`: no renderizar dropzone, botones de reemplazar/anotar/borrar; sólo lista con enlaces de descarga y versión.
 
 ## Notas
 
-- No se toca la lógica de negocio existente (envíos parciales, márgenes mínimos, negociación obligatoria bajo el mínimo). Sólo se unifica qué precio se **muestra/usa como base**, y se agrega una excepción intencional a la validación de planimetría.
-- Los cálculos de comisión y órdenes ya no se ven afectados: seguían usando el precio de venta (`unit_price` / `line_total`), no el costo del proveedor.
-- Cambios contenidos, sin refactors amplios; migración mínima (una columna).
+- Sin cambios en base de datos, RLS ni funciones RPC. Todo el control es de presentación; el backend ya restringe escrituras por RLS al vendedor donde corresponde. Si algún día hace falta, se puede endurecer con una policy adicional, pero no es parte de este cambio.
+- La experiencia es "silenciosa": no se muestran mensajes de "no tienes permiso", simplemente desaparecen los controles y los campos internos.
+- Admin y operativo mantienen la vista actual sin cambios.
