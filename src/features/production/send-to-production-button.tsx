@@ -137,7 +137,9 @@ async function buildPlanData(
         images: resolved.filter((u): u is string => !!u),
         planimetryImages: resolvedPlani.filter((u): u is string => !!u),
         planimetryPdfNames: planiPdfs.map((f) => f.name),
+        isStandardProduct: Boolean(it.is_standard_product),
       };
+
     }),
   );
 
