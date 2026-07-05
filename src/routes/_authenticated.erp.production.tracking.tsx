@@ -781,6 +781,8 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
                     />
                   );
                 })()}
+                </>)}
+
 
                 {it.production_started_at && (
                   <div className="pt-1 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
