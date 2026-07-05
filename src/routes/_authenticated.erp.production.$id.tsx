@@ -371,11 +371,13 @@ function ProductionDetail() {
           <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h2 className="text-sm font-medium text-muted-foreground">Planimetrías</h2>
-              <Button size="sm" variant="outline" onClick={() => regen.mutate()}
-                disabled={regen.isPending || !p.order_id} className="gap-1">
-                {regen.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Regenerar con formato actualizado
-              </Button>
+              {!sellerLocked && (
+                <Button size="sm" variant="outline" onClick={() => regen.mutate()}
+                  disabled={regen.isPending || !p.order_id} className="gap-1">
+                  {regen.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Regenerar con formato actualizado
+                </Button>
+              )}
             </div>
             {plan.isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -385,6 +387,7 @@ function ProductionDetail() {
                 brandId={p.brand_id}
                 items={plan.data ?? []}
                 canDelete={isAdmin}
+                readOnly={sellerLocked}
                 onChange={() => {
                   qc.invalidateQueries({ queryKey: ["planimetries", id] });
                   qc.invalidateQueries({ queryKey: ["production-audit", id] });
