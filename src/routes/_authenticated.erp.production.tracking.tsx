@@ -67,6 +67,7 @@ function marginCls(margin: number | null) {
 function TrackingPage() {
   const { brands, selectedBrandId, setSelectedBrandId, loading, roles, isAdmin } = useBrand();
   const canFinish = isAdmin || roles.includes("operativo");
+  const { isSellerRestricted } = useSellerRestricted();
 
   const qc = useQueryClient();
   const [novedadFilter, setNovedadFilter] = useState<string>("all");
