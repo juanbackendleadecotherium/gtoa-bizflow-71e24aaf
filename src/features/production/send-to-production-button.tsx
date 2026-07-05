@@ -29,7 +29,9 @@ type ItemRow = {
   sort_order: number;
   production_order_id: string | null;
   planimetry_files: Array<{ url: string; name: string; mime: string }>;
+  is_standard_product: boolean;
 };
+
 
 // Max edge (px) for images embedded into the production PDF. Phone photos
 // arrive at 4000+ px and bloat the PDF; 1400 px is plenty for print at the
