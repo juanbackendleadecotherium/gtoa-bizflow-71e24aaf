@@ -34,6 +34,7 @@ import { ScheduleLogisticsCard } from "@/features/orders/schedule-logistics-card
 import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/features/orders/delivery-urgency";
 import { DeliveryDeferralCard } from "@/features/orders/delivery-deferral-card";
 import { SaleFlowCard } from "@/features/orders/sale-flow-card";
+import { isProductionLocked, useSellerRestricted } from "@/features/production/seller-restrictions";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
