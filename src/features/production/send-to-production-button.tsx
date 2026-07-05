@@ -709,8 +709,15 @@ export function ProductionSection({
                         <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px] text-muted-foreground">
                           <span>Cant: <span className="font-medium text-foreground">{it.quantity}</span></span>
                           <span>·</span>
-                          <span>{it.planimetry_files.length} planimetría{it.planimetry_files.length === 1 ? "" : "s"} adjunta{it.planimetry_files.length === 1 ? "" : "s"}</span>
+                          {it.is_standard_product ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold">
+                              Estándar · sin planimetría
+                            </span>
+                          ) : (
+                            <span>{it.planimetry_files.length} planimetría{it.planimetry_files.length === 1 ? "" : "s"} adjunta{it.planimetry_files.length === 1 ? "" : "s"}</span>
+                          )}
                         </div>
+
                       </div>
                     </li>
                   ))}
