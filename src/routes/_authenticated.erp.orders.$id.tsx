@@ -323,15 +323,16 @@ function OrderDetail() {
   if (!o) return <p className="text-sm text-muted-foreground">Pedido no encontrado.</p>;
 
   const items = ((o.items as any[] | null) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
-  const planimetryLockedByIndex = items.map((it) =>
-    isSellerRestricted && isProductionLocked(it.production_order?.status),
-  );
   const status = o.status as any;
   // Aprobación gerencial pendiente/rechazada: el vendedor queda en stand-by
   // total — no puede editar productos, subir planimetría ni enviar a producción.
   const approvalBlocksSeller =
     isSellerRestricted &&
     (o.approval_status === "pendiente" || o.approval_status === "rechazada");
+  const planimetryLockedByIndex = items.map((it) =>
+    approvalBlocksSeller || (isSellerRestricted && isProductionLocked(it.production_order?.status)),
+  );
+
 
 
   return (
