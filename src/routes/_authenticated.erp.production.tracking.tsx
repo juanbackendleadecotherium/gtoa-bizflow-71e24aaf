@@ -483,11 +483,15 @@ function TrackingRow({
           )}
         </div>
 
-        {/* Margen pill */}
+        {/* Margen pill (oculto para vendedor puro) */}
         <div className="text-center">
-          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums ${cls.pill}`}>
-            {margin == null ? "—" : `${margin.toFixed(0)}%`}
-          </span>
+          {isSellerRestricted ? (
+            <span className="text-[11px] text-muted-foreground">—</span>
+          ) : (
+            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums ${cls.pill}`}>
+              {margin == null ? "—" : `${margin.toFixed(0)}%`}
+            </span>
+          )}
         </div>
 
         {/* Entrega + desviación */}
