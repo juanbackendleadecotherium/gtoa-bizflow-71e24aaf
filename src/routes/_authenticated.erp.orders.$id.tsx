@@ -327,6 +327,12 @@ function OrderDetail() {
     isSellerRestricted && isProductionLocked(it.production_order?.status),
   );
   const status = o.status as any;
+  // Aprobación gerencial pendiente/rechazada: el vendedor queda en stand-by
+  // total — no puede editar productos, subir planimetría ni enviar a producción.
+  const approvalBlocksSeller =
+    isSellerRestricted &&
+    (o.approval_status === "pendiente" || o.approval_status === "rechazada");
+
 
   return (
     <>
