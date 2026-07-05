@@ -180,6 +180,19 @@ function MyTasks() {
                     </li>
                   );
                 }
+                if (t.type === "approval_pending" && t.status === "pendiente" && t.title === "Aprobación de venta solicitada") {
+                  return (
+                    <li key={t.id}>
+                      <ApprovalDecisionCard
+                        taskId={t.id}
+                        orderId={t.order_id}
+                        title={t.title}
+                        reason={t.reason}
+                        createdAt={t.created_at}
+                      />
+                    </li>
+                  );
+                }
                 const isCollection = t.type === "invoice_ready_for_collection";
                 const isPayAdvance = t.type === "pay_supplier_advance";
                 const isPaidNotice = t.type === "supplier_advance_paid";
