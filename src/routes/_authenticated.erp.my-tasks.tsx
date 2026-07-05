@@ -53,13 +53,21 @@ function MyTasks() {
     setPage(1);
   }, [tab, pageSize]);
 
+  // Tipos de alerta (seller_tasks.type) por rol:
+  //  - Vendedor: upload_planimetry, fix_planimetry, approval_pending ("Aprobación gerencial pendiente"),
+  //    invoice_ready_for_collection, supplier_advance_paid, confirm_supplier_final_payment,
+  //    commission_* (notice/approved/paid/rejected/new), production_started
+  //  - Administrador: approval_pending ("Aprobación de venta solicitada"), commission_approval
+  //  - Finanzas: pay_supplier_advance, commission_ready_to_pay
   const q = useQuery({
     queryKey: ["my-tasks", userId, tab],
     enabled: !!userId,
     queryFn: async () => {
+      // Embed sin hint de columna: PostgREST resuelve la FK única automáticamente.
+      // Usar `orders!order_id(...)` provoca HTTP 400 porque `order_id` es nombre de columna, no de constraint.
       const { data, error } = await supabase
         .from("seller_tasks")
-        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, order_item_id, brand_id, planimetry_due_at, order:orders!order_id(order_number, invoice_number, customer_name, brand:brands!brand_id(name, slug))")
+        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, order_item_id, brand_id, planimetry_due_at, order:orders(order_number, invoice_number, customer_name, brand:brands(name, slug))")
         .eq("seller_id", userId!)
         .eq("status", tab)
         .order("created_at", { ascending: false });
@@ -163,6 +171,19 @@ function MyTasks() {
           {q.isLoading ? (
             <div className="py-12 text-center">
               <Loader2 className="h-5 w-5 animate-spin inline text-muted-foreground" />
+            </div>
+          ) : q.isError ? (
+            <div className="rounded-xl border border-red-500/50 bg-red-500/5 p-6 text-center">
+              <AlertOctagon className="h-6 w-6 text-red-600 dark:text-red-400 mx-auto mb-2" />
+              <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                No se pudieron cargar tus tareas
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {(q.error as Error)?.message ?? "Error desconocido"}
+              </p>
+              <Button size="sm" variant="outline" className="mt-3" onClick={() => q.refetch()}>
+                Reintentar
+              </Button>
             </div>
           ) : tasks.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border p-12 text-center">
