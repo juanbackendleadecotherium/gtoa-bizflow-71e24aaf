@@ -107,31 +107,35 @@ export function PlanimetryUploader({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-dashed border-border p-3 bg-muted/30">
-        <Input
-          placeholder="Nota opcional (ej: versión final aprobada)"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          className="mb-2 bg-background"
-        />
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          className="hidden"
-          accept=".pdf,.png,.jpg,.jpeg,.webp,.dwg,.dxf,.svg,image/*,application/pdf"
-          onChange={(e) => handleUpload(e.target.files)}
-        />
-        <Button
-          type="button" size="sm" variant="outline"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="w-full gap-2 border-dashed"
-        >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Subir planimetría (PDF, imagen, DWG…) — versión {nextVersion}
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="rounded-lg border border-dashed border-border p-3 bg-muted/30">
+          <Input
+            placeholder="Nota opcional (ej: versión final aprobada)"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className="mb-2 bg-background"
+          />
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            className="hidden"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.dwg,.dxf,.svg,image/*,application/pdf"
+            onChange={(e) => handleUpload(e.target.files)}
+          />
+          <Button
+            type="button" size="sm" variant="outline"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="w-full gap-2 border-dashed"
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            Subir planimetría (PDF, imagen, DWG…) — versión {nextVersion}
+          </Button>
+        </div>
+      )}
+
+
 
       {items.length === 0 ? (
         <p className="text-xs text-muted-foreground py-3 text-center">Sin planimetrías aún.</p>
