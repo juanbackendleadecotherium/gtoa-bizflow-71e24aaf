@@ -367,15 +367,20 @@ function OrderDetail() {
           {status && <StatusBadge name={status.name} color={status.color} />}
           {!editing ? (
             <>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
-                <Pencil className="h-4 w-4" /> Editar
-              </Button>
-              <Button variant="outline" size="icon" className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                onClick={() => setDeleteOpen(true)}
-                aria-label="Eliminar venta">
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {!approvalBlocksSeller && (
+                <>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
+                    <Pencil className="h-4 w-4" /> Editar
+                  </Button>
+                  <Button variant="outline" size="icon" className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                    onClick={() => setDeleteOpen(true)}
+                    aria-label="Eliminar venta">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </>
+
           ) : (
             <div className="flex w-full sm:w-auto gap-2">
               <Button variant="ghost" size="sm" className="gap-2 flex-1 sm:flex-none" onClick={() => {
