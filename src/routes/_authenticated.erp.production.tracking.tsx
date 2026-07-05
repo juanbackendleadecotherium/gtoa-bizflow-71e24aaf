@@ -358,6 +358,7 @@ function TrackingPage() {
                 onPatch={(patch) => updateField.mutate({ id: r.id, patch })}
                 canFinish={canFinish}
                 isAdmin={isAdmin}
+                isSellerRestricted={isSellerRestricted}
               />
 
             ))}
