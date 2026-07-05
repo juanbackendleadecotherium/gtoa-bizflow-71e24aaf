@@ -370,7 +370,7 @@ function TrackingPage() {
 }
 
 function TrackingRow({
-  row, suppliers, expanded, onToggle, onPatch, canFinish, isAdmin,
+  row, suppliers, expanded, onToggle, onPatch, canFinish, isAdmin, isSellerRestricted,
 }: {
   row: any;
   suppliers: { id: string; name: string }[];
@@ -379,6 +379,7 @@ function TrackingRow({
   onPatch: (patch: Record<string, any>) => void;
   canFinish: boolean;
   isAdmin: boolean;
+  isSellerRestricted: boolean;
 }) {
 
   const r = row;
