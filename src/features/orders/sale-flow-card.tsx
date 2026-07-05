@@ -1,12 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Bookmark, Clock3, CheckCircle2, XCircle, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Bookmark, Clock3, CheckCircle2, XCircle } from "lucide-react";
 import { formatMoney } from "@/features/orders/order-items-editor";
-import { useBrand } from "@/features/brands/brand-context";
 import { SaleTypeBadge, ApprovalStatusBadge } from "@/features/orders/sale-type-badge";
 
 type OrderLite = {
@@ -24,8 +17,8 @@ type OrderLite = {
 
 /**
  * Muestra el estado del "tipo de venta" (normal / Plan Separe) y del flujo de
- * aprobación gerencial en el detalle de la orden. Se apoya en `order_payments`
- * para calcular el % pagado (Plan Separe).
+ * aprobación gerencial en el detalle de la orden. Los controles de aprobar/
+ * rechazar viven exclusivamente en "Mis tareas" del administrador.
  */
 export function SaleFlowCard({
   order,
@@ -34,37 +27,10 @@ export function SaleFlowCard({
   order: OrderLite;
   paidTotal: number;
 }) {
-  const qc = useQueryClient();
-  const { isAdmin } = useBrand();
-  const [decisionNote, setDecisionNote] = useState("");
-
   const total = Number(order.total ?? 0);
   const pct = total > 0 ? Math.min(100, (paidTotal / total) * 100) : 0;
   const isSepare = order.sale_type === "plan_separe";
   const separeDone = !!order.separe_completed_at;
-
-
-  const resolve = useMutation({
-    mutationFn: async (decision: "aprobada" | "rechazada") => {
-      if (!decisionNote.trim() && decision === "rechazada") {
-        throw new Error("Escribe el motivo del rechazo");
-      }
-      const { error } = await supabase.rpc("resolve_management_approval", {
-        p_order_id: order.id,
-        p_decision: decision,
-        p_note: decisionNote.trim() || undefined,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Decisión registrada");
-      setDecisionNote("");
-      qc.invalidateQueries({ queryKey: ["order", order.id] });
-      qc.invalidateQueries({ queryKey: ["order-approvals-pending"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
 
   return (
     <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
@@ -78,7 +44,6 @@ export function SaleFlowCard({
         </div>
       </div>
 
-      {/* Plan Separe: barra de progreso */}
       {isSepare && (
         <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3 space-y-2">
           <div className="flex items-center justify-between text-xs">
@@ -107,9 +72,8 @@ export function SaleFlowCard({
         </div>
       )}
 
-      {/* Aprobación pendiente */}
       {order.approval_status === "pendiente" && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-1">
           <p className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1">
             <Clock3 className="h-3.5 w-3.5" /> Esperando decisión de gerencia
           </p>
@@ -118,30 +82,9 @@ export function SaleFlowCard({
               <span className="font-medium text-foreground">Motivo:</span> {order.approval_note}
             </p>
           )}
-          {isAdmin && (
-            <div className="space-y-2 pt-2 border-t border-amber-500/20">
-              <Textarea
-                placeholder="Comentario para el vendedor (opcional al aprobar, obligatorio al rechazar)…"
-                value={decisionNote}
-                onChange={(e) => setDecisionNote(e.target.value)}
-                rows={2}
-                className="text-xs"
-              />
-              <div className="flex gap-2">
-                <Button size="sm" variant="default" className="gap-1"
-                  disabled={resolve.isPending}
-                  onClick={() => resolve.mutate("aprobada")}>
-                  {resolve.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                  Aprobar
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1 border-rose-500/40 text-rose-600 hover:bg-rose-500/10"
-                  disabled={resolve.isPending}
-                  onClick={() => resolve.mutate("rechazada")}>
-                  <XCircle className="h-3.5 w-3.5" /> Rechazar
-                </Button>
-              </div>
-            </div>
-          )}
+          <p className="text-[11px] text-muted-foreground">
+            La decisión se toma desde "Mis tareas" del administrador.
+          </p>
         </div>
       )}
 
@@ -152,12 +95,14 @@ export function SaleFlowCard({
       )}
 
       {order.approval_status === "rechazada" && (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3 text-[11px] text-rose-700 dark:text-rose-400">
-          <p className="font-medium">Aprobación rechazada por gerencia.</p>
-          {order.approval_note && <p className="mt-1 whitespace-pre-wrap">{order.approval_note}</p>}
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3 text-[11px] text-rose-700 dark:text-rose-400 flex items-start gap-1">
+          <XCircle className="h-3.5 w-3.5 mt-0.5" />
+          <div>
+            <p className="font-medium">Aprobación rechazada por gerencia.</p>
+            {order.approval_note && <p className="mt-1 whitespace-pre-wrap">{order.approval_note}</p>}
+          </div>
         </div>
       )}
-
     </section>
   );
 }

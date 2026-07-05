@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { toast } from "sonner";
 import { computeDeadlineState } from "@/features/seller-tasks/planimetry-deadline";
 import { SupplierFinalPaymentCard } from "@/features/seller-tasks/supplier-final-payment-card";
+import { ApprovalDecisionCard } from "@/features/seller-tasks/approval-decision-card";
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
@@ -175,6 +176,19 @@ function MyTasks() {
                         orderItemId={t.order_item_id}
                         title={t.title}
                         reason={t.reason}
+                      />
+                    </li>
+                  );
+                }
+                if (t.type === "approval_pending" && t.status === "pendiente" && t.title === "Aprobación de venta solicitada") {
+                  return (
+                    <li key={t.id}>
+                      <ApprovalDecisionCard
+                        taskId={t.id}
+                        orderId={t.order_id}
+                        title={t.title}
+                        reason={t.reason}
+                        createdAt={t.created_at}
                       />
                     </li>
                   );
