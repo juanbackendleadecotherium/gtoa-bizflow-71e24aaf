@@ -195,6 +195,10 @@ function MyTasks() {
                         title={t.title}
                         reason={t.reason}
                         createdAt={t.created_at}
+                        orderNumber={t.order?.order_number ?? null}
+                        invoiceNumber={t.order?.invoice_number ?? null}
+                        customerName={t.order?.customer_name ?? null}
+                        brandName={t.order?.brand?.name ?? null}
                       />
                     </li>
                   );
