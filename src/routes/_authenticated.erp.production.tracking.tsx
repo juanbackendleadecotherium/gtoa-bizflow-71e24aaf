@@ -768,7 +768,7 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: a
                     <SupplierQuickPaymentCheck
                       orderItemId={it.id}
                       supplierName={sup.name}
-                      suggestedCost={it.manufacturing_cost != null ? Number(it.manufacturing_cost) : null}
+                      suggestedCost={effCost}
                     />
                   );
                 })()}
