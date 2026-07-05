@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, XCircle, Loader2, ShieldCheck, ArrowRight } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, ShieldCheck, ArrowRight, Receipt, Tag, User } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,17 +12,25 @@ import { Textarea } from "@/components/ui/textarea";
  * una solicitud de aprobación gerencial. Rechazar anula la venta.
  */
 export function ApprovalDecisionCard({
-  taskId,
+  taskId: _taskId,
   orderId,
   title,
   reason,
   createdAt,
+  orderNumber,
+  invoiceNumber,
+  customerName,
+  brandName,
 }: {
   taskId: string;
   orderId: string | null;
   title: string;
   reason: string | null;
   createdAt: string;
+  orderNumber?: string | null;
+  invoiceNumber?: string | null;
+  customerName?: string | null;
+  brandName?: string | null;
 }) {
   const qc = useQueryClient();
   const [note, setNote] = useState("");
