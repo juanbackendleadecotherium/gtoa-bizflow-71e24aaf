@@ -32,6 +32,7 @@ function ProductionDetail() {
   const isSellerOnly = !isProduction && roles.includes("ventas");
 
 
+
   const prod = useQuery({
     queryKey: ["production-order", id],
     queryFn: async () => {
