@@ -374,8 +374,24 @@ export function ProductionSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogOpen, items.data]);
 
+  const ensureProductionAllowed = async () => {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("approval_status")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data?.approval_status === "pendiente") {
+      throw new Error("Aprobación gerencial pendiente. Producción se habilita cuando gerencia apruebe la venta.");
+    }
+    if (data?.approval_status === "rechazada") {
+      throw new Error("Aprobación gerencial rechazada. No se puede enviar esta venta a producción.");
+    }
+  };
+
   const createNew = useMutation({
     mutationFn: async (selectedItemIds: string[]) => {
+      await ensureProductionAllowed();
       const { data: brandRow } = await supabase
         .from("brands").select("slug").eq("id", brandId).maybeSingle();
       const { ownerForBrandSlug } = await import("./brand-owners");
@@ -410,6 +426,7 @@ export function ProductionSection({
 
   const regenerate = useMutation({
     mutationFn: async (args: { target: ProdRow; selectedItemIds: string[] }) => {
+      await ensureProductionAllowed();
       const v = await generatePlanimetryForOrder({
         productionOrderId: args.target.id,
         productionCode: args.target.code,
