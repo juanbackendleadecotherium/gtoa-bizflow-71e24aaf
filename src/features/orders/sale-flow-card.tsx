@@ -158,31 +158,6 @@ export function SaleFlowCard({
         </div>
       )}
 
-      {/* CTA para solicitar aprobación (excepción de anticipo) */}
-      {showApprovalCTA && (
-        <div className="rounded-lg border border-border p-3 space-y-2">
-          <p className="text-xs flex items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-            <span className="font-medium">Solicitar excepción de anticipo</span>
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            El anticipo actual está por debajo del 50%. Explica a gerencia por qué esta venta debe entrar a producción sin cumplir el mínimo.
-          </p>
-          <Textarea
-            placeholder="Motivo (ej. cliente estratégico, plazo especial…)"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            className="text-xs"
-          />
-          <Button size="sm" variant="outline" className="gap-1"
-            disabled={requestApproval.isPending || !note.trim()}
-            onClick={() => requestApproval.mutate()}>
-            {requestApproval.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-            Solicitar aprobación gerencial
-          </Button>
-        </div>
-      )}
     </section>
   );
 }
