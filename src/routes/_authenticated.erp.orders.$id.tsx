@@ -148,7 +148,9 @@ function OrderDetail() {
     setEditItems(its.map((it) => ({
       id: it.id, description: it.description, quantity: Number(it.quantity),
       unit_price: Number(it.unit_price), sort_order: it.sort_order,
+      is_standard_product: Boolean(it.is_standard_product),
     })));
+
     setEditExistingImages(its.map((it) => (Array.isArray(it.images) ? [...it.images] : [])));
     setEditPendingImages(its.map(() => []));
     setEditExistingPlanimetry(
