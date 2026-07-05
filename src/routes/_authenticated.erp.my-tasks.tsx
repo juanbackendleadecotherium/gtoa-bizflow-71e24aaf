@@ -34,6 +34,8 @@ type Task = {
   brand_id: string;
   planimetry_due_at: string | null;
   order?: {
+    id: string;
+    brand_id: string | null;
     order_number: string | null;
     invoice_number: string | null;
     customer_name: string | null;
@@ -63,16 +65,68 @@ function MyTasks() {
     queryKey: ["my-tasks", userId, tab],
     enabled: !!userId,
     queryFn: async () => {
-      // Embed sin hint de columna: PostgREST resuelve la FK única automáticamente.
-      // Usar `orders!order_id(...)` provoca HTTP 400 porque `order_id` es nombre de columna, no de constraint.
       const { data, error } = await supabase
         .from("seller_tasks")
-        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, order_item_id, brand_id, planimetry_due_at, order:orders(order_number, invoice_number, customer_name, brand:brands(name, slug))")
+        .select("id, title, reason, type, status, severity, created_at, resolved_at, order_id, production_order_id, order_item_id, brand_id, planimetry_due_at")
         .eq("seller_id", userId!)
         .eq("status", tab)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as Task[];
+
+      const tasks = (data ?? []) as unknown as Task[];
+      const orderIds = Array.from(new Set(tasks.map((task) => task.order_id).filter(Boolean))) as string[];
+      const taskBrandIds = tasks.map((task) => task.brand_id).filter(Boolean);
+
+      const { data: ordersData } = orderIds.length
+        ? await supabase
+            .from("orders")
+            .select("id, order_number, invoice_number, customer_name, brand_id")
+            .in("id", orderIds)
+        : { data: [] };
+
+      const orders = (ordersData ?? []) as Array<{
+        id: string;
+        brand_id: string | null;
+        order_number: string | null;
+        invoice_number: string | null;
+        customer_name: string | null;
+      }>;
+      const orderById = new Map(orders.map((order) => [order.id, order]));
+      const brandIds = Array.from(new Set([...taskBrandIds, ...orders.map((order) => order.brand_id).filter(Boolean)])) as string[];
+
+      const { data: brandsData } = brandIds.length
+        ? await supabase
+            .from("brands")
+            .select("id, name, slug")
+            .in("id", brandIds)
+        : { data: [] };
+
+      const brandById = new Map(
+        ((brandsData ?? []) as Array<{ id: string; name: string | null; slug: string | null }>).map((brand) => [brand.id, brand]),
+      );
+
+      return tasks.map((task) => {
+        const order = task.order_id ? orderById.get(task.order_id) : null;
+        const brand = brandById.get(order?.brand_id ?? task.brand_id) ?? null;
+        return {
+          ...task,
+          order: order
+            ? {
+                ...order,
+                brand,
+              }
+            : brand
+              ? {
+                  id: task.order_id ?? "",
+                  brand_id: task.brand_id,
+                  order_number: null,
+                  invoice_number: null,
+                  customer_name: null,
+                  brand,
+                }
+              : null,
+        };
+      });
     },
   });
 
