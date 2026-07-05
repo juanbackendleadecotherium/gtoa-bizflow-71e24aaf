@@ -199,6 +199,7 @@ export function OrderItemsEditor({
   pendingPlanimetry,
   onExistingPlanimetryChange,
   onPendingPlanimetryChange,
+  planimetryReadOnlyByIndex,
 }: {
   items: OrderItemInput[];
   onChange: (items: OrderItemInput[]) => void;
@@ -210,6 +211,12 @@ export function OrderItemsEditor({
   pendingPlanimetry?: PendingPlanimetry[][];
   onExistingPlanimetryChange?: (next: PlanimetryFile[][]) => void;
   onPendingPlanimetryChange?: (next: PendingPlanimetry[][]) => void;
+  /**
+   * Por ítem: si es `true`, la planimetría de ese ítem se muestra en modo
+   * sólo lectura (sin subir/borrar). Se usa cuando la OP del ítem ya está
+   * aprobada y el vendedor no puede modificarla.
+   */
+  planimetryReadOnlyByIndex?: boolean[];
 }) {
   const imagesEnabled =
     !!existingImages && !!pendingImages && !!onExistingImagesChange && !!onPendingImagesChange;
