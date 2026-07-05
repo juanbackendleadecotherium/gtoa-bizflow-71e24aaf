@@ -17,6 +17,7 @@ import { PlanimetryUploader, type Planimetry } from "@/features/production/plani
 import { ReasonDialog } from "@/features/production/reason-dialog";
 import { ItemMarginsSection } from "@/features/production/item-margins-section";
 import { AuditTimeline } from "@/features/production/audit-timeline";
+import { isProductionLocked } from "@/features/production/seller-restrictions";
 
 export const Route = createFileRoute("/_authenticated/erp/production/$id")({
   component: ProductionDetail,
