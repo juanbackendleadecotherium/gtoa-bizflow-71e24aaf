@@ -577,7 +577,7 @@ function InlineMoney({
   );
 }
 
-function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin }: { row: any; suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[]; onPatch: (patch: Record<string, any>) => void; canFinish: boolean; isAdmin: boolean }) {
+function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRestricted }: { row: any; suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[]; onPatch: (patch: Record<string, any>) => void; canFinish: boolean; isAdmin: boolean; isSellerRestricted: boolean }) {
   const r = row;
   const qc = useQueryClient();
   const { roles } = useBrand();
