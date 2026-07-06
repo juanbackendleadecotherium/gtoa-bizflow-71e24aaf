@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck, MessageSquare, Calendar, AlertTriangle, FileText, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, History, Pencil, X, ShieldCheck, MessageSquare, Calendar, AlertTriangle, FileText, CheckCircle2, Building2 } from "lucide-react";
+import { ChangeBrandDialog } from "@/features/orders/change-brand-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
 import { Button } from "@/components/ui/button";
@@ -325,6 +326,7 @@ function OrderDetail() {
   });
 
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [changeBrandOpen, setChangeBrandOpen] = useState(false);
 
   if (orderQuery.isLoading) return <div className="grid place-items-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   const o = orderQuery.data as any;
@@ -392,6 +394,9 @@ function OrderDetail() {
                 <>
                   <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
                     <Pencil className="h-4 w-4" /> Editar
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={() => setChangeBrandOpen(true)}>
+                    <Building2 className="h-4 w-4" /> Cambiar marca
                   </Button>
                   <Button variant="outline" size="icon" className="text-destructive border-destructive/40 hover:bg-destructive/10"
                     onClick={() => setDeleteOpen(true)}
@@ -778,6 +783,14 @@ function OrderDetail() {
         orderNumber={o.order_number}
         customerName={o.customer_name}
         onDeleted={() => navigate({ to: "/erp/orders" })}
+      />
+
+      <ChangeBrandDialog
+        open={changeBrandOpen}
+        onOpenChange={setChangeBrandOpen}
+        orderId={id}
+        currentBrandId={o.brand_id}
+        currentInvoiceNumber={o.invoice_number}
       />
     </>
   );
