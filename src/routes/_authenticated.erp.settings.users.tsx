@@ -551,7 +551,7 @@ function CreateUserDialog({
           <div className="space-y-2 md:col-span-2">
             <Label>Roles</Label>
             <div className="grid grid-cols-2 gap-2">
-              {ROLES.map((r) => (
+              {availableRoles.map((r) => (
                 <label key={r.value} className="flex items-center gap-2 border rounded-md px-3 py-2 cursor-pointer">
                   <Checkbox
                     checked={roles.includes(r.value)}
