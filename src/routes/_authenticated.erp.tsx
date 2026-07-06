@@ -161,7 +161,7 @@ function Shell() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics) && (!i.financeOnly || isFinance)).map((item) => {
+          {NAV.filter((i) => canAccess(roles as AppRole[], i.module)).map((item) => {
             const Icon = item.icon;
             const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
             const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
