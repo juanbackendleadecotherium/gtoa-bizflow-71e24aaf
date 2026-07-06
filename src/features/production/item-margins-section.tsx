@@ -41,12 +41,14 @@ function restLines(s: string) {
 
 export function ItemMarginsSection({
   productionOrderId,
+  orderId,
   brandId,
 }: {
   productionOrderId: string;
   orderId: string;
   brandId: string;
 }) {
+
   const qc = useQueryClient();
 
   const settings = useQuery({
@@ -76,17 +78,18 @@ export function ItemMarginsSection({
   });
 
   const items = useQuery({
-    queryKey: ["production-order-items", productionOrderId],
+    queryKey: ["production-order-items", productionOrderId, orderId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, negotiated_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date")
-        .eq("production_order_id", productionOrderId)
+        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, negotiated_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date, production_order_id, order_id")
+        .or(`production_order_id.eq.${productionOrderId},and(order_id.eq.${orderId},production_order_id.is.null)`)
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Item[];
     },
   });
+
 
   const min = Number(settings.data?.min_margin_pct ?? 45);
   const list = items.data ?? [];
@@ -148,9 +151,10 @@ export function ItemMarginsSection({
               min={min}
               suppliers={suppliers.data ?? []}
               onSaved={() => {
-                qc.invalidateQueries({ queryKey: ["production-order-items", productionOrderId] });
+                qc.invalidateQueries({ queryKey: ["production-order-items", productionOrderId, orderId] });
                 qc.invalidateQueries({ queryKey: ["production-audit", productionOrderId] });
               }}
+
             />
           ))
         )}
