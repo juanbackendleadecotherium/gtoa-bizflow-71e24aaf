@@ -35,6 +35,7 @@ import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/fe
 import { DeliveryDeferralCard } from "@/features/orders/delivery-deferral-card";
 import { SaleFlowCard } from "@/features/orders/sale-flow-card";
 import { isProductionLocked, useSellerRestricted } from "@/features/production/seller-restrictions";
+import { useRealtimeSync } from "@/lib/use-realtime-sync";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -46,6 +47,13 @@ function OrderDetail() {
   const qc = useQueryClient();
   const { selectedBrandId } = useBrand();
   const { isSellerRestricted } = useSellerRestricted();
+
+  // Realtime: reflect approval, payments, invoices and seller tasks on this order without reloading
+  useRealtimeSync("orders", { column: "id", value: id }, [["order", id], ["order-history", id], ["order-audit", id]]);
+  useRealtimeSync("order_approval_log", { column: "order_id", value: id }, [["order", id], ["order-audit", id]]);
+  useRealtimeSync("order_payments", { column: "order_id", value: id }, [["order-payments-sum", id], ["order", id]]);
+  useRealtimeSync("invoices", { column: "order_id", value: id }, [["order", id]]);
+  useRealtimeSync("seller_tasks", { column: "order_id", value: id }, [["seller-tasks", "by-order", id], ["my-tasks"], ["my-tasks-count"]]);
 
   const orderQuery = useQuery({
     queryKey: ["order", id],
