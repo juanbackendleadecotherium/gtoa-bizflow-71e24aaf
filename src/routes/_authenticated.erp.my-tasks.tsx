@@ -386,7 +386,7 @@ function MyTasks() {
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold inline-flex items-center gap-2 flex-wrap">
-                          <Icon className={`h-4 w-4 ${iconCls}`} /> {t.title}
+                          <Icon className={`h-4 w-4 ${iconCls}`} /> {displayTitle}
                           {deadline && (
                             <span
                               className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide ${
@@ -401,14 +401,14 @@ function MyTasks() {
                             </span>
                           )}
                         </p>
-                        {t.reason ? (
-                          <div className={`mt-2 rounded-md p-2.5 border ${isInfo ? "bg-blue-500/10 border-blue-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
+                        {displayReason ? (
+                          <div className={`mt-2 rounded-md p-2.5 border ${isInfo ? "bg-blue-500/10 border-blue-500/30" : isFormsTask ? "bg-emerald-500/10 border-emerald-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
                             {!isInfo && (
-                              <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-300 mb-1">
-                                {isPlanimetry ? "Acción requerida" : "Qué debes corregir"}
+                              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${isFormsTask ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
+                                {isPlanimetry ? "Acción requerida" : isFormsTask ? "Pasos para completar" : "Qué debes corregir"}
                               </p>
                             )}
-                            <p className="text-sm text-foreground whitespace-pre-wrap">{t.reason}</p>
+                            <p className="text-sm text-foreground whitespace-pre-wrap">{displayReason}</p>
                           </div>
                         ) : (
                           <p className="text-xs text-muted-foreground mt-1 italic">Sin detalle.</p>
@@ -435,7 +435,7 @@ function MyTasks() {
                           >
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
                           </Link>
-                        ) : isPaidNotice ? (
+                        ) : (isPaidNotice || isProductionForwarded) ? (
                           <Link
                             to="/erp/production/tracking"
                             className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
@@ -451,7 +451,19 @@ function MyTasks() {
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
                           </Link>
                         ) : null}
-                        {isInfo && pending && (
+                        {isFormsTask && pending && (
+                          <Button
+                            size="sm"
+                            className="gap-1 h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => markFormsDone.mutate(t.id)}
+                            disabled={markFormsDone.isPending && markFormsDone.variables === t.id}
+                          >
+                            {markFormsDone.isPending && markFormsDone.variables === t.id
+                              ? <Loader2 className="h-3 w-3 animate-spin" />
+                              : <Check className="h-3 w-3" />} Marcar Forms enviado y saldo cobrado
+                          </Button>
+                        )}
+                        {isInfo && pending && !isFormsTask && (
                           <Button
                             size="sm"
                             variant="outline"
