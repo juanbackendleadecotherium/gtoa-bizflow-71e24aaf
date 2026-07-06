@@ -1,60 +1,95 @@
-## 1. Hitos de la orden (Seguimiento de producción)
+# Fase 1 — Auditoría del sistema de roles y permisos
 
-Panel derecho de cada OP en `/erp/production/tracking`.
+**Sin cambios aplicados.** Este es el reporte que pediste antes de aprobar Fase 2.
 
-- **Cuenta de cobro**: ya se guarda `invoice_date` al emitir la cuenta la primera vez. Añadir dos cosas:
-  - Backfill automático: cuando se crea/actualiza una `production_order`, si su orden ya tiene una versión de invoice emitida, tomar la fecha de esa primera emisión y ponerla en `production_orders.invoice_date`.
-  - Migración de datos para llenar `invoice_date` en las OPs actuales que ya tienen invoice emitida (incluida la de Montenegro).
-  - Mostrar el campo como solo lectura (formateado dd/mm/aaaa), no editable — se llena solo desde ventas.
+## (a) Estado actual del sistema de roles
 
-- **Planimetría**: se queda igual (ya toma la fecha en que se acepta / genera la planimetría).
+**Patrón correcto ya implementado.** El proyecto sigue exactamente el patrón recomendado: roles en tabla separada + función `security definer`. No hay roles embebidos en `profiles`.
 
-- **Prometida** → renombrar a **"Entrega prometida al cliente"** y usar como fuente `orders.estimated_delivery_date` (la fecha real prometida en la venta, ej. 5 de agosto). Solo lectura en este panel. Se propaga automáticamente al crear/actualizar la OP; la de Montenegro se rellena por migración.
+- Enum `public.app_role` con **6 valores**: `admin`, `operativo`, `finanzas`, `ventas`, `vendedor`, `logistica`.
+- Tabla `public.user_roles(user_id, role)` con políticas RLS: solo admins insertan/actualizan/borran; usuario ve las propias.
+- Función `public.has_role(_user_id uuid, _role app_role)` — `STABLE SECURITY DEFINER`, `search_path = public`. Correcta.
 
-- **Real** → renombrar a **"Entrega real (último producto)"**. Se seguirá llenando cuando se registre la entrega final del último producto de la cuenta de cobro (misma lógica actual sobre `client_actual_date`, solo cambia la etiqueta y el copy de "Sin entrega" para que sea claro que aplica al último producto).
+**Discrepancias de nombres vs tu spec de 5 roles:**
 
-## 2. Badge "Pendiente de planimetría" que no cambia a "En producción"
+| Tu spec | En BD | Nota |
+|---|---|---|
+| `vendedor` | `vendedor` | ✅ |
+| `ventas_gerente` | `ventas` | ⚠️ nombre distinto (hoy es "ventas") |
+| `finanzas_gerente` | `finanzas` | ⚠️ nombre distinto |
+| `operativo_bodega` | `operativo` | ⚠️ nombre distinto |
+| `administrador` | `admin` | ⚠️ nombre distinto |
+| — | `logistica` | 🆕 rol extra en BD no contemplado en tu spec |
 
-Causa: hoy no existe ninguna transición automática de `orders.status_id` a `en-produccion`. El estado solo cambia manualmente o cuando se termina todo (pasa a `pendiente-por-logistica`). Por eso una venta con productos ya en OP sigue mostrando "Pendiente de planimetría" hasta que alguien la cambie a mano.
+Datos reales hoy en `user_roles`: solo existen usuarios con rol `vendedor` y `admin`. Los demás roles están definidos pero sin usuarios asignados.
 
-Arreglo: trigger `on_production_order_accepted` que, cuando **todos** los `order_items` de una orden queden vinculados a una `production_order` (o sean `is_standard_product = true`), actualice `orders.status_id` al estado `en-produccion` de esa marca, dejando historial en `order_status_history` con nota "Todos los productos enviados a producción". El productos estándar ya no rompe el conteo (excepción explícita en el trigger). Backfill para la orden de Montenegro y cualquier otra que hoy esté mal etiquetada.
+**Decisión pendiente**: ¿mantenemos los nombres cortos actuales (`ventas`, `finanzas`, `operativo`, `admin`) y solo mapeamos en la UI, o renombramos el enum a los de tu spec? Renombrar enum implica migración con `ALTER TYPE ... RENAME VALUE`. Recomiendo **mantener los nombres cortos** y usar labels en UI — el enum ya está en producción. Y decidir qué hacer con `logistica` (dejarlo, o fusionarlo con `operativo`).
 
-## 3. Tarea "Coordinar entrega parcial"
+## (b) Cómo se arma el menú hoy
 
-- **Nuevo título**: "Coordinar entrega parcial · llenar Forms de logística y cobrar saldo si aplica".
-- **Reason** actualizado con la instrucción explícita ("Llena el Forms de logística y registra el cobro del saldo antes de marcar como completada").
-- **Botón "Visto" reemplazado por check "Marcar Forms enviado y saldo cobrado"**. La tarea NO se puede resolver hasta que el vendedor marque ese check. Quitar el flujo actual de "Visto" para este tipo.
-- Al marcar el check:
-  - `seller_tasks` pasa a `resuelta` con timestamp y actor.
-  - Se registra un flag `forms_completed_at` en la tarea.
-  - Se crea una tarea nueva en `seller_tasks` dirigida al owner de producción de la marca (usando `ownerForBrandSlug`), tipo `partial_shipment_forms_done`, con título "Forms de entrega parcial listo — verifica logística" y link al pedido. Aparecerá en Mis tareas del equipo de producción con severidad info.
-- Si el vendedor no marca el check, la tarea sigue pendiente indefinidamente (no se auto-archiva).
-- Enlace CTA al Forms externo (usar la URL guardada en la memoria de "Formulario externo"; si no existe, dejar un placeholder configurable en `brand_production_settings`).
+**Hardcoded en el componente**, no en tabla de configuración. En `src/routes/_authenticated.erp.tsx`:
 
-## 4. Tarea "Cuenta de cobro lista — pendiente por logística y cobro del saldo"
+- Array `NAV: NavItem[]` estático con flags booleanos por item: `adminOnly`, `logisticsOnly`, `financeOnly`.
+- Filtro en render: `NAV.filter((i) => (!i.adminOnly || isAdmin) && (!i.logisticsOnly || isLogistics) && (!i.financeOnly || isFinance))`.
+- `isAdmin` viene de `useBrand()`; `isLogistics = isAdmin || roles.includes("logistica")`; `isFinance = isAdmin || roles.includes("finanzas")`.
+- No hay concepto de "vendedor puro" ni "ventas gerente" en el menú — hoy ambos ven exactamente los mismos items no-admin.
 
-Mismo patrón que #3:
+**Consecuencia**: el rol `vendedor` hoy ve ítems que tu spec le prohíbe (p. ej. Producción, Bodega, Finanzas). Y no hay diferenciación `ventas` vs `vendedor` en el menú.
 
-- **Título**: "Cuenta de cobro lista · llenar Forms de logística y cobrar saldo".
-- **Reason** con instrucción explícita del Forms + cobro del saldo.
-- **Check obligatorio**: "Marcar Forms enviado y saldo cobrado". Reemplaza el "Visto" actual para el tipo `invoice_ready_for_collection`.
-- Al marcar el check:
-  - La tarea pasa a `resuelta`.
-  - Se dispara `seller_tasks` de tipo `invoice_collection_forms_done` al owner de producción de la marca ("Cuenta de cobro MD-XXXX: Forms listo, procede con logística").
-- Sin check, la tarea sigue pendiente y visible.
-- CTA al Forms externo, misma URL que el punto 3.
+## (c) Estado de RLS en finanzas / comisiones
 
-## Detalles técnicos
+**Parcialmente correcto**, pero con brechas frente a tu spec:
 
-- Migración con: nueva columna `seller_tasks.forms_completed_at timestamptz`, función `mark_task_forms_done(p_task_id uuid)` (SECURITY DEFINER) que valida propiedad, marca resuelta y crea la tarea de producción correspondiente.
-- Trigger `set_production_order_hitos()` en `INSERT`/`UPDATE` de `production_orders` para copiar `invoice_date` (desde `invoice_versions` v1) y `client_promised_date` (desde `orders.estimated_delivery_date`).
-- Trigger `sync_order_status_on_production()` sobre `order_items` (cuando `production_order_id` cambia a NOT NULL) que llama a `orders_all_items_in_production(order_id)` y si es true mueve `orders.status_id` a `en-produccion`.
-- UI:
-  - `src/routes/_authenticated.erp.production.tracking.tsx`: renombrar labels y hacer `Cuenta de cobro`, `Planimetría`, `Entrega prometida al cliente` de solo lectura; renombrar "Real" → "Entrega real (último producto)".
-  - `src/routes/_authenticated.erp.my-tasks.tsx`: para tipos `partial_shipment` e `invoice_ready_for_collection`, mostrar checkbox "Forms enviado y saldo cobrado" + botón "Marcar completada" que llama a `mark_task_forms_done`. Eliminar botón "Visto" para estos dos tipos.
-  - Añadir CTA "Abrir Forms" con la URL guardada.
-- Backfills SQL para Montenegro-001 y para cualquier OP existente con esos huecos.
+- `commission_requests` SELECT: `seller_id = auth.uid() OR admin OR finanzas`. ✅ vendedor ve solo lo suyo.
+- `commission_audit_log` SELECT: admin/finanzas/dueño de la commission_request. ✅
+- `commission_tiers` SELECT: `true` (cualquier autenticado lee). ⚠️ aceptable si son públicos internos.
+- `sales_goals` SELECT: admin, o `seller_id = auth.uid()`, o (goal de marca sin seller_id y usuario tiene acceso a la marca). ✅ compatible con "vendedor ve metas globales por marca".
+- `orders`, `invoices`, `order_payments`, `order_deletions` SELECT: todas usan `has_brand_access(auth.uid(), brand_id)`. ⚠️ **No filtran por vendedor**: un `vendedor` que tenga acceso a la marca X puede leer TODAS las órdenes/facturas/pagos/eliminaciones de la marca X, incluidas las de otros vendedores. Esto **viola** tu regla no-negociable de "resumen propio, eliminaciones propias, aprobaciones propias".
 
-## Riesgos / preguntas abiertas
+**Brecha crítica** que Fase 2 debe cerrar: dividir SELECT en dos políticas — `vendedor` ve solo filas con `seller_id = auth.uid()`; `ventas` (gerente), `finanzas` y `admin` ven todo dentro de las marcas a las que tienen acceso.
 
-- Necesito la URL exacta del Forms externo para el CTA. Si prefieres, la dejo configurable en `brand_production_settings.forms_url` y me indicas después la URL a cargar por marca.
+## (d) Restricción de creación de usuarios
+
+**Hoy: solo `admin` puede tocar el módulo Usuarios.** En `src/lib/admin-users.functions.ts` toda función privilegiada (`createUserAccount`, `listUsers`, `setUserRoles`, etc.) empieza con `has_role(auth.uid(), 'admin')` — si no es admin, throw.
+
+- **No existe hoy** ninguna restricción diferenciada para `ventas` o `finanzas` sobre qué rol pueden crear. Sencillamente no pueden entrar al módulo.
+- La ruta `/erp/settings/users` está marcada `adminOnly: true` en el sidebar, pero el guard real vive en el server function (correcto).
+- Guardas de "último admin" ya implementadas (`assertNotLastAdminRemoval`, no borrar/suspender último admin, no auto-quitarse admin). ✅
+
+**Respuesta a tu asunción**: hoy no hay contradicción — simplemente `finanzas` no tiene acceso alguno. Tu regla propuesta (finanzas crea todos excepto admin; ventas_gerente solo crea vendedor) es **nueva** y hay que implementarla en Fase 2. No hay conflicto con lógica existente.
+
+## (e) Rutas sin guard de rol
+
+**Todas las rutas ERP están bajo `/_authenticated/erp/*`**, protegidas por el layout `_authenticated/route.tsx` (auth check, no rol check). Cada ruta hija **no tiene `beforeLoad` que verifique rol**. Ejemplos accesibles por URL directa para cualquier usuario autenticado:
+
+- `/erp/finance`, `/erp/finance/supplier-payments`, `/erp/finance/commissions`, `/erp/finance/treasury`, `/erp/finance/goals`, `/erp/finance/sellers`, `/erp/finance/receivables`, `/erp/finance/deletions`, `/erp/finance/approvals`
+- `/erp/analytics`, `/erp/analytics/operations`
+- `/erp/logistics/pickups`
+- `/erp/settings/statuses`, `/erp/settings/suppliers`, `/erp/settings/warehouses`, `/erp/settings/brand-billing`, `/erp/settings/terms`, `/erp/settings/database`
+- `/erp/production/*`, `/erp/real-production/*`, `/erp/warehouse`
+
+**Defensa actual**: la mayoría de estas páginas llaman server functions que internamente verifican rol vía `has_role` (como `admin-users.functions.ts`). Pero **la página se renderiza igual** — mostrando UI vacía o errores en lugar de un redirect limpio. Y no todas las server functions de finanzas/logística verifican rol; hay que auditar caso por caso en Fase 2.
+
+**Ejemplo concreto**: un `vendedor` puede navegar directo a `/erp/finance/sellers` o `/erp/analytics` — el sidebar no lo muestra, pero la URL funciona.
+
+## Resumen ejecutivo
+
+| Ítem | Estado |
+|---|---|
+| Patrón `user_roles` + `has_role` | ✅ Correcto, reutilizable |
+| Nombres de roles vs spec | ⚠️ Diferentes; decidir mapear o renombrar |
+| Rol `logistica` extra | ⚠️ No contemplado en spec |
+| Menú por permisos | ❌ Hardcoded, no diferencia `ventas` vs `vendedor` |
+| RLS comisiones/goals | ✅ Correcto |
+| RLS orders/invoices/payments/deletions | ❌ **Brecha crítica**: vendedor ve datos de otros vendedores en la misma marca |
+| Módulo Usuarios | ✅ Solo admin. Falta la lógica ventas/finanzas de Fase 2 |
+| Guards de ruta por rol | ❌ No existen; defensa solo a nivel server function (parcial) |
+
+## Preguntas antes de Fase 2
+
+1. **Nombres de rol**: ¿mantengo los actuales (`admin`, `ventas`, `finanzas`, `operativo`, `vendedor`) y solo mapeo labels en UI? (Recomendado.)
+2. **`logistica`**: ¿lo mantengo como rol independiente, lo fusiono en `operativo`, o lo elimino?
+3. **Confirmación asunción finanzas_gerente**: ¿confirmas que `finanzas` puede crear todos excepto `admin`?
+4. **Tabla de permisos por módulo** vs seguir con flags: tu spec pide tabla `(role, module_key, visibility_level)`. ¿La quieres realmente como tabla en BD (más flexible, editable sin deploy) o basta con un mapa TS versionado en código (más simple, tipado)? Recomiendo mapa TS a menos que quieras editar permisos desde UI en runtime.
+
+Responde estas 4 y armo el plan de Fase 2 con migraciones, políticas RLS reforzadas, guards de ruta y refactor del sidebar.
