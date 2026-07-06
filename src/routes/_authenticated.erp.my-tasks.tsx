@@ -346,9 +346,11 @@ function MyTasks() {
                         ? "Gestionar cobro"
                         : isPlanimetry
                           ? "Subir planimetría"
-                          : isInfo
-                            ? "Ver venta"
-                            : "Ir a la venta para corregir";
+                          : isPaidNotice
+                            ? "Ver seguimiento de producción"
+                            : isInfo
+                              ? "Ver venta"
+                              : "Ir a la venta para corregir";
 
                 return (
                   <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
@@ -400,6 +402,13 @@ function MyTasks() {
                         ) : (isCommissionApproval || isCommissionReadyToPay) ? (
                           <Link
                             to="/erp/finance/commissions"
+                            className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
+                          >
+                            {ctaLabel} <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        ) : isPaidNotice ? (
+                          <Link
+                            to="/erp/production/tracking"
                             className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
                           >
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
