@@ -46,10 +46,11 @@ export const Route = createFileRoute("/_authenticated/erp/settings/users")({
 
 const ROLES = [
   { value: "admin", label: "Administrador" },
-  { value: "operativo", label: "Operativo / Bodega" },
-  { value: "finanzas", label: "Finanzas" },
-  { value: "ventas", label: "Ventas (gerente)" },
+  { value: "finanzas", label: "Gerente de Finanzas" },
+  { value: "ventas", label: "Gerente de Ventas" },
   { value: "vendedor", label: "Vendedor" },
+  { value: "operativo", label: "Operativo de Bodega" },
+  { value: "logistica", label: "Logística" },
 ] as const;
 type RoleValue = (typeof ROLES)[number]["value"];
 
