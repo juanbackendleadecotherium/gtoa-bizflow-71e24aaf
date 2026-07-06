@@ -829,6 +829,7 @@ function OrderItemReadCard({
   partialEnabled: boolean;
   partialDeliveredAt: string | null;
   productionFinishedAt: string | null;
+  isStandardProduct: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const isEmpty = !description.trim();
@@ -843,6 +844,11 @@ function OrderItemReadCard({
           Producto #{index + 1}
         </span>
         <div className="flex items-center gap-1.5 flex-wrap">
+          {isStandardProduct && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 font-semibold">
+              Estándar
+            </span>
+          )}
           {sentToProduction && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
               En producción
@@ -859,7 +865,11 @@ function OrderItemReadCard({
             </span>
           )}
           <PartialShipmentToggle itemId={itemId} orderId={orderId} enabled={partialEnabled} />
-          {hasPlani ? (
+          {isStandardProduct ? (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-semibold">
+              Sin planimetría requerida
+            </span>
+          ) : hasPlani ? (
             <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold">
               <CheckCircle2 className="h-3 w-3" /> Planimetría OK
             </span>
@@ -870,6 +880,7 @@ function OrderItemReadCard({
           )}
         </div>
       </div>
+
 
 
       <button
