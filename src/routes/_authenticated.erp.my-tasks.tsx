@@ -12,6 +12,7 @@ import { computeDeadlineState } from "@/features/seller-tasks/planimetry-deadlin
 import { SupplierFinalPaymentCard } from "@/features/seller-tasks/supplier-final-payment-card";
 import { ApprovalDecisionCard } from "@/features/seller-tasks/approval-decision-card";
 import { useBrand } from "@/features/brands/brand-context";
+import { useRealtimeSync } from "@/lib/use-realtime-sync";
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
@@ -56,6 +57,14 @@ function MyTasks() {
   useEffect(() => {
     setPage(1);
   }, [tab, pageSize]);
+
+  // Realtime: any change on seller_tasks for this user + orders (approval flips) refresh instantly
+  useRealtimeSync(
+    "seller_tasks",
+    userId ? { column: "seller_id", value: userId } : undefined,
+    [["my-tasks"], ["my-tasks-count"]],
+  );
+  useRealtimeSync("orders", undefined, [["my-tasks"], ["my-tasks-count"], ["orders"]]);
 
   // Tipos de alerta (seller_tasks.type) por rol:
   //  - Vendedor: upload_planimetry, fix_planimetry, approval_pending ("Aprobación gerencial pendiente"),
