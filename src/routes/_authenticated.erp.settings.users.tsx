@@ -156,7 +156,7 @@ function UsersAdminPage() {
     qc.invalidateQueries({ queryKey: ["admin", "user-audit"] });
   };
 
-  if (!isAdmin) {
+  if (!canManage) {
     return (
       <div className="p-6 flex items-center gap-2 text-muted-foreground">
         <ShieldAlert className="h-4 w-4" /> Acceso restringido.
