@@ -713,7 +713,7 @@ function OrderDetail() {
               approval_resolved_at: (o as any).approval_resolved_at ?? null,
               approval_note: (o as any).approval_note ?? null,
             }}
-            paidTotal={Math.max(Number(o.advance_amount) || 0, paymentsSumQuery.data ?? 0)}
+            paidTotal={(Number(o.advance_amount) || 0) + (paymentsSumQuery.data ?? 0)}
           />
 
           <ProductionSection
@@ -723,7 +723,7 @@ function OrderDetail() {
             separeCompletedAt={(o as any).separe_completed_at ?? null}
             approvalStatus={(o as any).approval_status ?? null}
             total={Number(o.total) || 0}
-            paidTotal={Math.max(Number(o.advance_amount) || 0, paymentsSumQuery.data ?? 0)}
+            paidTotal={(Number(o.advance_amount) || 0) + (paymentsSumQuery.data ?? 0)}
           />
 
 
