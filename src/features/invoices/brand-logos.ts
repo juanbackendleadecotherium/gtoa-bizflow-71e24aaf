@@ -1,6 +1,6 @@
 import casaDiseno from "@/assets/brands/casa-diseno.png";
 import espacio from "@/assets/brands/espacio-mobiliario.png";
-import montenegro from "@/assets/brands/montenegro.webp";
+import montenegro from "@/assets/brands/montenegro.png";
 import getova from "@/assets/brands/getova-logo.png";
 
 export const BRAND_LOGOS: Record<string, string> = {
