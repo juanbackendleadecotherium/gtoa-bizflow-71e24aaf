@@ -636,9 +636,10 @@ function EditProfileDialog({ user, onClose, onSuccess }: { user: UserRow; onClos
 // Roles dialog
 // =========================================================================
 
-function RolesDialog({ user, onClose, onSuccess }: { user: UserRow; onClose: () => void; onSuccess: () => void }) {
+function RolesDialog({ user, canAssignAdmin, onClose, onSuccess }: { user: UserRow; canAssignAdmin: boolean; onClose: () => void; onSuccess: () => void }) {
   const fn = useServerFn(setUserRoles);
   const [roles, setRoles] = useState<RoleValue[]>(user.roles);
+  const availableRoles = canAssignAdmin ? ROLES : ROLES.filter((r) => r.value !== "admin");
   const m = useMutation({
     mutationFn: () => fn({ data: { userId: user.user_id, roles } }),
     onSuccess: () => { toast.success("Roles actualizados"); onSuccess(); },
@@ -649,7 +650,7 @@ function RolesDialog({ user, onClose, onSuccess }: { user: UserRow; onClose: () 
       <DialogContent>
         <DialogHeader><DialogTitle>Roles de {user.display_name || user.email}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-2 gap-2">
-          {ROLES.map((r) => (
+          {availableRoles.map((r) => (
             <label key={r.value} className="flex items-center gap-2 border rounded-md px-3 py-2 cursor-pointer">
               <Checkbox
                 checked={roles.includes(r.value)}
