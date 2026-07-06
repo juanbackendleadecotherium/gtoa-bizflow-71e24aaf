@@ -1,58 +1,60 @@
-# Restricciones al vendedor una vez que la OP está en producción
+## 1. Hitos de la orden (Seguimiento de producción)
 
-## Regla de negocio
+Panel derecho de cada OP en `/erp/production/tracking`.
 
-Un ítem se considera "en producción" cuando su OP existe y su estado ∈ `["en_proceso","control_calidad","listo","entregado"]` (la constante `ACCEPTED_STATUSES` ya definida en `production/tracking.tsx`). A partir de ese momento el rol **vendedor puro** (`roles.includes("ventas")` y no admin ni operativo) pierde capacidad de editar/borrar planimetría y deja de ver datos internos de producción de ese ítem. Los demás roles no cambian. La restricción se evalúa por ítem, no por venta.
+- **Cuenta de cobro**: ya se guarda `invoice_date` al emitir la cuenta la primera vez. Añadir dos cosas:
+  - Backfill automático: cuando se crea/actualiza una `production_order`, si su orden ya tiene una versión de invoice emitida, tomar la fecha de esa primera emisión y ponerla en `production_orders.invoice_date`.
+  - Migración de datos para llenar `invoice_date` en las OPs actuales que ya tienen invoice emitida (incluida la de Montenegro).
+  - Mostrar el campo como solo lectura (formateado dd/mm/aaaa), no editable — se llena solo desde ventas.
 
-## Cambios
+- **Planimetría**: se queda igual (ya toma la fecha en que se acepta / genera la planimetría).
 
-### 1. Helper compartido
+- **Prometida** → renombrar a **"Entrega prometida al cliente"** y usar como fuente `orders.estimated_delivery_date` (la fecha real prometida en la venta, ej. 5 de agosto). Solo lectura en este panel. Se propaga automáticamente al crear/actualizar la OP; la de Montenegro se rellena por migración.
 
-Crear `src/features/production/seller-restrictions.ts`:
+- **Real** → renombrar a **"Entrega real (último producto)"**. Se seguirá llenando cuando se registre la entrega final del último producto de la cuenta de cobro (misma lógica actual sobre `client_actual_date`, solo cambia la etiqueta y el copy de "Sin entrega" para que sea claro que aplica al último producto).
 
-- `LOCKED_PRODUCTION_STATUSES = ["en_proceso","control_calidad","listo","entregado"] as const`
-- `isProductionLocked(status?: string | null)` → `boolean`
-- `useSellerRestricted()` → `{ isSellerRestricted: boolean }` que lee `useBrand()` y devuelve `true` sólo cuando el usuario tiene rol `ventas` y NO tiene `admin` ni `operativo`.
+## 2. Badge "Pendiente de planimetría" que no cambia a "En producción"
 
-Así centralizamos el criterio y evitamos repetir la lógica de roles.
+Causa: hoy no existe ninguna transición automática de `orders.status_id` a `en-produccion`. El estado solo cambia manualmente o cuando se termina todo (pasa a `pendiente-por-logistica`). Por eso una venta con productos ya en OP sigue mostrando "Pendiente de planimetría" hasta que alguien la cambie a mano.
 
-### 2. Detalle de venta — `src/routes/_authenticated.erp.orders.$id.tsx`
+Arreglo: trigger `on_production_order_accepted` que, cuando **todos** los `order_items` de una orden queden vinculados a una `production_order` (o sean `is_standard_product = true`), actualice `orders.status_id` al estado `en-produccion` de esa marca, dejando historial en `order_status_history` con nota "Todos los productos enviados a producción". El productos estándar ya no rompe el conteo (excepción explícita en el trigger). Backfill para la orden de Montenegro y cualquier otra que hoy esté mal etiquetada.
 
-- Añadir al `select` de `items:order_items(...)` la relación `production_order:production_orders!production_order_id(status)`.
-- Calcular `itemLocked = isSellerRestricted && isProductionLocked(it.production_order?.status)` por ítem.
-- Pasar `locked={itemLocked}` a `OrderItemReadCard` y bloquear el botón "Editar venta" a nivel de ítems bloqueados: si el vendedor entra en modo edición, los ítems con OP en producción muestran su planimetría en modo solo lectura (sin uploader, sin borrar). Los demás ítems se editan normal.
-- En `OrderItemReadCard` (mismo archivo), cuando `locked` es `true`, quitar cualquier acción de borrar planimetría — sólo se muestra la lista con enlaces de descarga.
+## 3. Tarea "Coordinar entrega parcial"
 
-### 3. Editor de ítems — `src/features/orders/order-items-editor.tsx`
+- **Nuevo título**: "Coordinar entrega parcial · llenar Forms de logística y cobrar saldo si aplica".
+- **Reason** actualizado con la instrucción explícita ("Llena el Forms de logística y registra el cobro del saldo antes de marcar como completada").
+- **Botón "Visto" reemplazado por check "Marcar Forms enviado y saldo cobrado"**. La tarea NO se puede resolver hasta que el vendedor marque ese check. Quitar el flujo actual de "Visto" para este tipo.
+- Al marcar el check:
+  - `seller_tasks` pasa a `resuelta` con timestamp y actor.
+  - Se registra un flag `forms_completed_at` en la tarea.
+  - Se crea una tarea nueva en `seller_tasks` dirigida al owner de producción de la marca (usando `ownerForBrandSlug`), tipo `partial_shipment_forms_done`, con título "Forms de entrega parcial listo — verifica logística" y link al pedido. Aparecerá en Mis tareas del equipo de producción con severidad info.
+- Si el vendedor no marca el check, la tarea sigue pendiente indefinidamente (no se auto-archiva).
+- Enlace CTA al Forms externo (usar la URL guardada en la memoria de "Formulario externo"; si no existe, dejar un placeholder configurable en `brand_production_settings`).
 
-- Aceptar por ítem un flag `planimetryReadOnly?: boolean` (derivado del padre).
-- Cuando es `true`: reemplazar `PlanimetryFilesUploader` por una lista pasiva de archivos existentes (sólo descarga, sin "eliminar", sin drop zone, sin selector). No afecta `is_standard_product` ni otras columnas.
+## 4. Tarea "Cuenta de cobro lista — pendiente por logística y cobro del saldo"
 
-### 4. Detalle de OP — `src/routes/_authenticated.erp.production.$id.tsx`
+Mismo patrón que #3:
 
-Ya usa `isSellerOnly`. Reforzar para el caso "OP aprobada":
+- **Título**: "Cuenta de cobro lista · llenar Forms de logística y cobrar saldo".
+- **Reason** con instrucción explícita del Forms + cobro del saldo.
+- **Check obligatorio**: "Marcar Forms enviado y saldo cobrado". Reemplaza el "Visto" actual para el tipo `invoice_ready_for_collection`.
+- Al marcar el check:
+  - La tarea pasa a `resuelta`.
+  - Se dispara `seller_tasks` de tipo `invoice_collection_forms_done` al owner de producción de la marca ("Cuenta de cobro MD-XXXX: Forms listo, procede con logística").
+- Sin check, la tarea sigue pendiente y visible.
+- CTA al Forms externo, misma URL que el punto 3.
 
-- Calcular `sellerLocked = isSellerOnly && isProductionLocked(p.status)`.
-- Sección **Detalles**: cuando `sellerLocked`, ocultar los campos **Encargado** y **Entrega estimada** (son datos operativos internos del proveedor/planta). Mantener visible **Estado** y **Notas internas** (esta última ya es editable por vendedor y sirve para comunicación con el cliente).
-- Sección **Planimetrías**: cuando `sellerLocked`, ocultar el botón "Regenerar" y renderizar `PlanimetryUploader` en modo solo lectura. Añadir prop `readOnly?: boolean` a `PlanimetryUploader` que desactiva subir/anotar/reemplazar/borrar y sólo muestra los archivos con opción de descarga.
-- `ItemMarginsSection` ya está condicionada a `!isSellerOnly` → sin cambios.
-- Bitácora: el bloque "Enviada por / Rechazada por" es útil para el vendedor; se mantiene.
+## Detalles técnicos
 
-### 5. Seguimiento de producción — `src/routes/_authenticated.erp.production.tracking.tsx`
+- Migración con: nueva columna `seller_tasks.forms_completed_at timestamptz`, función `mark_task_forms_done(p_task_id uuid)` (SECURITY DEFINER) que valida propiedad, marca resuelta y crea la tarea de producción correspondiente.
+- Trigger `set_production_order_hitos()` en `INSERT`/`UPDATE` de `production_orders` para copiar `invoice_date` (desde `invoice_versions` v1) y `client_promised_date` (desde `orders.estimated_delivery_date`).
+- Trigger `sync_order_status_on_production()` sobre `order_items` (cuando `production_order_id` cambia a NOT NULL) que llama a `orders_all_items_in_production(order_id)` y si es true mueve `orders.status_id` a `en-produccion`.
+- UI:
+  - `src/routes/_authenticated.erp.production.tracking.tsx`: renombrar labels y hacer `Cuenta de cobro`, `Planimetría`, `Entrega prometida al cliente` de solo lectura; renombrar "Real" → "Entrega real (último producto)".
+  - `src/routes/_authenticated.erp.my-tasks.tsx`: para tipos `partial_shipment` e `invoice_ready_for_collection`, mostrar checkbox "Forms enviado y saldo cobrado" + botón "Marcar completada" que llama a `mark_task_forms_done`. Eliminar botón "Visto" para estos dos tipos.
+  - Añadir CTA "Abrir Forms" con la URL guardada.
+- Backfills SQL para Montenegro-001 y para cualquier OP existente con esos huecos.
 
-Si el vendedor puro tiene acceso a esta ruta (hoy no está bloqueada), aplicar filtro visual sobre columnas sensibles cuando `isSellerRestricted`:
+## Riesgos / preguntas abiertas
 
-- Ocultar columnas y campos de: costo (`getEffectiveCost`, márgenes, `MoneyInput` de costo), cantidad de producción distinta a la vendida, proveedor asignado, pagos a proveedor, anticipos.
-- Mantener visibles: código de OP, cliente, producto, estado / etapa, fechas de entrega, novedad.
-- El `ExpandedPanel` para el vendedor sólo muestra estado de avance del ítem y planimetría en modo solo lectura.
-
-### 6. Uploader de planimetría — `src/features/production/planimetry-uploader.tsx`
-
-- Añadir prop opcional `readOnly?: boolean` (default `false`).
-- Cuando `true`: no renderizar dropzone, botones de reemplazar/anotar/borrar; sólo lista con enlaces de descarga y versión.
-
-## Notas
-
-- Sin cambios en base de datos, RLS ni funciones RPC. Todo el control es de presentación; el backend ya restringe escrituras por RLS al vendedor donde corresponde. Si algún día hace falta, se puede endurecer con una policy adicional, pero no es parte de este cambio.
-- La experiencia es "silenciosa": no se muestran mensajes de "no tienes permiso", simplemente desaparecen los controles y los campos internos.
-- Admin y operativo mantienen la vista actual sin cambios.
+- Necesito la URL exacta del Forms externo para el CTA. Si prefieres, la dejo configurable en `brand_production_settings.forms_url` y me indicas después la URL a cargar por marca.
