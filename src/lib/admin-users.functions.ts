@@ -127,6 +127,7 @@ export const createUserAccount = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => createInput.parse(d))
   .handler(async ({ data, context }) => {
     const actorRoles = await assertCanManageUsers(context);
+    assertRolesAllowedForActor(actorRoles, data.roles);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
