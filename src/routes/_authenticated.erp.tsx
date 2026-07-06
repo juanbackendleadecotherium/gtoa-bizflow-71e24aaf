@@ -26,6 +26,7 @@ import { countActivePickups } from "@/lib/pickup-orders.functions";
 import { usePickupCountRealtime } from "@/features/logistics/use-logistics-realtime";
 import { getPendingSupplierPaymentsCount } from "@/lib/supplier-advance-payments.functions";
 import { getPendingCommissionsCount } from "@/lib/commissions.functions";
+import { canAccess, type AppRole, type ModuleKey } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_authenticated/erp")({
   head: () => ({
@@ -51,30 +52,29 @@ type NavItem = {
   label: string;
   to: string;
   icon: typeof LayoutDashboard;
+  module: ModuleKey;
   exact?: boolean;
-  adminOnly?: boolean;
-  logisticsOnly?: boolean;
-  financeOnly?: boolean;
 };
 
 const NAV: NavItem[] = [
-  { label: "Dashboard", to: "/erp", icon: LayoutDashboard, exact: true },
-  { label: "Ventas", to: "/erp/orders", icon: ClipboardList },
-  { label: "Producción", to: "/erp/production", icon: Factory },
-  { label: "Bodega", to: "/erp/warehouse", icon: Boxes },
-  { label: "Logística", to: "/erp/logistics/pickups", icon: Truck, logisticsOnly: true },
-  { label: "Gráficas ERP", to: "/erp/analytics", icon: BarChart3, adminOnly: true },
-  { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo },
-  { label: "Finanzas", to: "/erp/finance", icon: Wallet, adminOnly: true },
-  { label: "Pagos a proveedores", to: "/erp/finance/supplier-payments", icon: DollarSign, financeOnly: true },
-  { label: "Estados", to: "/erp/settings/statuses", icon: Settings, adminOnly: true },
-  { label: "Proveedores", to: "/erp/settings/suppliers", icon: Users, adminOnly: true },
-  { label: "Bodegas y zonas", to: "/erp/settings/warehouses", icon: Building2, adminOnly: true },
-  { label: "Datos fiscales", to: "/erp/settings/brand-billing", icon: Receipt, adminOnly: true },
-  { label: "Términos de venta", to: "/erp/settings/terms", icon: FileText, adminOnly: true },
-  { label: "Usuarios", to: "/erp/settings/users", icon: UserCog, adminOnly: true },
-  { label: "Base de datos", to: "/erp/settings/database", icon: Database, adminOnly: true },
+  { label: "Dashboard", to: "/erp", icon: LayoutDashboard, module: "dashboard", exact: true },
+  { label: "Ventas", to: "/erp/orders", icon: ClipboardList, module: "orders" },
+  { label: "Producción", to: "/erp/production", icon: Factory, module: "production" },
+  { label: "Bodega", to: "/erp/warehouse", icon: Boxes, module: "warehouse" },
+  { label: "Logística", to: "/erp/logistics/pickups", icon: Truck, module: "logistics" },
+  { label: "Gráficas ERP", to: "/erp/analytics", icon: BarChart3, module: "analytics" },
+  { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo, module: "my_tasks" },
+  { label: "Finanzas", to: "/erp/finance", icon: Wallet, module: "finance" },
+  { label: "Pagos a proveedores", to: "/erp/finance/supplier-payments", icon: DollarSign, module: "supplier_payments" },
+  { label: "Estados", to: "/erp/settings/statuses", icon: Settings, module: "estados" },
+  { label: "Proveedores", to: "/erp/settings/suppliers", icon: Users, module: "suppliers" },
+  { label: "Bodegas y zonas", to: "/erp/settings/warehouses", icon: Building2, module: "warehouses" },
+  { label: "Datos fiscales", to: "/erp/settings/brand-billing", icon: Receipt, module: "brand_billing" },
+  { label: "Términos de venta", to: "/erp/settings/terms", icon: FileText, module: "terms" },
+  { label: "Usuarios", to: "/erp/settings/users", icon: UserCog, module: "users" },
+  { label: "Base de datos", to: "/erp/settings/database", icon: Database, module: "database" },
 ];
+
 
 function Shell() {
   const session = useSession();
