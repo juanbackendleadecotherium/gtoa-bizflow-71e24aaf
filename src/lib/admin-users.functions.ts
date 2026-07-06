@@ -126,7 +126,7 @@ export const createUserAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => createInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
@@ -177,7 +177,7 @@ export const createUserAccount = createServerFn({ method: "POST" })
 export const listUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: profiles, error: pErr } = await supabaseAdmin
@@ -248,7 +248,7 @@ export const listUsers = createServerFn({ method: "GET" })
 export const listBrandsForAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("brands")
@@ -272,7 +272,7 @@ export const updateUserProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => updateProfileInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
@@ -312,7 +312,7 @@ export const setUserRoles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => setRolesInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
@@ -352,7 +352,7 @@ export const setUserBrands = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => setBrandsInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
@@ -387,7 +387,7 @@ export const resetUserPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => resetPasswordInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
@@ -419,7 +419,7 @@ export const setUserSuspended = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => suspendInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     if (data.userId === context.userId && data.suspend) {
       throw new Error("No puedes suspender tu propia cuenta.");
     }
@@ -457,7 +457,7 @@ export const signOutUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => signOutInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
@@ -487,7 +487,7 @@ export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => deleteInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     if (data.userId === context.userId) {
       throw new Error("No puedes eliminar tu propia cuenta.");
     }
@@ -531,7 +531,7 @@ export const deleteUser = createServerFn({ method: "POST" })
 export const listUserAuditLog = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("user_admin_audit")
