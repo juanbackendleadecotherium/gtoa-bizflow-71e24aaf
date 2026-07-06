@@ -46,6 +46,7 @@ export type Database = {
           email: string | null
           id: string
           invoice_footer_note: string | null
+          invoice_prefix: string
           is_active: boolean
           legal_name: string | null
           logo_url: string | null
@@ -64,6 +65,7 @@ export type Database = {
           email?: string | null
           id?: string
           invoice_footer_note?: string | null
+          invoice_prefix: string
           is_active?: boolean
           legal_name?: string | null
           logo_url?: string | null
@@ -82,6 +84,7 @@ export type Database = {
           email?: string | null
           id?: string
           invoice_footer_note?: string | null
+          invoice_prefix?: string
           is_active?: boolean
           legal_name?: string | null
           logo_url?: string | null
@@ -764,6 +767,80 @@ export type Database = {
           order_id?: string
         }
         Relationships: []
+      }
+      order_brand_change_log: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_email: string | null
+          id: string
+          new_brand_id: string
+          new_invoice_number: string | null
+          new_order_number: string | null
+          old_brand_id: string
+          old_invoice_number: string | null
+          old_order_number: string | null
+          order_id: string
+          reason: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          id?: string
+          new_brand_id: string
+          new_invoice_number?: string | null
+          new_order_number?: string | null
+          old_brand_id: string
+          old_invoice_number?: string | null
+          old_order_number?: string | null
+          order_id: string
+          reason?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          id?: string
+          new_brand_id?: string
+          new_invoice_number?: string | null
+          new_order_number?: string | null
+          old_brand_id?: string
+          old_invoice_number?: string | null
+          old_order_number?: string | null
+          order_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_brand_change_log_new_brand_id_fkey"
+            columns: ["new_brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_brand_change_log_old_brand_id_fkey"
+            columns: ["old_brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_brand_change_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_brand_change_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_collection_followups: {
         Row: {
@@ -2084,6 +2161,41 @@ export type Database = {
         }
         Relationships: []
       }
+      released_invoice_numbers: {
+        Row: {
+          brand_id: string
+          id: string
+          invoice_number: string
+          released_at: string
+          released_by: string | null
+          released_from_order_id: string | null
+        }
+        Insert: {
+          brand_id: string
+          id?: string
+          invoice_number: string
+          released_at?: string
+          released_by?: string | null
+          released_from_order_id?: string | null
+        }
+        Update: {
+          brand_id?: string
+          id?: string
+          invoice_number?: string
+          released_at?: string
+          released_by?: string | null
+          released_from_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "released_invoice_numbers_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_goals: {
         Row: {
           amount: number
@@ -2565,6 +2677,7 @@ export type Database = {
         Args: { p_confirm: string }
         Returns: Json
       }
+      allocate_invoice_number: { Args: { p_brand_id: string }; Returns: string }
       approve_commission: { Args: { _id: string }; Returns: undefined }
       can_collect_final_balance: {
         Args: { p_order_id: string }
@@ -2585,6 +2698,10 @@ export type Database = {
       cancel_production_with_reason: {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
+      }
+      change_order_brand: {
+        Args: { p_new_brand_id: string; p_order_id: string; p_reason: string }
+        Returns: Json
       }
       check_separe_completion: {
         Args: { p_order_id: string }
