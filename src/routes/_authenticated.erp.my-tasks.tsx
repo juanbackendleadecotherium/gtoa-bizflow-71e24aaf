@@ -346,9 +346,11 @@ function MyTasks() {
                         ? "Gestionar cobro"
                         : isPlanimetry
                           ? "Subir planimetría"
-                          : isInfo
-                            ? "Ver venta"
-                            : "Ir a la venta para corregir";
+                          : isPaidNotice
+                            ? "Ver seguimiento de producción"
+                            : isInfo
+                              ? "Ver venta"
+                              : "Ir a la venta para corregir";
 
                 return (
                   <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
