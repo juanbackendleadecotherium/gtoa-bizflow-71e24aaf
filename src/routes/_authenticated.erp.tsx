@@ -89,6 +89,13 @@ function Shell() {
   const pendingTasksQuery = useMyPendingTasksCount(userId);
   const pendingTasks = pendingTasksQuery.data ?? 0;
 
+  // Redirige a /erp si el rol actual no tiene acceso al módulo de la URL.
+  // La barrera real está en RLS; esto sólo mejora UX ante URL directa.
+  const rolesReady = roles.length > 0;
+  const matched = NAV.find((n) => (n.exact ? currentPath === n.to : currentPath.startsWith(n.to)));
+  const notAllowed = rolesReady && matched && !canAccess(roles as AppRole[], matched.module);
+  useEffectRedirect(notAllowed, navigate);
+
   usePickupCountRealtime();
   const pickupCountFn = useServerFn(countActivePickups);
   const pickupCountQuery = useQuery({
