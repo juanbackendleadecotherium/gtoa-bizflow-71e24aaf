@@ -106,9 +106,12 @@ export const PERMISSIONS: Record<AppRole, Partial<Record<ModuleKey, Visibility>>
     dashboard: "own",
     orders: "own",
     my_tasks: "own",
-    sales_goals: "all", // sólo lectura — metas globales
+    finance: "own", // resumen, aprobaciones, eliminaciones — filtrado a lo propio
     commissions: "own",
-    estados: "own",
+    sales_goals: "all", // sólo lectura — metas globales
+    suppliers: "all",
+    brand_billing: "all",
+    terms: "all",
   },
   operativo: {
     dashboard: "brand",
