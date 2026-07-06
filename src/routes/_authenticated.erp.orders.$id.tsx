@@ -457,7 +457,10 @@ function OrderDetail() {
           />
           {(() => {
             const missing = items.filter(
-              (it: any) => !it.production_order_id && (!Array.isArray(it.planimetry_files) || it.planimetry_files.length === 0),
+              (it: any) =>
+                !it.production_order_id &&
+                !it.is_standard_product &&
+                (!Array.isArray(it.planimetry_files) || it.planimetry_files.length === 0),
             ).length;
             if (missing === 0 || editing) return null;
             return (
@@ -468,8 +471,8 @@ function OrderDetail() {
                     Faltan {missing} planimetría{missing === 1 ? "" : "s"} para enviar todo a producción
                   </p>
                   <p className="text-xs text-amber-800/90 dark:text-amber-200/80 mt-0.5">
-                    Edita la venta y sube la planimetría (imagen o PDF) de cada producto pendiente.
-                    Los productos que ya la tengan sí podrán enviarse a producción individualmente.
+                    Edita la venta y sube la planimetría (imagen o PDF) de cada producto de medida.
+                    Los productos marcados como <strong>estándar</strong> no requieren planimetría y no se incluyen en este conteo.
                   </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="shrink-0 border-amber-600/60">
