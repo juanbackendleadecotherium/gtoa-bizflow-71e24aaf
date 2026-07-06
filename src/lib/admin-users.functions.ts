@@ -358,6 +358,7 @@ export const setUserBrands = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     await supabaseAdmin.from("user_brands").delete().eq("user_id", data.userId);
