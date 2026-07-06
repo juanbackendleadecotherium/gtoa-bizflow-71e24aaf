@@ -36,7 +36,7 @@ export function ChangeBrandDialog({
       const { data, error } = await supabase.rpc("change_order_brand", {
         p_order_id: orderId,
         p_new_brand_id: newBrandId,
-        p_reason: reason.trim() || null,
+        p_reason: reason.trim() || "",
       });
       if (error) throw error;
       return data as { invoice_number: string; order_number: string; released_invoice_number: string | null };
