@@ -500,6 +500,7 @@ export const deleteUser = createServerFn({ method: "POST" })
       throw new Error("No puedes eliminar tu propia cuenta.");
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     const { data: profile } = await supabaseAdmin
