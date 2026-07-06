@@ -360,6 +360,7 @@ function UsersAdminPage() {
       {createOpen && (
         <CreateUserDialog
           brands={brandsQuery.data ?? []}
+          canAssignAdmin={isAdmin}
           onClose={() => setCreateOpen(false)}
           onSuccess={() => { setCreateOpen(false); refresh(); }}
         />
@@ -374,6 +375,7 @@ function UsersAdminPage() {
       {rolesUser && (
         <RolesDialog
           user={rolesUser}
+          canAssignAdmin={isAdmin}
           onClose={() => setRolesUser(null)}
           onSuccess={() => { setRolesUser(null); refresh(); }}
         />
