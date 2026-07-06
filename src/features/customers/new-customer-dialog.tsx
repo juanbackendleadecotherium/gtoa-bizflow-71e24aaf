@@ -151,19 +151,36 @@ function buildCustomerNotes(c: CustomerDraft, urgency: string) {
   return parts.join("\n");
 }
 
-function brandInvoicePrefix(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "INV";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return words
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 4)
-    .toUpperCase();
-}
+// Preview del siguiente invoice_number para la UI (no muta la bolsa).
+// La asignación real se hace atómicamente en el backend (trigger
+// orders_assign_invoice_number → allocate_invoice_number) al hacer el INSERT.
+async function fetchNextInvoiceNumber(brandId: string): Promise<string> {
+  const { data: brand } = await supabase
+    .from("brands")
+    .select("invoice_prefix")
+    .eq("id", brandId)
+    .maybeSingle();
+  const prefix = (brand as { invoice_prefix?: string } | null)?.invoice_prefix ?? "INV";
 
-async function fetchNextInvoiceNumber(brandId: string, prefix: string): Promise<string> {
-  const { data } = await supabase
+  // Bolsa de liberados: elegir el menor
+  const { data: pool } = await supabase
+    .from("released_invoice_numbers")
+    .select("invoice_number")
+    .eq("brand_id", brandId)
+    .ilike("invoice_number", `${prefix}-%`);
+  const poolNums = (pool ?? [])
+    .map((r) => {
+      const m = String(r.invoice_number ?? "").match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
+      return m ? parseInt(m[1], 10) : NaN;
+    })
+    .filter((n) => !Number.isNaN(n));
+  if (poolNums.length > 0) {
+    const min = Math.min(...poolNums);
+    return `${prefix}-${String(min).padStart(4, "0")}`;
+  }
+
+  // Siguiente consecutivo
+  const { data: ord } = await supabase
     .from("orders")
     .select("invoice_number")
     .eq("brand_id", brandId)
@@ -171,7 +188,7 @@ async function fetchNextInvoiceNumber(brandId: string, prefix: string): Promise<
     .order("invoice_number", { ascending: false })
     .limit(50);
   let max = 0;
-  for (const row of data ?? []) {
+  for (const row of ord ?? []) {
     const m = String(row.invoice_number ?? "").match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
     if (m) {
       const n = parseInt(m[1], 10);
@@ -226,8 +243,7 @@ export function NewCustomerDialog({
         company: d.customer.company || selectedBrand.name,
       },
     }));
-    const prefix = brandInvoicePrefix(selectedBrand.name);
-    fetchNextInvoiceNumber(selectedBrandId, prefix)
+    fetchNextInvoiceNumber(selectedBrandId)
       .then((next) => {
         setDraft((d) =>
           d.order.invoice_number
