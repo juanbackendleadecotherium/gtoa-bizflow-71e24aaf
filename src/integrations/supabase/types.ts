@@ -2241,6 +2241,7 @@ export type Database = {
         Row: {
           brand_id: string
           created_at: string
+          forms_completed_at: string | null
           id: string
           order_id: string | null
           order_item_id: string | null
@@ -2258,6 +2259,7 @@ export type Database = {
         Insert: {
           brand_id: string
           created_at?: string
+          forms_completed_at?: string | null
           id?: string
           order_id?: string | null
           order_item_id?: string | null
@@ -2275,6 +2277,7 @@ export type Database = {
         Update: {
           brand_id?: string
           created_at?: string
+          forms_completed_at?: string | null
           id?: string
           order_id?: string | null
           order_item_id?: string | null
@@ -2795,6 +2798,7 @@ export type Database = {
         Args: { _item_id: string }
         Returns: undefined
       }
+      mark_task_forms_done: { Args: { p_task_id: string }; Returns: Json }
       maybe_create_commission_request: {
         Args: { _order_id: string }
         Returns: undefined
