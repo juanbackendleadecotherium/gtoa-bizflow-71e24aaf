@@ -88,7 +88,9 @@ function fmtDate(s: string | null) {
 
 function UsersAdminPage() {
   const navigate = useNavigate();
-  const { isAdmin } = useBrand();
+  const { isAdmin, roles } = useBrand();
+  const isFinanzas = roles.includes("finanzas");
+  const canManage = isAdmin || isFinanzas;
   const qc = useQueryClient();
 
   const listFn = useServerFn(listUsers);
@@ -96,26 +98,26 @@ function UsersAdminPage() {
   const listAuditFn = useServerFn(listUserAuditLog);
 
   useEffect(() => {
-    if (!isAdmin) {
-      toast.error("Acceso restringido", { description: "Solo administradores." });
+    if (!canManage) {
+      toast.error("Acceso restringido", { description: "Solo administradores o gerentes de finanzas." });
       navigate({ to: "/erp" });
     }
-  }, [isAdmin, navigate]);
+  }, [canManage, navigate]);
 
   const usersQuery = useQuery({
     queryKey: ["admin", "users"],
     queryFn: () => listFn(),
-    enabled: isAdmin,
+    enabled: canManage,
   });
   const brandsQuery = useQuery({
     queryKey: ["admin", "brands"],
     queryFn: () => listBrandsFn(),
-    enabled: isAdmin,
+    enabled: canManage,
   });
   const auditQuery = useQuery({
     queryKey: ["admin", "user-audit"],
     queryFn: () => listAuditFn(),
-    enabled: isAdmin,
+    enabled: canManage,
   });
 
   const brandNameById = useMemo(() => {
