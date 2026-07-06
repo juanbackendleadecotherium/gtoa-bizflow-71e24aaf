@@ -430,6 +430,7 @@ export const setUserSuspended = createServerFn({ method: "POST" })
       throw new Error("No puedes suspender tu propia cuenta.");
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     if (data.suspend && (await userIsAdmin(supabaseAdmin, data.userId))) {
