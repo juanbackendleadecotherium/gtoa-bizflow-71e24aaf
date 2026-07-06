@@ -2,17 +2,40 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const APP_ROLES = ["admin", "operativo", "finanzas", "ventas", "vendedor"] as const;
+const APP_ROLES = ["admin", "operativo", "finanzas", "ventas", "vendedor", "logistica"] as const;
 type AppRole = (typeof APP_ROLES)[number];
 
-async function assertAdmin(ctx: { supabase: any; userId: string }) {
-  const { data, error } = await ctx.supabase.rpc("has_role", {
-    _user_id: ctx.userId,
-    _role: "admin",
-  });
+async function getActorRoles(ctx: { supabase: any; userId: string }): Promise<AppRole[]> {
+  const { data, error } = await ctx.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", ctx.userId);
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("Solo administradores pueden gestionar usuarios.");
+  return (data ?? []).map((r: { role: AppRole }) => r.role);
 }
+
+async function assertCanManageUsers(ctx: { supabase: any; userId: string }): Promise<AppRole[]> {
+  const roles = await getActorRoles(ctx);
+  if (!roles.includes("admin") && !roles.includes("finanzas")) {
+    throw new Error("Solo administradores o gerentes de finanzas pueden gestionar usuarios.");
+  }
+  return roles;
+}
+
+/** Impide que un usuario que no sea admin asigne el rol admin. */
+function assertRolesAllowedForActor(actorRoles: AppRole[], targetRoles: AppRole[]) {
+  if (actorRoles.includes("admin")) return;
+  if (targetRoles.includes("admin")) {
+    throw new Error("Solo un administrador puede asignar el rol de administrador.");
+  }
+}
+
+// Retro-compat: algunas rutas todavía llaman assertAdmin.
+async function assertAdmin(ctx: { supabase: any; userId: string }) {
+  const roles = await getActorRoles(ctx);
+  if (!roles.includes("admin")) throw new Error("Solo administradores pueden hacer esta acción.");
+}
+
 
 async function getActorEmail(supabaseAdmin: any, userId: string): Promise<string | null> {
   const { data } = await supabaseAdmin
@@ -51,6 +74,14 @@ async function countAdmins(supabaseAdmin: any): Promise<number> {
     .eq("role", "admin");
   if (error) throw new Error(error.message);
   return count ?? 0;
+}
+
+/** Impide que un no-admin toque a un usuario que es admin. */
+async function assertCanTargetUser(supabaseAdmin: any, actorRoles: AppRole[], targetUserId: string) {
+  if (actorRoles.includes("admin")) return;
+  if (await userIsAdmin(supabaseAdmin, targetUserId)) {
+    throw new Error("No puedes modificar a un administrador. Pide a un administrador que lo haga.");
+  }
 }
 
 async function userIsAdmin(supabaseAdmin: any, userId: string): Promise<boolean> {
@@ -95,7 +126,8 @@ export const createUserAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => createInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
+    assertRolesAllowedForActor(actorRoles, data.roles);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
@@ -146,7 +178,7 @@ export const createUserAccount = createServerFn({ method: "POST" })
 export const listUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: profiles, error: pErr } = await supabaseAdmin
@@ -217,7 +249,7 @@ export const listUsers = createServerFn({ method: "GET" })
 export const listBrandsForAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("brands")
@@ -241,8 +273,9 @@ export const updateUserProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => updateProfileInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
@@ -281,8 +314,10 @@ export const setUserRoles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => setRolesInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
+    assertRolesAllowedForActor(actorRoles, data.roles);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     if (data.userId === context.userId && !data.roles.includes("admin")) {
@@ -321,8 +356,9 @@ export const setUserBrands = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => setBrandsInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     await supabaseAdmin.from("user_brands").delete().eq("user_id", data.userId);
@@ -356,8 +392,9 @@ export const resetUserPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => resetPasswordInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
@@ -388,11 +425,12 @@ export const setUserSuspended = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => suspendInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     if (data.userId === context.userId && data.suspend) {
       throw new Error("No puedes suspender tu propia cuenta.");
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     if (data.suspend && (await userIsAdmin(supabaseAdmin, data.userId))) {
@@ -426,8 +464,9 @@ export const signOutUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => signOutInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     const { error } = await supabaseAdmin.auth.admin.signOut(data.userId);
@@ -456,11 +495,12 @@ export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => deleteInput.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     if (data.userId === context.userId) {
       throw new Error("No puedes eliminar tu propia cuenta.");
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     const { data: profile } = await supabaseAdmin
@@ -500,7 +540,7 @@ export const deleteUser = createServerFn({ method: "POST" })
 export const listUserAuditLog = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("user_admin_audit")

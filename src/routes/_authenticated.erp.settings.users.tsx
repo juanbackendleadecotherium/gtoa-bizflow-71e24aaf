@@ -46,10 +46,11 @@ export const Route = createFileRoute("/_authenticated/erp/settings/users")({
 
 const ROLES = [
   { value: "admin", label: "Administrador" },
-  { value: "operativo", label: "Operativo / Bodega" },
-  { value: "finanzas", label: "Finanzas" },
-  { value: "ventas", label: "Ventas (gerente)" },
+  { value: "finanzas", label: "Gerente de Finanzas" },
+  { value: "ventas", label: "Gerente de Ventas" },
   { value: "vendedor", label: "Vendedor" },
+  { value: "operativo", label: "Operativo de Bodega" },
+  { value: "logistica", label: "Logística" },
 ] as const;
 type RoleValue = (typeof ROLES)[number]["value"];
 
@@ -87,7 +88,9 @@ function fmtDate(s: string | null) {
 
 function UsersAdminPage() {
   const navigate = useNavigate();
-  const { isAdmin } = useBrand();
+  const { isAdmin, roles } = useBrand();
+  const isFinanzas = roles.includes("finanzas");
+  const canManage = isAdmin || isFinanzas;
   const qc = useQueryClient();
 
   const listFn = useServerFn(listUsers);
@@ -95,26 +98,26 @@ function UsersAdminPage() {
   const listAuditFn = useServerFn(listUserAuditLog);
 
   useEffect(() => {
-    if (!isAdmin) {
-      toast.error("Acceso restringido", { description: "Solo administradores." });
+    if (!canManage) {
+      toast.error("Acceso restringido", { description: "Solo administradores o gerentes de finanzas." });
       navigate({ to: "/erp" });
     }
-  }, [isAdmin, navigate]);
+  }, [canManage, navigate]);
 
   const usersQuery = useQuery({
     queryKey: ["admin", "users"],
     queryFn: () => listFn(),
-    enabled: isAdmin,
+    enabled: canManage,
   });
   const brandsQuery = useQuery({
     queryKey: ["admin", "brands"],
     queryFn: () => listBrandsFn(),
-    enabled: isAdmin,
+    enabled: canManage,
   });
   const auditQuery = useQuery({
     queryKey: ["admin", "user-audit"],
     queryFn: () => listAuditFn(),
-    enabled: isAdmin,
+    enabled: canManage,
   });
 
   const brandNameById = useMemo(() => {
@@ -153,7 +156,7 @@ function UsersAdminPage() {
     qc.invalidateQueries({ queryKey: ["admin", "user-audit"] });
   };
 
-  if (!isAdmin) {
+  if (!canManage) {
     return (
       <div className="p-6 flex items-center gap-2 text-muted-foreground">
         <ShieldAlert className="h-4 w-4" /> Acceso restringido.
@@ -357,6 +360,7 @@ function UsersAdminPage() {
       {createOpen && (
         <CreateUserDialog
           brands={brandsQuery.data ?? []}
+          canAssignAdmin={isAdmin}
           onClose={() => setCreateOpen(false)}
           onSuccess={() => { setCreateOpen(false); refresh(); }}
         />
@@ -371,6 +375,7 @@ function UsersAdminPage() {
       {rolesUser && (
         <RolesDialog
           user={rolesUser}
+          canAssignAdmin={isAdmin}
           onClose={() => setRolesUser(null)}
           onSuccess={() => { setRolesUser(null); refresh(); }}
         />
@@ -483,8 +488,9 @@ function UserActions({
 // =========================================================================
 
 function CreateUserDialog({
-  brands, onClose, onSuccess,
-}: { brands: { id: string; name: string }[]; onClose: () => void; onSuccess: () => void }) {
+  brands, canAssignAdmin, onClose, onSuccess,
+}: { brands: { id: string; name: string }[]; canAssignAdmin: boolean; onClose: () => void; onSuccess: () => void }) {
+  const availableRoles = canAssignAdmin ? ROLES : ROLES.filter((r) => r.value !== "admin");
   const createFn = useServerFn(createUserAccount);
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -545,7 +551,7 @@ function CreateUserDialog({
           <div className="space-y-2 md:col-span-2">
             <Label>Roles</Label>
             <div className="grid grid-cols-2 gap-2">
-              {ROLES.map((r) => (
+              {availableRoles.map((r) => (
                 <label key={r.value} className="flex items-center gap-2 border rounded-md px-3 py-2 cursor-pointer">
                   <Checkbox
                     checked={roles.includes(r.value)}
@@ -630,9 +636,10 @@ function EditProfileDialog({ user, onClose, onSuccess }: { user: UserRow; onClos
 // Roles dialog
 // =========================================================================
 
-function RolesDialog({ user, onClose, onSuccess }: { user: UserRow; onClose: () => void; onSuccess: () => void }) {
+function RolesDialog({ user, canAssignAdmin, onClose, onSuccess }: { user: UserRow; canAssignAdmin: boolean; onClose: () => void; onSuccess: () => void }) {
   const fn = useServerFn(setUserRoles);
   const [roles, setRoles] = useState<RoleValue[]>(user.roles);
+  const availableRoles = canAssignAdmin ? ROLES : ROLES.filter((r) => r.value !== "admin");
   const m = useMutation({
     mutationFn: () => fn({ data: { userId: user.user_id, roles } }),
     onSuccess: () => { toast.success("Roles actualizados"); onSuccess(); },
@@ -643,7 +650,7 @@ function RolesDialog({ user, onClose, onSuccess }: { user: UserRow; onClose: () 
       <DialogContent>
         <DialogHeader><DialogTitle>Roles de {user.display_name || user.email}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-2 gap-2">
-          {ROLES.map((r) => (
+          {availableRoles.map((r) => (
             <label key={r.value} className="flex items-center gap-2 border rounded-md px-3 py-2 cursor-pointer">
               <Checkbox
                 checked={roles.includes(r.value)}

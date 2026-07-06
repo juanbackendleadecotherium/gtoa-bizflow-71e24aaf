@@ -2781,6 +2781,7 @@ export type Database = {
         Args: { _order_id: string }
         Returns: boolean
       }
+      is_pure_vendedor: { Args: { _user_id: string }; Returns: boolean }
       mark_invoice_electronic: {
         Args: {
           p_external_number: string
@@ -2875,6 +2876,7 @@ export type Database = {
         Args: { p_note?: string; p_order_id: string; p_status_id: string }
         Returns: undefined
       }
+      vendedor_can_see_order: { Args: { _order_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:
