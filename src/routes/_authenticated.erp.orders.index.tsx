@@ -21,7 +21,11 @@ export const Route = createFileRoute("/_authenticated/erp/orders/")({
 });
 
 function OrdersPage() {
-  const { selectedBrandId, selectedBrand } = useBrand();
+  const { selectedBrandId, selectedBrand, brands } = useBrand();
+  // Filtro por marca del listado: por defecto usa la marca activa del selector global,
+  // pero el vendedor puede alternar entre las marcas a las que tiene acceso o ver "Todas".
+  const [brandFilter, setBrandFilter] = useState<string>("__default__");
+  const effectiveBrandFilter = brandFilter === "__default__" ? (selectedBrandId ?? "all") : brandFilter;
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [newOpen, setNewOpen] = useState(false);
@@ -39,14 +43,14 @@ function OrdersPage() {
   });
 
   const ordersQuery = useQuery({
-    queryKey: ["orders", selectedBrandId, statusFilter, search],
+    queryKey: ["orders", effectiveBrandFilter, statusFilter, search],
     enabled: !!selectedBrandId,
     queryFn: async () => {
       let q = supabase
         .from("orders")
-        .select("id, order_number, invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, customer_name, customer_phone, customer_doc_number, sale_type, separe_completed_at, approval_status, status:order_statuses(name,color), invoices(id), items:order_items(description, quantity, sort_order)")
-        .eq("brand_id", selectedBrandId!)
+        .select("id, order_number, invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, brand_id, customer_name, customer_phone, customer_doc_number, sale_type, separe_completed_at, approval_status, brand:brands(name, invoice_prefix), status:order_statuses(name,color), invoices(id), items:order_items(description, quantity, sort_order)")
         .order("created_at", { ascending: false });
+      if (effectiveBrandFilter !== "all") q = q.eq("brand_id", effectiveBrandFilter);
       if (statusFilter !== "all") q = q.eq("status_id", statusFilter);
       const term = search.trim();
       if (term) {
@@ -90,6 +94,37 @@ function OrdersPage() {
           <Plus className="h-4 w-4" /> Nueva venta
         </Button>
       </div>
+
+      {/* Tabs por marca */}
+      {brands.length > 1 && (
+        <div className="mb-4 flex gap-1.5 flex-wrap border-b border-border pb-2">
+          <button
+            type="button"
+            onClick={() => setBrandFilter("all")}
+            className={`px-3 py-1.5 text-xs rounded-md transition ${
+              effectiveBrandFilter === "all"
+                ? "bg-foreground text-background font-medium"
+                : "text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            Todas
+          </button>
+          {brands.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => setBrandFilter(b.id)}
+              className={`px-3 py-1.5 text-xs rounded-md transition ${
+                effectiveBrandFilter === b.id
+                  ? "bg-foreground text-background font-medium"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {b.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mb-4 flex gap-2 flex-wrap">
         <Input
