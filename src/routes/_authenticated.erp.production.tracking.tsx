@@ -816,20 +816,20 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
             <CalendarDays className="h-3.5 w-3.5" /> Hitos de la orden
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-            <DateField label="Cuenta de cobro" value={r.invoice_date} onSave={(v) => onPatch({ invoice_date: v })} />
-            <DateField label="Planimetría" value={r.planimetry_sent_date} onSave={(v) => onPatch({ planimetry_sent_date: v })} />
+            <DateField label="Cuenta de cobro" value={r.invoice_date} readOnly hint="Se llena al emitir la cuenta desde ventas." />
+            <DateField label="Planimetría" value={r.planimetry_sent_date} readOnly hint="Se llena al aceptar la planimetría." />
           </div>
         </div>
 
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Entrega al cliente</div>
           <div className="space-y-2">
-            <DateField label="Prometida" value={r.client_promised_date} onSave={(v) => onPatch({ client_promised_date: v })} />
-            <DateField label="Real" value={r.client_actual_date} onSave={(v) => onPatch({ client_actual_date: v })} />
+            <DateField label="Entrega prometida al cliente" value={r.client_promised_date} readOnly hint="Fecha prometida al cliente en la venta." />
+            <DateField label="Entrega real (último producto)" value={r.client_actual_date} onSave={(v) => onPatch({ client_actual_date: v })} />
           </div>
           <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${desvCls}`}>
             {desv != null && desv > 0 && <AlertTriangle className="h-3 w-3" />}
-            {desv == null ? "Sin entrega" : `Desviación: ${desv > 0 ? "+" : ""}${desv}d`}
+            {desv == null ? "Sin entrega final registrada" : `Desviación: ${desv > 0 ? "+" : ""}${desv}d`}
           </div>
         </div>
       </div>
@@ -837,7 +837,7 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
   );
 }
 
-function DateField({ label, value, onSave }: { label: string; value: string | null; onSave: (v: string | null) => void }) {
+function DateField({ label, value, onSave, readOnly, hint }: { label: string; value: string | null; onSave?: (v: string | null) => void; readOnly?: boolean; hint?: string }) {
   const [v, setV] = useState(value ?? "");
   useEffect(() => { setV(value ?? ""); }, [value]);
   return (
@@ -846,13 +846,16 @@ function DateField({ label, value, onSave }: { label: string; value: string | nu
       <input
         type="date"
         value={v}
-        onChange={(e) => setV(e.target.value)}
+        onChange={(e) => !readOnly && setV(e.target.value)}
         onBlur={() => {
+          if (readOnly || !onSave) return;
           const next = v || null;
           if (next !== (value ?? null)) onSave(next);
         }}
-        className="mt-0.5 w-full bg-background border border-border hover:border-primary/50 focus:border-primary rounded-md px-2 py-1 text-xs outline-none transition-colors"
+        readOnly={readOnly}
+        className={`mt-0.5 w-full border rounded-md px-2 py-1 text-xs outline-none transition-colors ${readOnly ? "bg-muted/40 border-border/60 text-muted-foreground cursor-not-allowed" : "bg-background border-border hover:border-primary/50 focus:border-primary"}`}
       />
+      {hint && <span className="mt-0.5 block text-[10px] text-muted-foreground italic">{hint}</span>}
     </label>
   );
 }

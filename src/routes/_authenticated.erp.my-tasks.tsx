@@ -157,6 +157,20 @@ function MyTasks() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const markFormsDone = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("mark_task_forms_done" as any, { p_task_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Tarea completada — se notificó a producción");
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
+
   const tasks = q.data ?? [];
   const total = tasks.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -290,6 +304,8 @@ function MyTasks() {
                   );
                 }
                 const isCollection = t.type === "invoice_ready_for_collection";
+                const isPartialShipment = t.type === "partial_shipment";
+                const isFormsTask = isCollection || isPartialShipment;
                 const isPayAdvance = t.type === "pay_supplier_advance";
                 const isPaidNotice = t.type === "supplier_advance_paid";
                 const isCommissionApproval = t.type === "commission_approval";
@@ -301,28 +317,39 @@ function MyTasks() {
                   t.type === "commission_new" ||
                   t.type === "commission_rejected_notice";
                 const isAnyCommission = isCommissionApproval || isCommissionReadyToPay || isCommissionNotice;
+                const isProductionForwarded =
+                  t.type === "partial_shipment_forms_done" ||
+                  t.type === "invoice_collection_forms_done";
                 const isInfo =
-                  isCollection ||
                   isPaidNotice ||
                   isCommissionNotice ||
+                  isProductionForwarded ||
                   t.severity === "info" ||
                   t.type === "production_started";
                 const isPlanimetry = t.type === "upload_planimetry";
                 const pending = t.status === "pendiente";
                 const deadline = isPlanimetry && pending ? computeDeadlineState(t.planimetry_due_at) : null;
                 const overdue = deadline?.isOverdue ?? false;
+                const displayTitle = isPartialShipment
+                  ? "Coordinar entrega parcial · llenar Forms de logística y cobrar saldo"
+                  : isCollection
+                    ? "Cuenta de cobro lista · llenar Forms de logística y cobrar saldo"
+                    : t.title;
+                const displayReason = isFormsTask
+                  ? `${t.reason ? t.reason + "\n\n" : ""}Antes de marcar como completada: llena el formulario Forms de logística y registra el cobro del saldo pendiente con el cliente.`
+                  : t.reason;
                 const wrapCls = overdue
                   ? "border-red-500/60 bg-red-500/5"
                   : isPayAdvance || isCommissionApproval || isCommissionReadyToPay
                     ? (pending ? "border-emerald-500/60 bg-emerald-500/5" : "border-border bg-surface")
-                    : isCollection
+                    : isFormsTask
                       ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
                       : isInfo
                         ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
                         : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
                 const Icon = overdue
                   ? AlertOctagon
-                  : (isCollection || isPayAdvance || isAnyCommission)
+                  : (isFormsTask || isPayAdvance || isAnyCommission)
                     ? DollarSign
                     : isPlanimetry
                       ? FileUp
@@ -331,7 +358,7 @@ function MyTasks() {
                         : AlertTriangle;
                 const iconCls = overdue
                   ? "text-red-600 dark:text-red-400"
-                  : (isCollection || isPayAdvance || isCommissionApproval || isCommissionReadyToPay)
+                  : (isFormsTask || isPayAdvance || isCommissionApproval || isCommissionReadyToPay)
                     ? "text-emerald-600 dark:text-emerald-400"
                     : isInfo
                       ? "text-blue-600 dark:text-blue-400"
@@ -343,21 +370,23 @@ function MyTasks() {
                     : isCommissionReadyToPay
                       ? "Pagar comisión"
                       : isCollection
-                        ? "Gestionar cobro"
-                        : isPlanimetry
-                          ? "Subir planimetría"
-                          : isPaidNotice
-                            ? "Ver seguimiento de producción"
-                            : isInfo
-                              ? "Ver venta"
-                              : "Ir a la venta para corregir";
+                        ? "Ver venta"
+                        : isPartialShipment
+                          ? "Ver venta"
+                          : isPlanimetry
+                            ? "Subir planimetría"
+                            : isPaidNotice || isProductionForwarded
+                              ? "Ver seguimiento de producción"
+                              : isInfo
+                                ? "Ver venta"
+                                : "Ir a la venta para corregir";
 
                 return (
                   <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold inline-flex items-center gap-2 flex-wrap">
-                          <Icon className={`h-4 w-4 ${iconCls}`} /> {t.title}
+                          <Icon className={`h-4 w-4 ${iconCls}`} /> {displayTitle}
                           {deadline && (
                             <span
                               className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide ${
@@ -372,14 +401,14 @@ function MyTasks() {
                             </span>
                           )}
                         </p>
-                        {t.reason ? (
-                          <div className={`mt-2 rounded-md p-2.5 border ${isInfo ? "bg-blue-500/10 border-blue-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
+                        {displayReason ? (
+                          <div className={`mt-2 rounded-md p-2.5 border ${isInfo ? "bg-blue-500/10 border-blue-500/30" : isFormsTask ? "bg-emerald-500/10 border-emerald-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
                             {!isInfo && (
-                              <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-300 mb-1">
-                                {isPlanimetry ? "Acción requerida" : "Qué debes corregir"}
+                              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${isFormsTask ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
+                                {isPlanimetry ? "Acción requerida" : isFormsTask ? "Pasos para completar" : "Qué debes corregir"}
                               </p>
                             )}
-                            <p className="text-sm text-foreground whitespace-pre-wrap">{t.reason}</p>
+                            <p className="text-sm text-foreground whitespace-pre-wrap">{displayReason}</p>
                           </div>
                         ) : (
                           <p className="text-xs text-muted-foreground mt-1 italic">Sin detalle.</p>
@@ -406,7 +435,7 @@ function MyTasks() {
                           >
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
                           </Link>
-                        ) : isPaidNotice ? (
+                        ) : (isPaidNotice || isProductionForwarded) ? (
                           <Link
                             to="/erp/production/tracking"
                             className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
@@ -422,7 +451,19 @@ function MyTasks() {
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
                           </Link>
                         ) : null}
-                        {isInfo && pending && (
+                        {isFormsTask && pending && (
+                          <Button
+                            size="sm"
+                            className="gap-1 h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => markFormsDone.mutate(t.id)}
+                            disabled={markFormsDone.isPending && markFormsDone.variables === t.id}
+                          >
+                            {markFormsDone.isPending && markFormsDone.variables === t.id
+                              ? <Loader2 className="h-3 w-3 animate-spin" />
+                              : <Check className="h-3 w-3" />} Marcar Forms enviado y saldo cobrado
+                          </Button>
+                        )}
+                        {isInfo && pending && !isFormsTask && (
                           <Button
                             size="sm"
                             variant="outline"
