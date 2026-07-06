@@ -157,6 +157,20 @@ function MyTasks() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const markFormsDone = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("mark_task_forms_done" as any, { p_task_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Tarea completada — se notificó a producción");
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
+
   const tasks = q.data ?? [];
   const total = tasks.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
