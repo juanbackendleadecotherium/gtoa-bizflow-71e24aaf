@@ -266,6 +266,15 @@ export async function generatePlanimetryForOrder(opts: {
     .in("id", opts.selectedItemIds);
   if (linkErr) throw linkErr;
 
+  // Mirror the planimetry deadline onto the production order so the "Entrega
+  // estimada" field on the detail view stays in sync automatically.
+  if (productionDue) {
+    await supabase
+      .from("production_orders")
+      .update({ due_date: productionDue })
+      .eq("id", opts.productionOrderId);
+  }
+
   return lastVersion;
 }
 
