@@ -519,6 +519,7 @@ function OrderDetail() {
                       partialEnabled={!!it.partial_shipment_enabled}
                       partialDeliveredAt={it.partial_delivered_at}
                       productionFinishedAt={it.production_finished_at}
+                      isStandardProduct={!!it.is_standard_product}
                     />
                   );
                 })}
