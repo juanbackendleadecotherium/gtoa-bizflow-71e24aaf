@@ -815,6 +815,7 @@ function OrderItemReadCard({
   partialEnabled,
   partialDeliveredAt,
   productionFinishedAt,
+  isStandardProduct,
 }: {
   itemId: string;
   orderId: string;
