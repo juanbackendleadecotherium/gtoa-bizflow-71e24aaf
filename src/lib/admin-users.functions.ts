@@ -2,17 +2,40 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const APP_ROLES = ["admin", "operativo", "finanzas", "ventas", "vendedor"] as const;
+const APP_ROLES = ["admin", "operativo", "finanzas", "ventas", "vendedor", "logistica"] as const;
 type AppRole = (typeof APP_ROLES)[number];
 
-async function assertAdmin(ctx: { supabase: any; userId: string }) {
-  const { data, error } = await ctx.supabase.rpc("has_role", {
-    _user_id: ctx.userId,
-    _role: "admin",
-  });
+async function getActorRoles(ctx: { supabase: any; userId: string }): Promise<AppRole[]> {
+  const { data, error } = await ctx.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", ctx.userId);
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("Solo administradores pueden gestionar usuarios.");
+  return (data ?? []).map((r: { role: AppRole }) => r.role);
 }
+
+async function assertCanManageUsers(ctx: { supabase: any; userId: string }): Promise<AppRole[]> {
+  const roles = await getActorRoles(ctx);
+  if (!roles.includes("admin") && !roles.includes("finanzas")) {
+    throw new Error("Solo administradores o gerentes de finanzas pueden gestionar usuarios.");
+  }
+  return roles;
+}
+
+/** Impide que un usuario que no sea admin asigne el rol admin. */
+function assertRolesAllowedForActor(actorRoles: AppRole[], targetRoles: AppRole[]) {
+  if (actorRoles.includes("admin")) return;
+  if (targetRoles.includes("admin")) {
+    throw new Error("Solo un administrador puede asignar el rol de administrador.");
+  }
+}
+
+// Retro-compat: algunas rutas todavía llaman assertAdmin.
+async function assertAdmin(ctx: { supabase: any; userId: string }) {
+  const roles = await getActorRoles(ctx);
+  if (!roles.includes("admin")) throw new Error("Solo administradores pueden hacer esta acción.");
+}
+
 
 async function getActorEmail(supabaseAdmin: any, userId: string): Promise<string | null> {
   const { data } = await supabaseAdmin
