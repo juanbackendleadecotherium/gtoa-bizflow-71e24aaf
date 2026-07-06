@@ -816,20 +816,20 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
             <CalendarDays className="h-3.5 w-3.5" /> Hitos de la orden
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-            <DateField label="Cuenta de cobro" value={r.invoice_date} onSave={(v) => onPatch({ invoice_date: v })} />
-            <DateField label="Planimetría" value={r.planimetry_sent_date} onSave={(v) => onPatch({ planimetry_sent_date: v })} />
+            <DateField label="Cuenta de cobro" value={r.invoice_date} readOnly hint="Se llena al emitir la cuenta desde ventas." />
+            <DateField label="Planimetría" value={r.planimetry_sent_date} readOnly hint="Se llena al aceptar la planimetría." />
           </div>
         </div>
 
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Entrega al cliente</div>
           <div className="space-y-2">
-            <DateField label="Prometida" value={r.client_promised_date} onSave={(v) => onPatch({ client_promised_date: v })} />
-            <DateField label="Real" value={r.client_actual_date} onSave={(v) => onPatch({ client_actual_date: v })} />
+            <DateField label="Entrega prometida al cliente" value={r.client_promised_date} readOnly hint="Fecha prometida al cliente en la venta." />
+            <DateField label="Entrega real (último producto)" value={r.client_actual_date} onSave={(v) => onPatch({ client_actual_date: v })} />
           </div>
           <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${desvCls}`}>
             {desv != null && desv > 0 && <AlertTriangle className="h-3 w-3" />}
-            {desv == null ? "Sin entrega" : `Desviación: ${desv > 0 ? "+" : ""}${desv}d`}
+            {desv == null ? "Sin entrega final registrada" : `Desviación: ${desv > 0 ? "+" : ""}${desv}d`}
           </div>
         </div>
       </div>
