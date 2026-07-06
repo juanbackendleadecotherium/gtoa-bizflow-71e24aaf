@@ -76,6 +76,14 @@ async function countAdmins(supabaseAdmin: any): Promise<number> {
   return count ?? 0;
 }
 
+/** Impide que un no-admin toque a un usuario que es admin. */
+async function assertCanTargetUser(supabaseAdmin: any, actorRoles: AppRole[], targetUserId: string) {
+  if (actorRoles.includes("admin")) return;
+  if (await userIsAdmin(supabaseAdmin, targetUserId)) {
+    throw new Error("No puedes modificar a un administrador. Pide a un administrador que lo haga.");
+  }
+}
+
 async function userIsAdmin(supabaseAdmin: any, userId: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin
     .from("user_roles")
