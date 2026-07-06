@@ -488,8 +488,9 @@ function UserActions({
 // =========================================================================
 
 function CreateUserDialog({
-  brands, onClose, onSuccess,
-}: { brands: { id: string; name: string }[]; onClose: () => void; onSuccess: () => void }) {
+  brands, canAssignAdmin, onClose, onSuccess,
+}: { brands: { id: string; name: string }[]; canAssignAdmin: boolean; onClose: () => void; onSuccess: () => void }) {
+  const availableRoles = canAssignAdmin ? ROLES : ROLES.filter((r) => r.value !== "admin");
   const createFn = useServerFn(createUserAccount);
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
