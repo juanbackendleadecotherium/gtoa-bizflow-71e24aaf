@@ -41,12 +41,14 @@ function restLines(s: string) {
 
 export function ItemMarginsSection({
   productionOrderId,
+  orderId,
   brandId,
 }: {
   productionOrderId: string;
   orderId: string;
   brandId: string;
 }) {
+
   const qc = useQueryClient();
 
   const settings = useQuery({
