@@ -394,6 +394,7 @@ export const resetUserPassword = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const actorRoles = await assertCanManageUsers(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
