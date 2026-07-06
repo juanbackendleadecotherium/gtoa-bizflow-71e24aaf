@@ -837,7 +837,7 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
   );
 }
 
-function DateField({ label, value, onSave }: { label: string; value: string | null; onSave: (v: string | null) => void }) {
+function DateField({ label, value, onSave, readOnly, hint }: { label: string; value: string | null; onSave?: (v: string | null) => void; readOnly?: boolean; hint?: string }) {
   const [v, setV] = useState(value ?? "");
   useEffect(() => { setV(value ?? ""); }, [value]);
   return (
@@ -846,13 +846,16 @@ function DateField({ label, value, onSave }: { label: string; value: string | nu
       <input
         type="date"
         value={v}
-        onChange={(e) => setV(e.target.value)}
+        onChange={(e) => !readOnly && setV(e.target.value)}
         onBlur={() => {
+          if (readOnly || !onSave) return;
           const next = v || null;
           if (next !== (value ?? null)) onSave(next);
         }}
-        className="mt-0.5 w-full bg-background border border-border hover:border-primary/50 focus:border-primary rounded-md px-2 py-1 text-xs outline-none transition-colors"
+        readOnly={readOnly}
+        className={`mt-0.5 w-full border rounded-md px-2 py-1 text-xs outline-none transition-colors ${readOnly ? "bg-muted/40 border-border/60 text-muted-foreground cursor-not-allowed" : "bg-background border-border hover:border-primary/50 focus:border-primary"}`}
       />
+      {hint && <span className="mt-0.5 block text-[10px] text-muted-foreground italic">{hint}</span>}
     </label>
   );
 }
