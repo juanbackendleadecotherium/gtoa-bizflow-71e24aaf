@@ -315,7 +315,9 @@ export const setUserRoles = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => setRolesInput.parse(d))
   .handler(async ({ data, context }) => {
     const actorRoles = await assertCanManageUsers(context);
+    assertRolesAllowedForActor(actorRoles, data.roles);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertCanTargetUser(supabaseAdmin, actorRoles, data.userId);
     const actorEmail = await getActorEmail(supabaseAdmin, context.userId);
 
     if (data.userId === context.userId && !data.roles.includes("admin")) {
