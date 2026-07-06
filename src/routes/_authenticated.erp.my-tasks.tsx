@@ -290,6 +290,8 @@ function MyTasks() {
                   );
                 }
                 const isCollection = t.type === "invoice_ready_for_collection";
+                const isPartialShipment = t.type === "partial_shipment";
+                const isFormsTask = isCollection || isPartialShipment;
                 const isPayAdvance = t.type === "pay_supplier_advance";
                 const isPaidNotice = t.type === "supplier_advance_paid";
                 const isCommissionApproval = t.type === "commission_approval";
@@ -301,28 +303,39 @@ function MyTasks() {
                   t.type === "commission_new" ||
                   t.type === "commission_rejected_notice";
                 const isAnyCommission = isCommissionApproval || isCommissionReadyToPay || isCommissionNotice;
+                const isProductionForwarded =
+                  t.type === "partial_shipment_forms_done" ||
+                  t.type === "invoice_collection_forms_done";
                 const isInfo =
-                  isCollection ||
                   isPaidNotice ||
                   isCommissionNotice ||
+                  isProductionForwarded ||
                   t.severity === "info" ||
                   t.type === "production_started";
                 const isPlanimetry = t.type === "upload_planimetry";
                 const pending = t.status === "pendiente";
                 const deadline = isPlanimetry && pending ? computeDeadlineState(t.planimetry_due_at) : null;
                 const overdue = deadline?.isOverdue ?? false;
+                const displayTitle = isPartialShipment
+                  ? "Coordinar entrega parcial · llenar Forms de logística y cobrar saldo"
+                  : isCollection
+                    ? "Cuenta de cobro lista · llenar Forms de logística y cobrar saldo"
+                    : t.title;
+                const displayReason = isFormsTask
+                  ? `${t.reason ? t.reason + "\n\n" : ""}Antes de marcar como completada: llena el formulario Forms de logística y registra el cobro del saldo pendiente con el cliente.`
+                  : t.reason;
                 const wrapCls = overdue
                   ? "border-red-500/60 bg-red-500/5"
                   : isPayAdvance || isCommissionApproval || isCommissionReadyToPay
                     ? (pending ? "border-emerald-500/60 bg-emerald-500/5" : "border-border bg-surface")
-                    : isCollection
+                    : isFormsTask
                       ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
                       : isInfo
                         ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
                         : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
                 const Icon = overdue
                   ? AlertOctagon
-                  : (isCollection || isPayAdvance || isAnyCommission)
+                  : (isFormsTask || isPayAdvance || isAnyCommission)
                     ? DollarSign
                     : isPlanimetry
                       ? FileUp
@@ -331,7 +344,7 @@ function MyTasks() {
                         : AlertTriangle;
                 const iconCls = overdue
                   ? "text-red-600 dark:text-red-400"
-                  : (isCollection || isPayAdvance || isCommissionApproval || isCommissionReadyToPay)
+                  : (isFormsTask || isPayAdvance || isCommissionApproval || isCommissionReadyToPay)
                     ? "text-emerald-600 dark:text-emerald-400"
                     : isInfo
                       ? "text-blue-600 dark:text-blue-400"
@@ -343,14 +356,16 @@ function MyTasks() {
                     : isCommissionReadyToPay
                       ? "Pagar comisión"
                       : isCollection
-                        ? "Gestionar cobro"
-                        : isPlanimetry
-                          ? "Subir planimetría"
-                          : isPaidNotice
-                            ? "Ver seguimiento de producción"
-                            : isInfo
-                              ? "Ver venta"
-                              : "Ir a la venta para corregir";
+                        ? "Ver venta"
+                        : isPartialShipment
+                          ? "Ver venta"
+                          : isPlanimetry
+                            ? "Subir planimetría"
+                            : isPaidNotice || isProductionForwarded
+                              ? "Ver seguimiento de producción"
+                              : isInfo
+                                ? "Ver venta"
+                                : "Ir a la venta para corregir";
 
                 return (
                   <li key={t.id} className={`rounded-xl border p-4 ${wrapCls}`}>
