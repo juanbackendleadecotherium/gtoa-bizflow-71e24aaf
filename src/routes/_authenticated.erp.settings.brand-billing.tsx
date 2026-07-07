@@ -65,8 +65,10 @@ function BrandBillingPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!isAdmin) {
-    return <p className="text-sm text-muted-foreground">Solo administradores pueden editar los datos fiscales.</p>;
+  const { roles } = useBrand();
+  const canEdit = isAdmin || roles.includes("vendedor");
+  if (!canEdit) {
+    return <p className="text-sm text-muted-foreground">No tienes permisos para editar los datos fiscales.</p>;
   }
 
   if (brandQuery.isLoading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
