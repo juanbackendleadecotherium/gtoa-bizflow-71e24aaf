@@ -150,8 +150,14 @@ export function PaymentDialog({
           </div>
 
           <div>
-            <Label className="text-xs mb-1.5 block">Comprobante (opcional)</Label>
-            <ImageUploader pending={pending} onChangePending={setPending} label="Subir comprobante" />
+            <Label className="text-xs mb-1.5 block">Comprobantes (opcional)</Label>
+            <ImageUploader
+              pending={pending}
+              onChangePending={setPending}
+              multiple
+              label="Subir comprobantes"
+              hint={`Puedes adjuntar varios archivos. Máx. ${MAX_TOTAL_MB} MB en total.`}
+            />
           </div>
 
           {amount > 0 && (
