@@ -21,7 +21,7 @@ type BrandRow = {
 };
 
 function BrandBillingPage() {
-  const { isAdmin, selectedBrandId, selectedBrand } = useBrand();
+  const { isAdmin, roles, selectedBrandId, selectedBrand } = useBrand();
   const qc = useQueryClient();
 
   const brandQuery = useQuery({
