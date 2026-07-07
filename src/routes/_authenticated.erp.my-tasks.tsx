@@ -410,10 +410,10 @@ function MyTasks() {
                           )}
                         </p>
                         {displayReason ? (
-                          <div className={`mt-2 rounded-md p-2.5 border ${isInfo ? "bg-blue-500/10 border-blue-500/30" : isFormsTask ? "bg-emerald-500/10 border-emerald-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
-                            {!isInfo && (
-                              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${isFormsTask ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
-                                {isPlanimetry ? "Acción requerida" : isFormsTask ? "Pasos para completar" : "Qué debes corregir"}
+                          <div className={`mt-2 rounded-md p-2.5 border ${isApprovalGranted ? "bg-emerald-500/10 border-emerald-500/30" : isInfo ? "bg-blue-500/10 border-blue-500/30" : isFormsTask ? "bg-emerald-500/10 border-emerald-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
+                            {(!isInfo || isApprovalGranted) && (
+                              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${isApprovalGranted || isFormsTask ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
+                                {isApprovalGranted ? "Excelente noticia" : isPlanimetry ? "Acción requerida" : isFormsTask ? "Pasos para completar" : "Qué debes corregir"}
                               </p>
                             )}
                             <p className="text-sm text-foreground whitespace-pre-wrap">{displayReason}</p>
