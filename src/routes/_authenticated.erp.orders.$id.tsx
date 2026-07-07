@@ -722,6 +722,9 @@ function OrderDetail() {
               approval_requested_at: (o as any).approval_requested_at ?? null,
               approval_resolved_at: (o as any).approval_resolved_at ?? null,
               approval_note: (o as any).approval_note ?? null,
+              paulatino_authorized_by_email: (o as any).paulatino_authorized_by_email ?? null,
+              paulatino_authorized_at: (o as any).paulatino_authorized_at ?? null,
+              paulatino_advance_at_send: (o as any).paulatino_advance_at_send ?? null,
             }}
             paidTotal={(Number(o.advance_amount) || 0) + (paymentsSumQuery.data ?? 0)}
           />
