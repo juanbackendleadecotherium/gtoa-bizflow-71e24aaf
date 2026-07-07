@@ -37,6 +37,7 @@ import { DeliveryDeferralCard } from "@/features/orders/delivery-deferral-card";
 import { SaleFlowCard } from "@/features/orders/sale-flow-card";
 import { isProductionLocked, useSellerRestricted } from "@/features/production/seller-restrictions";
 import { useRealtimeSync } from "@/lib/use-realtime-sync";
+import { useSession } from "@/lib/use-session";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
@@ -46,8 +47,10 @@ function OrderDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { selectedBrandId } = useBrand();
+  const { selectedBrandId, isAdmin } = useBrand();
   const { isSellerRestricted } = useSellerRestricted();
+  const session = useSession();
+  const currentUserId = session.session?.user.id ?? null;
 
   // Realtime: reflect approval, payments, invoices and seller tasks on this order without reloading
   useRealtimeSync("orders", { column: "id", value: id }, [["order", id], ["order-history", id], ["order-audit", id]]);
@@ -63,14 +66,14 @@ function OrderDetail() {
         .from("orders")
         .select(`
           id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date, scheduled_delivery_date, is_deferred_delivery, deferred_reason, deferred_at,
-          sale_type, separe_activated_at, separe_completed_at, price_locked_at,
+          sale_type, separe_activated_at, separe_completed_at, price_locked_at, seller_id,
           paulatino_authorized_by_email, paulatino_authorized_at, paulatino_advance_at_send,
           approval_status, approval_requested_at, approval_resolved_at, approval_note,
           payment_method, advance_amount, advance_deposit_account, payment_proof_url,
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
-          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at, is_standard_product, production_order:production_orders!production_order_id(status))
+          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at, is_standard_product, is_gift, gifted_by_email, gifted_at, production_order:production_orders!production_order_id(status))
         `)
         .eq("id", id).maybeSingle();
       if (error) throw error;
@@ -521,6 +524,10 @@ function OrderDetail() {
                       partialDeliveredAt={it.partial_delivered_at}
                       productionFinishedAt={it.production_finished_at}
                       isStandardProduct={!!it.is_standard_product}
+                      isGift={!!(it as any).is_gift}
+                      giftedByEmail={(it as any).gifted_by_email ?? null}
+                      giftedAt={(it as any).gifted_at ?? null}
+                      canManageGift={isAdmin || (!!currentUserId && (o as any).seller_id === currentUserId)}
                     />
                   );
                 })}
@@ -820,6 +827,10 @@ function OrderItemReadCard({
   partialDeliveredAt,
   productionFinishedAt,
   isStandardProduct,
+  isGift,
+  giftedByEmail,
+  giftedAt,
+  canManageGift,
 }: {
   itemId: string;
   orderId: string;
@@ -835,12 +846,34 @@ function OrderItemReadCard({
   partialDeliveredAt: string | null;
   productionFinishedAt: string | null;
   isStandardProduct: boolean;
+  isGift: boolean;
+  giftedByEmail: string | null;
+  giftedAt: string | null;
+  canManageGift: boolean;
 }) {
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [confirmGift, setConfirmGift] = useState<null | "mark" | "unmark">(null);
   const isEmpty = !description.trim();
   const lineCount = description.split("\n").filter((l) => l.trim()).length;
   const firstLine = description.split("\n").find((l) => l.trim()) ?? "";
   const hasPlani = planimetryFiles.length > 0;
+
+  const toggleGift = useMutation({
+    mutationFn: async (next: boolean) => {
+      const { error } = await supabase
+        .from("order_items")
+        .update({ is_gift: next } as never)
+        .eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(isGift ? "Obsequio quitado" : "Ítem marcado como obsequio");
+      qc.invalidateQueries({ queryKey: ["order", orderId] });
+      setConfirmGift(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   return (
     <div className="rounded-lg border border-border bg-background/40 p-3 space-y-3">
@@ -883,8 +916,37 @@ function OrderItemReadCard({
               <AlertTriangle className="h-3 w-3" /> Falta planimetría
             </span>
           )}
+          {isGift && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-pink-500/15 text-pink-700 dark:text-pink-300 font-semibold">
+              🎁 Obsequio
+            </span>
+          )}
+          {canManageGift && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setConfirmGift(isGift ? "unmark" : "mark")}
+              disabled={toggleGift.isPending}
+            >
+              {isGift ? "Quitar obsequio" : "Marcar como obsequio"}
+            </Button>
+          )}
         </div>
       </div>
+
+      {isGift && (
+        <div className="rounded-md border border-pink-500/30 bg-pink-500/5 px-3 py-1.5 text-[11px] text-pink-900 dark:text-pink-200">
+          Este ítem se cobra <strong>$0</strong>. No suma al total ni genera saldo pendiente.
+          {giftedByEmail && (
+            <span className="block text-[10px] text-muted-foreground mt-0.5">
+              Autorizado por {giftedByEmail}
+              {giftedAt ? ` · ${new Date(giftedAt).toLocaleString("es-CO")}` : ""}
+            </span>
+          )}
+        </div>
+      )}
+
 
 
 
@@ -924,11 +986,20 @@ function OrderItemReadCard({
         </div>
         <div className="text-right">
           <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Precio</p>
-          <p className="tabular-nums font-medium text-sm mt-0.5">{formatMoney(unitPrice)}</p>
+          {isGift ? (
+            <p className="tabular-nums font-medium text-sm mt-0.5">
+              <span className="line-through text-muted-foreground/70 mr-1">{formatMoney(unitPrice)}</span>
+              <span className="text-pink-700 dark:text-pink-300">$0</span>
+            </p>
+          ) : (
+            <p className="tabular-nums font-medium text-sm mt-0.5">{formatMoney(unitPrice)}</p>
+          )}
         </div>
         <div className="text-right">
           <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Total</p>
-          <p className="tabular-nums font-semibold text-sm mt-0.5">{formatMoney(lineTotal)}</p>
+          <p className={`tabular-nums font-semibold text-sm mt-0.5 ${isGift ? "text-pink-700 dark:text-pink-300" : ""}`}>
+            {formatMoney(isGift ? 0 : lineTotal)}
+          </p>
         </div>
       </div>
 
@@ -995,6 +1066,32 @@ function OrderItemReadCard({
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto rounded-md border border-border bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed">
             {description || "Sin descripción"}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmGift} onOpenChange={(v) => !v && setConfirmGift(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmGift === "mark" ? "Marcar como obsequio" : "Quitar obsequio"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {confirmGift === "mark"
+              ? "Este ítem se cobrará $0 y no sumará al total de la venta. El precio unitario original se conservará como referencia. ¿Confirmar?"
+              : "El ítem volverá a cobrarse a su precio unitario original y sumará al total. ¿Confirmar?"}
+          </p>
+          <div className="flex justify-end gap-2 pt-3">
+            <Button variant="ghost" onClick={() => setConfirmGift(null)} disabled={toggleGift.isPending}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => toggleGift.mutate(confirmGift === "mark")}
+              disabled={toggleGift.isPending}
+            >
+              {toggleGift.isPending ? "Guardando…" : "Confirmar"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
