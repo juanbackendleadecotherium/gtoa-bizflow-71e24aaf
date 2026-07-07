@@ -117,7 +117,16 @@ function AuthSync() {
     // Ignorar TOKEN_REFRESHED e INITIAL_SESSION para evitar invalidar
     // todas las queries y recargar datos al navegar entre módulos.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+      if (event === "SIGNED_OUT") {
+        // Stop in-flight protected queries and drop cached data before the
+        // auth gate redirects to /auth. Refetching here would fire against a
+        // cleared session and 401.
+        queryClient.cancelQueries();
+        queryClient.clear();
+        router.invalidate();
+        return;
+      }
+      if (event === "SIGNED_IN" || event === "USER_UPDATED") {
         router.invalidate();
         queryClient.invalidateQueries();
       }
