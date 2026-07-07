@@ -827,6 +827,10 @@ function OrderItemReadCard({
   partialDeliveredAt,
   productionFinishedAt,
   isStandardProduct,
+  isGift,
+  giftedByEmail,
+  giftedAt,
+  canManageGift,
 }: {
   itemId: string;
   orderId: string;
@@ -842,12 +846,34 @@ function OrderItemReadCard({
   partialDeliveredAt: string | null;
   productionFinishedAt: string | null;
   isStandardProduct: boolean;
+  isGift: boolean;
+  giftedByEmail: string | null;
+  giftedAt: string | null;
+  canManageGift: boolean;
 }) {
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [confirmGift, setConfirmGift] = useState<null | "mark" | "unmark">(null);
   const isEmpty = !description.trim();
   const lineCount = description.split("\n").filter((l) => l.trim()).length;
   const firstLine = description.split("\n").find((l) => l.trim()) ?? "";
   const hasPlani = planimetryFiles.length > 0;
+
+  const toggleGift = useMutation({
+    mutationFn: async (next: boolean) => {
+      const { error } = await supabase
+        .from("order_items")
+        .update({ is_gift: next } as never)
+        .eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(isGift ? "Obsequio quitado" : "Ítem marcado como obsequio");
+      qc.invalidateQueries({ queryKey: ["order", orderId] });
+      setConfirmGift(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   return (
     <div className="rounded-lg border border-border bg-background/40 p-3 space-y-3">
