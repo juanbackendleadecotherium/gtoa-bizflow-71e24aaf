@@ -65,7 +65,7 @@ function BrandBillingPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const { roles } = useBrand();
+  
   const canEdit = isAdmin || roles.includes("vendedor");
   if (!canEdit) {
     return <p className="text-sm text-muted-foreground">No tienes permisos para editar los datos fiscales.</p>;
