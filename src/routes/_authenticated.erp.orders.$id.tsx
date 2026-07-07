@@ -986,11 +986,20 @@ function OrderItemReadCard({
         </div>
         <div className="text-right">
           <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Precio</p>
-          <p className="tabular-nums font-medium text-sm mt-0.5">{formatMoney(unitPrice)}</p>
+          {isGift ? (
+            <p className="tabular-nums font-medium text-sm mt-0.5">
+              <span className="line-through text-muted-foreground/70 mr-1">{formatMoney(unitPrice)}</span>
+              <span className="text-pink-700 dark:text-pink-300">$0</span>
+            </p>
+          ) : (
+            <p className="tabular-nums font-medium text-sm mt-0.5">{formatMoney(unitPrice)}</p>
+          )}
         </div>
         <div className="text-right">
           <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Total</p>
-          <p className="tabular-nums font-semibold text-sm mt-0.5">{formatMoney(lineTotal)}</p>
+          <p className={`tabular-nums font-semibold text-sm mt-0.5 ${isGift ? "text-pink-700 dark:text-pink-300" : ""}`}>
+            {formatMoney(isGift ? 0 : lineTotal)}
+          </p>
         </div>
       </div>
 
