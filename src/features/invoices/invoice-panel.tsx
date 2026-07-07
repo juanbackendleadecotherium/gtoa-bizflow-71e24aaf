@@ -33,6 +33,7 @@ type Order = {
   customer_department: string | null;
   items: Array<{
     description: string; quantity: number; unit_price: number; line_total: number; sort_order: number;
+    is_gift?: boolean | null;
   }>;
 };
 
