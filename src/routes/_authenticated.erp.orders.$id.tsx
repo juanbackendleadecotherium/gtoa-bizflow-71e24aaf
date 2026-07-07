@@ -1069,6 +1069,32 @@ function OrderItemReadCard({
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!confirmGift} onOpenChange={(v) => !v && setConfirmGift(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmGift === "mark" ? "Marcar como obsequio" : "Quitar obsequio"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {confirmGift === "mark"
+              ? "Este ítem se cobrará $0 y no sumará al total de la venta. El precio unitario original se conservará como referencia. ¿Confirmar?"
+              : "El ítem volverá a cobrarse a su precio unitario original y sumará al total. ¿Confirmar?"}
+          </p>
+          <div className="flex justify-end gap-2 pt-3">
+            <Button variant="ghost" onClick={() => setConfirmGift(null)} disabled={toggleGift.isPending}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => toggleGift.mutate(confirmGift === "mark")}
+              disabled={toggleGift.isPending}
+            >
+              {toggleGift.isPending ? "Guardando…" : "Confirmar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
