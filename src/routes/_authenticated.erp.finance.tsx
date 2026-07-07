@@ -8,34 +8,52 @@ export const Route = createFileRoute("/_authenticated/erp/finance")({
   component: FinanceLayout,
 });
 
-const TABS = [
-  { to: "/erp/finance", label: "Resumen", icon: LayoutDashboard, exact: true },
-  { to: "/erp/finance/receivables", label: "Cartera por cobrar", icon: Wallet },
-  { to: "/erp/finance/treasury", label: "Tesorería", icon: FileText },
-  { to: "/erp/finance/approvals", label: "Aprobaciones", icon: ShieldCheck },
-  { to: "/erp/finance/goals", label: "Metas de ventas", icon: Target },
-  { to: "/erp/finance/commissions", label: "Comisiones", icon: DollarSign },
-  { to: "/erp/finance/sellers", label: "Rendimiento por vendedor", icon: Trophy },
-  { to: "/erp/finance/deletions", label: "Eliminaciones", icon: Trash2 },
+type TabDef = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean; roles: Array<"admin" | "vendedor"> };
+
+const TABS: TabDef[] = [
+  { to: "/erp/finance", label: "Resumen", icon: LayoutDashboard, exact: true, roles: ["admin"] },
+  { to: "/erp/finance/receivables", label: "Cartera por cobrar", icon: Wallet, roles: ["admin"] },
+  { to: "/erp/finance/treasury", label: "Tesorería", icon: FileText, roles: ["admin"] },
+  { to: "/erp/finance/approvals", label: "Aprobaciones", icon: ShieldCheck, roles: ["admin"] },
+  { to: "/erp/finance/goals", label: "Metas de ventas", icon: Target, roles: ["admin", "vendedor"] },
+  { to: "/erp/finance/commissions", label: "Comisiones", icon: DollarSign, roles: ["admin", "vendedor"] },
+  { to: "/erp/finance/sellers", label: "Rendimiento por vendedor", icon: Trophy, roles: ["admin"] },
+  { to: "/erp/finance/deletions", label: "Eliminaciones", icon: Trash2, roles: ["admin"] },
 ];
 
 function FinanceLayout() {
-  const { isAdmin, loading } = useBrand();
+  const { isAdmin, roles, loading } = useBrand();
+  const isVendedor = roles.includes("vendedor");
+  const canAccess = isAdmin || isVendedor;
   const navigate = useNavigate();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
 
   useEffect(() => {
-    if (!loading && !isAdmin) navigate({ to: "/erp", replace: true });
-  }, [loading, isAdmin, navigate]);
+    if (loading) return;
+    if (!canAccess) {
+      navigate({ to: "/erp", replace: true });
+      return;
+    }
+    // Vendedor puro: redirigir index y rutas admin-only a Comisiones.
+    if (!isAdmin && isVendedor) {
+      const allowed = TABS.filter((t) => t.roles.includes("vendedor"));
+      const isOnAllowed = allowed.some((t) => (t.exact ? currentPath === t.to : currentPath.startsWith(t.to)));
+      if (!isOnAllowed) {
+        navigate({ to: "/erp/finance/commissions", replace: true });
+      }
+    }
+  }, [loading, canAccess, isAdmin, isVendedor, currentPath, navigate]);
 
-  if (loading || !isAdmin) {
+  if (loading || !canAccess) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
+
+  const visibleTabs = TABS.filter((t) => (isAdmin ? true : t.roles.includes("vendedor")));
 
   return (
     <div className="space-y-6">
