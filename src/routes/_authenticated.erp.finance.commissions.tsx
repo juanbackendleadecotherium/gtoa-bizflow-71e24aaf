@@ -40,7 +40,7 @@ const STATUSES: Array<{ v: "pendiente" | "aprobada" | "rechazada" | "pagada"; la
 function CommissionsPage() {
   const { isAdmin, roles, loading } = useBrand();
   const isFinance = isAdmin || roles.includes("finanzas");
-  const isSeller = roles.includes("vendedor");
+  const isSeller = roles.includes("vendedor") || roles.includes("ventas");
   const canView = isFinance || isSeller;
   const qc = useQueryClient();
   const [tab, setTab] = useState<"pendiente" | "aprobada" | "pagada" | "rechazada">("pendiente");

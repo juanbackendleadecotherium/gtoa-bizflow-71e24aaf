@@ -97,6 +97,7 @@ export const PERMISSIONS: Record<AppRole, Partial<Record<ModuleKey, Visibility>>
     dashboard: "brand",
     orders: "brand",
     my_tasks: "all",
+    finance: "brand",
     sales_goals: "all",
     commissions: "brand",
     analytics: "brand",
