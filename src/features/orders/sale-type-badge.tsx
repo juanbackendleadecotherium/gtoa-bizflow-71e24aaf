@@ -1,4 +1,4 @@
-import { Bookmark, ShoppingCart, Clock3, CheckCircle2, XCircle } from "lucide-react";
+import { Bookmark, ShoppingCart, Clock3, CheckCircle2, XCircle, HandCoins } from "lucide-react";
 
 export function SaleTypeBadge({
   saleType,
@@ -18,6 +18,13 @@ export function SaleTypeBadge({
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/30 px-2 py-0.5 text-[11px] font-medium">
         <Bookmark className="h-3 w-3" /> Plan Separe
+      </span>
+    );
+  }
+  if (saleType === "pago_paulatino") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/30 px-2 py-0.5 text-[11px] font-medium">
+        <HandCoins className="h-3 w-3" /> Pago Paulatino
       </span>
     );
   }
@@ -68,6 +75,12 @@ export function canSendToProduction(order: {
   const total = Number(order.total ?? 0);
   const advance = Number(order.advance_amount ?? 0);
 
+  // Pago Paulatino: excepción autorizada por el vendedor. No exige 50% ni
+  // aprobación gerencial. Cualquier anticipo (incluido 0) habilita producción.
+  if (order.sale_type === "pago_paulatino") {
+    return { ok: true };
+  }
+
   // Plan Separe: requiere 50% completado
   if (order.sale_type === "plan_separe") {
     if (!order.separe_completed_at) {
@@ -89,3 +102,4 @@ export function canSendToProduction(order: {
 
   return { ok: true };
 }
+
