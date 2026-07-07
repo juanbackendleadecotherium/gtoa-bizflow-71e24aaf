@@ -17,7 +17,7 @@ const TABS: TabDef[] = [
   { to: "/erp/finance/treasury", label: "Tesorería", icon: FileText, roles: ["admin", "finanzas"] },
   { to: "/erp/finance/approvals", label: "Aprobaciones", icon: ShieldCheck, roles: ["admin", "finanzas"] },
   { to: "/erp/finance/goals", label: "Metas de ventas", icon: Target, roles: ["admin", "finanzas"] },
-  { to: "/erp/finance/commissions", label: "Comisiones", icon: DollarSign, roles: ["admin", "vendedor", "ventas"] },
+  { to: "/erp/finance/commissions", label: "Comisiones", icon: DollarSign, roles: ["admin", "finanzas", "vendedor", "ventas"] },
   { to: "/erp/finance/sellers", label: "Rendimiento por vendedor", icon: Trophy, roles: ["admin", "finanzas"] },
   { to: "/erp/finance/deletions", label: "Eliminaciones", icon: Trash2, roles: ["admin", "finanzas"] },
 ];
