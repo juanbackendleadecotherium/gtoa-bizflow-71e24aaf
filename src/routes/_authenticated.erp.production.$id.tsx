@@ -29,7 +29,8 @@ function ProductionDetail() {
   const qc = useQueryClient();
   const { isAdmin, roles } = useBrand();
   const isProduction = isAdmin || roles.includes("operativo");
-  const isSellerOnly = !isProduction && roles.includes("ventas");
+  const isSellerRole = roles.includes("vendedor") || roles.includes("ventas");
+  const isSellerOnly = !isProduction && isSellerRole;
 
 
 
@@ -234,9 +235,15 @@ function ProductionDetail() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <Link to="/erp/production" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2">
-            <ArrowLeft className="h-3 w-3" /> Volver a Producción
-          </Link>
+          {isSellerOnly && order ? (
+            <Link to="/erp/orders/$id" params={{ id: order.id }} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2">
+              <ArrowLeft className="h-3 w-3" /> Volver a la venta
+            </Link>
+          ) : (
+            <Link to="/erp/production" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2">
+              <ArrowLeft className="h-3 w-3" /> Volver a Producción
+            </Link>
+          )}
           <h1 className="font-display text-2xl font-semibold flex items-center gap-3 flex-wrap">
             <span className="font-mono">{p.code}</span>
             <ProductionStatusBadge status={p.status} />

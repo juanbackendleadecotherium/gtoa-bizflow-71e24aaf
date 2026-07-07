@@ -93,7 +93,10 @@ function Shell() {
   // La barrera real está en RLS; esto sólo mejora UX ante URL directa.
   const rolesReady = roles.length > 0;
   const matched = NAV.find((n) => (n.exact ? currentPath === n.to : currentPath.startsWith(n.to)));
-  const notAllowed = !!(rolesReady && matched && !canAccess(roles as AppRole[], matched.module));
+  const isSellerRole = roles.includes("vendedor") || roles.includes("ventas");
+  const isProductionDetailPath = /^\/erp\/production\/[^/]+$/.test(currentPath);
+  const sellerCanViewProductionDetail = isSellerRole && !isAdmin && isProductionDetailPath;
+  const notAllowed = !!(rolesReady && matched && !canAccess(roles as AppRole[], matched.module) && !sellerCanViewProductionDetail);
   useEffect(() => {
     if (notAllowed) {
       toast.error("No tienes acceso a esa sección.");
