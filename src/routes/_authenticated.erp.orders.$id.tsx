@@ -64,6 +64,7 @@ function OrderDetail() {
         .select(`
           id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date, scheduled_delivery_date, is_deferred_delivery, deferred_reason, deferred_at,
           sale_type, separe_activated_at, separe_completed_at, price_locked_at,
+          paulatino_authorized_by_email, paulatino_authorized_at, paulatino_advance_at_send,
           approval_status, approval_requested_at, approval_resolved_at, approval_note,
           payment_method, advance_amount, advance_deposit_account, payment_proof_url,
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
