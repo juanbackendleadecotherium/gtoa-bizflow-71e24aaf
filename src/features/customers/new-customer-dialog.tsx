@@ -365,39 +365,60 @@ export function NewCustomerDialog({
       const orderNotes = notesParts.join("\n");
 
       // Pedido con snapshot del cliente (sin tabla customers)
-      const { data: order, error: orderErr } = await supabase
+      // El backend tiene un trigger (orders_assign_invoice_number) que
+      // asigna atómicamente el siguiente consecutivo cuando invoice_number
+      // viene null. El preview del cliente puede quedar obsoleto si otro
+      // vendedor tomó el número mientras tanto → reintentamos con null.
+      const buildOrderPayload = (invoiceNumber: string | null) => ({
+        brand_id: selectedBrandId,
+        status_id: status.id,
+        notes: orderNotes || null,
+        order_number: "",
+        created_by: userId,
+        seller_id: userId,
+        source: rawText ? "whatsapp" : "manual",
+        whatsapp_raw: rawText || null,
+        invoice_number: invoiceNumber,
+        sale_date: draft.order.sale_date || null,
+        estimated_delivery_date: draft.order.estimated_delivery_date || null,
+        payment_method: draft.order.payment_method || null,
+        advance_amount: draft.order.advance_amount || 0,
+        advance_deposit_account: draft.order.advance_deposit_account || null,
+        sale_type: draft.order.sale_type,
+        customer_name: c.display_name.trim(),
+        customer_doc_type: c.doc_type || null,
+        customer_doc_number: c.doc_number.trim() || null,
+        customer_phone: c.phone.trim() || null,
+        customer_email: c.email.trim() || null,
+        customer_address: c.address.trim() || null,
+        customer_city: c.city.trim() || null,
+        customer_department: c.department.trim() || null,
+        customer_company: c.company.trim() || null,
+        customer_person_type: c.person_type || null,
+        customer_contact_type: c.contact_type || null,
+      });
+
+      const requestedInvoice = draft.order.invoice_number.trim() || null;
+      let { data: order, error: orderErr } = await supabase
         .from("orders")
-        .insert({
-          brand_id: selectedBrandId,
-          status_id: status.id,
-          notes: orderNotes || null,
-          order_number: "",
-          created_by: userId,
-          seller_id: userId,
-          source: rawText ? "whatsapp" : "manual",
-          whatsapp_raw: rawText || null,
-          invoice_number: draft.order.invoice_number.trim() || null,
-          sale_date: draft.order.sale_date || null,
-          estimated_delivery_date: draft.order.estimated_delivery_date || null,
-          payment_method: draft.order.payment_method || null,
-          advance_amount: draft.order.advance_amount || 0,
-          advance_deposit_account: draft.order.advance_deposit_account || null,
-          sale_type: draft.order.sale_type,
-          customer_name: c.display_name.trim(),
-          customer_doc_type: c.doc_type || null,
-          customer_doc_number: c.doc_number.trim() || null,
-          customer_phone: c.phone.trim() || null,
-          customer_email: c.email.trim() || null,
-          customer_address: c.address.trim() || null,
-          customer_city: c.city.trim() || null,
-          customer_department: c.department.trim() || null,
-          customer_company: c.company.trim() || null,
-          customer_person_type: c.person_type || null,
-          customer_contact_type: c.contact_type || null,
-        } as never)
+        .insert(buildOrderPayload(requestedInvoice) as never)
         .select()
         .single();
+      if (
+        orderErr &&
+        requestedInvoice &&
+        (orderErr.code === "23505" || /orders_brand_invoice_unique|duplicate key/i.test(orderErr.message))
+      ) {
+        const retry = await supabase
+          .from("orders")
+          .insert(buildOrderPayload(null) as never)
+          .select()
+          .single();
+        order = retry.data;
+        orderErr = retry.error;
+      }
       if (orderErr) throw orderErr;
+      if (!order) throw new Error("No se pudo crear el pedido");
 
       const itemsPayload = draft.items.map((it, idx) => ({
         order_id: order.id,
