@@ -1373,6 +1373,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          is_draft: boolean
           is_final: boolean
           is_initial: boolean
           name: string
@@ -1386,6 +1387,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_draft?: boolean
           is_final?: boolean
           is_initial?: boolean
           name: string
@@ -1399,6 +1401,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_draft?: boolean
           is_final?: boolean
           is_initial?: boolean
           name?: string
@@ -1450,6 +1453,7 @@ export type Database = {
           id: string
           invoice_number: string | null
           is_deferred_delivery: boolean
+          last_draft_saved_at: string | null
           notes: string | null
           order_number: string
           paulatino_advance_at_send: number | null
@@ -1510,6 +1514,7 @@ export type Database = {
           id?: string
           invoice_number?: string | null
           is_deferred_delivery?: boolean
+          last_draft_saved_at?: string | null
           notes?: string | null
           order_number: string
           paulatino_advance_at_send?: number | null
@@ -1570,6 +1575,7 @@ export type Database = {
           id?: string
           invoice_number?: string | null
           is_deferred_delivery?: boolean
+          last_draft_saved_at?: string | null
           notes?: string | null
           order_number?: string
           paulatino_advance_at_send?: number | null
@@ -2704,6 +2710,7 @@ export type Database = {
         Args: { p_confirm: string }
         Returns: Json
       }
+      alert_stale_drafts: { Args: never; Returns: undefined }
       allocate_invoice_number: { Args: { p_brand_id: string }; Returns: string }
       approve_commission: { Args: { _id: string }; Returns: undefined }
       can_collect_final_balance: {
@@ -2840,6 +2847,7 @@ export type Database = {
           total: number
         }[]
       }
+      order_is_draft: { Args: { _order_id: string }; Returns: boolean }
       order_item_has_planimetry: {
         Args: { _item_id: string }
         Returns: boolean
