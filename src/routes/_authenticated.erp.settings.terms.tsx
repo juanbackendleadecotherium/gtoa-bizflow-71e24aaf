@@ -77,8 +77,8 @@ function TermsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!isAdmin) {
-    return <p className="text-sm text-muted-foreground">Solo administradores pueden gestionar los términos y condiciones.</p>;
+  if (!canEdit) {
+    return <p className="text-sm text-muted-foreground">No tienes permisos para gestionar los términos y condiciones.</p>;
   }
 
   return (
