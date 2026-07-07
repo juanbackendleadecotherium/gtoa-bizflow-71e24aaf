@@ -521,6 +521,10 @@ function OrderDetail() {
                       partialDeliveredAt={it.partial_delivered_at}
                       productionFinishedAt={it.production_finished_at}
                       isStandardProduct={!!it.is_standard_product}
+                      isGift={!!(it as any).is_gift}
+                      giftedByEmail={(it as any).gifted_by_email ?? null}
+                      giftedAt={(it as any).gifted_at ?? null}
+                      canManageGift={isAdmin || (!!currentUserId && (o as any).seller_id === currentUserId)}
                     />
                   );
                 })}
