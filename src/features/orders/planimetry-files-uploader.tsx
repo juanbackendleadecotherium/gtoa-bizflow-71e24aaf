@@ -43,10 +43,12 @@ export function PlanimetryFilesUploader({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const pasteZoneRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [justPasted, setJustPasted] = useState(false);
+  const [pasteFocused, setPasteFocused] = useState(false);
 
   const ingestFiles = useCallback(
     async (files: File[]) => {
