@@ -52,7 +52,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   ventas: "Gerente de Ventas",
   finanzas: "Gerente de Finanzas",
   vendedor: "Vendedor",
-  operativo: "Operativo de Bodega",
+  operativo: "Producción",
   logistica: "Logística",
 };
 
@@ -115,10 +115,10 @@ export const PERMISSIONS: Record<AppRole, Partial<Record<ModuleKey, Visibility>>
   },
   operativo: {
     dashboard: "brand",
-    orders: "brand",
     production: "brand",
-    warehouse: "brand",
     my_tasks: "all",
+    supplier_payments: "all",
+    suppliers: "all",
   },
   logistica: {
     dashboard: "brand",

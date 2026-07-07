@@ -321,6 +321,7 @@ function MyTasks() {
                   t.type === "partial_shipment_forms_done" ||
                   t.type === "invoice_collection_forms_done";
                 const isApprovalGranted = t.type === "approval_granted" || t.type === "production_accepted";
+                const isProductionReviewOp = t.type === "production_review_op";
                 const isInfo =
                   isPaidNotice ||
                   isCommissionNotice ||
@@ -449,6 +450,14 @@ function MyTasks() {
                             className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
                           >
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        ) : isProductionReviewOp && t.production_order_id ? (
+                          <Link
+                            to="/erp/production/$id"
+                            params={{ id: t.production_order_id }}
+                            className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
+                          >
+                            Revisar OP <ArrowRight className="h-3 w-3" />
                           </Link>
                         ) : t.order_id ? (
                           <Link
