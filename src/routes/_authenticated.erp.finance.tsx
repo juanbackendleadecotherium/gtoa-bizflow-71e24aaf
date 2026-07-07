@@ -8,23 +8,25 @@ export const Route = createFileRoute("/_authenticated/erp/finance")({
   component: FinanceLayout,
 });
 
-type TabDef = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean; roles: Array<"admin" | "vendedor" | "ventas"> };
+type FinanceRole = "admin" | "finanzas" | "vendedor" | "ventas";
+type TabDef = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean; roles: FinanceRole[] };
 
 const TABS: TabDef[] = [
-  { to: "/erp/finance", label: "Resumen", icon: LayoutDashboard, exact: true, roles: ["admin"] },
-  { to: "/erp/finance/receivables", label: "Cartera por cobrar", icon: Wallet, roles: ["admin"] },
-  { to: "/erp/finance/treasury", label: "Tesorería", icon: FileText, roles: ["admin"] },
-  { to: "/erp/finance/approvals", label: "Aprobaciones", icon: ShieldCheck, roles: ["admin"] },
-  { to: "/erp/finance/goals", label: "Metas de ventas", icon: Target, roles: ["admin"] },
+  { to: "/erp/finance", label: "Resumen", icon: LayoutDashboard, exact: true, roles: ["admin", "finanzas"] },
+  { to: "/erp/finance/receivables", label: "Cartera por cobrar", icon: Wallet, roles: ["admin", "finanzas"] },
+  { to: "/erp/finance/treasury", label: "Tesorería", icon: FileText, roles: ["admin", "finanzas"] },
+  { to: "/erp/finance/approvals", label: "Aprobaciones", icon: ShieldCheck, roles: ["admin", "finanzas"] },
+  { to: "/erp/finance/goals", label: "Metas de ventas", icon: Target, roles: ["admin", "finanzas"] },
   { to: "/erp/finance/commissions", label: "Comisiones", icon: DollarSign, roles: ["admin", "vendedor", "ventas"] },
-  { to: "/erp/finance/sellers", label: "Rendimiento por vendedor", icon: Trophy, roles: ["admin"] },
-  { to: "/erp/finance/deletions", label: "Eliminaciones", icon: Trash2, roles: ["admin"] },
+  { to: "/erp/finance/sellers", label: "Rendimiento por vendedor", icon: Trophy, roles: ["admin", "finanzas"] },
+  { to: "/erp/finance/deletions", label: "Eliminaciones", icon: Trash2, roles: ["admin", "finanzas"] },
 ];
 
 function FinanceLayout() {
   const { isAdmin, roles, loading } = useBrand();
+  const isFinance = roles.includes("finanzas");
   const isSalesRole = roles.includes("vendedor") || roles.includes("ventas");
-  const canAccess = isAdmin || isSalesRole;
+  const canAccess = isAdmin || isFinance || isSalesRole;
   const navigate = useNavigate();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
@@ -36,14 +38,14 @@ function FinanceLayout() {
       return;
     }
     // Comercial puro: redirigir index y rutas admin-only a Comisiones.
-    if (!isAdmin && isSalesRole) {
+    if (!isAdmin && !isFinance && isSalesRole) {
       const allowed = TABS.filter((t) => t.roles.some((role) => roles.includes(role)));
       const isOnAllowed = allowed.some((t) => (t.exact ? currentPath === t.to : currentPath.startsWith(t.to)));
       if (!isOnAllowed) {
         navigate({ to: "/erp/finance/commissions", replace: true });
       }
     }
-  }, [loading, canAccess, isAdmin, isSalesRole, roles, currentPath, navigate]);
+  }, [loading, canAccess, isAdmin, isFinance, isSalesRole, roles, currentPath, navigate]);
 
   if (loading || !canAccess) {
     return (
