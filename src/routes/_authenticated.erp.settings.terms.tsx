@@ -15,7 +15,8 @@ export const Route = createFileRoute("/_authenticated/erp/settings/terms")({
 });
 
 function TermsPage() {
-  const { isAdmin } = useBrand();
+  const { isAdmin, roles } = useBrand();
+  const canEdit = isAdmin || roles.includes("vendedor");
   const qc = useQueryClient();
 
   const termsQuery = useQuery({
