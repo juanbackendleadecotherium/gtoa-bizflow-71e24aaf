@@ -1,59 +1,56 @@
 ## Objetivo
 
-Permitir marcar cualquier `order_item` como **Obsequio**. El ítem se cobra $0, no impacta el total de la venta ni el saldo pendiente, aparece etiquetado en la cuenta de cobro, y **sigue el flujo normal de producción**.
+Permitir al vendedor (rol `ventas` sin admin ni operativo) acceder a la vista de detalle de la orden de producción con permisos acotados.
 
-## 1. Base de datos (migración única)
+## Cambios en `src/routes/_authenticated.erp.production.$id.tsx`
 
-Sobre `public.order_items`:
+### 1. Panel de acciones (barra superior)
+Para el vendedor puro (`isSellerOnly === true`):
+- **Ocultar**: `Aceptar orden`, `Rechazar` (ambos casos — pendiente y no pendiente). Estas decisiones son de producción.
+- **Mostrar solo si `status === "pendiente"`**:
+  - `Cancelar orden` (ya existe la mutación `cancelOrder`, hoy visible para todos en pendiente — se mantiene).
+  - `Eliminar` (hoy restringido a `isAdmin`; se amplía la condición a `isAdmin || isSellerOnly` cuando la orden está pendiente).
+- Si la orden ya no está pendiente: no ve ni Cancelar ni Eliminar (queda solo el aviso existente de "comunícate con producción").
+- `Guardar cambios` se mantiene (para persistir notas).
 
-- Nueva columna `is_gift boolean NOT NULL DEFAULT false`.
-- Nueva columna de auditoría: `gifted_by uuid`, `gifted_by_email text`, `gifted_at timestamptz`.
-- Actualizar el trigger `set_line_total()` para que, si `NEW.is_gift = true`, force `line_total = 0` (independiente de `unit_price` × `quantity`). Se conserva `unit_price` original por trazabilidad — el precio "regalado" queda registrado.
-- Actualizar `compute_order_item_margin()` / `order_items_recalc_margin()` para que un ítem con `is_gift = true` **no contamine el margen**: se marca `margin_pct = NULL` y el costo se sigue registrando como costo real. En los KPIs de margen (Analytics/comisiones) se excluye del numerador de ingresos, pero **el costo sí cuenta** — así el obsequio se refleja como una decisión que reduce margen global sin distorsionar el % por línea. (Confirmar con PM si prefiere excluirlo por completo; el default propuesto es "cuenta como costo, no como venta".)
-- Nuevo trigger `BEFORE UPDATE OF is_gift`: si cambia `is_gift`, auto-llena `gifted_by = auth.uid()`, `gifted_by_email` desde `profiles`, `gifted_at = now()`; al desmarcar, limpia los tres campos.
-- Registro en `order_audit_log` con acción `item_marked_as_gift` / `item_unmarked_as_gift`.
-- `recalc_order_totals()` no requiere cambio: al sumar `line_total` (ya = 0 para obsequios) el `orders.subtotal/total` queda correcto automáticamente. El saldo pendiente (`total - pagos`) también, sin tocar código.
+### 2. Sección "Detalles"
+Para el vendedor:
+- **Estado**: ya se muestra como Input deshabilitado ✓ (sin cambios).
+- **Encargado**: cambiar a solo lectura visual — renderizar como `Input` deshabilitado con el valor actual (o "—" si vacío). Hoy ya está `disabled`, pero se ajusta el texto para que no parezca editable.
+- **Entrega estimada**: mismo tratamiento — mostrar la fecha formateada en un `Input` deshabilitado en lugar de un input `type="date"`.
+- **Notas internas**: sigue editable ✓ (única cosa que puede cambiar y guardar).
 
-**RLS / permisos**: nueva policy `UPDATE` sobre `order_items` limitada a la columna `is_gift` para: (a) admins vía `has_role(auth.uid(),'admin')`, o (b) el vendedor dueño de la orden (`orders.seller_id = auth.uid()`). Se implementa con un trigger `BEFORE UPDATE` que rechaza el cambio de `is_gift` si el usuario no cumple ninguna de las dos condiciones (más simple que columna-level GRANTs y consistente con el resto del proyecto).
+### 3. Sección "Productos y márgenes"
+Ya está oculta para vendedor (`!isSellerOnly && ...`) ✓. Sin cambios.
 
-## 2. Tipos y capa de datos
+### 4. Sección "Planimetrías"
+Nueva regla de edición para vendedor:
+- Puede **ver** siempre.
+- Puede **editar / subir / borrar** solo cuando `status === "pendiente"`.
+- Cuando la orden ya no está pendiente: `readOnly = true` y sin botón de regenerar.
 
-Tras la migración, `src/integrations/supabase/types.ts` se regenera con los nuevos campos. Los SELECT existentes en `orders.$id.tsx`, `invoice-panel.tsx` y `invoice-document.tsx` se amplían para traer `is_gift` y `gifted_by_email/gifted_at`.
+Implementación:
+- Definir `const sellerCanEditPlanimetry = isSellerOnly && p.status === "pendiente"`.
+- `readOnly` del `PlanimetryUploader`:
+  - Admin/producción: `sellerLocked` (falso para ellos).
+  - Vendedor: `!sellerCanEditPlanimetry`.
+- `canDelete`:
+  - Admin: `true` (actual).
+  - Vendedor: `sellerCanEditPlanimetry`.
+- Botón "Regenerar con formato actualizado": ocultarlo para el vendedor (es una acción de producción); hoy se muestra si `!sellerLocked`, se agrega `&& !isSellerOnly`.
 
-## 3. UI de la venta (`orders.$id.tsx` + `order-items-editor.tsx`)
+### 5. Aviso informativo
+Ajustar el mensaje ámbar existente ("Esta orden ya fue aceptada por producción…") para que también aclare al vendedor que ya no puede modificar planimetrías cuando la orden salió de "pendiente".
 
-- En cada fila del ítem: toggle **"Marcar como obsequio"** (icono 🎁, color verde). Visible solo si el usuario es admin o el vendedor de la orden; en caso contrario se muestra como badge readonly cuando ya está marcado.
-- Al activar el toggle: dialog de confirmación ("Este ítem se cobrará $0 y no sumará al total. ¿Confirmar?"). Al confirmar → `update({ is_gift: true })`.
-- Visual del ítem obsequio: `unit_price` tachado + badge naranja/verde **"Obsequio"** al lado del nombre; `line_total` mostrado como `$0`.
-- Subtotal live (`liveSubtotal`) recalculado excluyendo obsequios: `qty * unit_price * (is_gift ? 0 : 1)`.
-- Bloque "Auditoría del obsequio" (pequeño, colapsable): quién marcó y cuándo.
+## Fuera de alcance
+- No se tocan mutaciones (`cancelOrder`, `remove` ya existen y sus RPC validan permisos en base de datos).
+- No se tocan RLS ni policies — se asume que las policies actuales permiten al vendedor dueño de la venta ejecutar `delete_production_with_reason` y `cancel_production_with_reason`. Si al probar sale error de permisos, se abrirá plan aparte para ajustar la policy.
+- No se cambia la lógica de `isSellerRestricted` en `seller-restrictions.ts`.
 
-## 4. Cuenta de cobro / Factura
-
-- `invoice-panel.tsx`: al construir `items` para la versión persistida, si `is_gift = true` → `unit_price` y `line_total` guardados como `0`, y se añade prefijo `"[OBSEQUIO] "` al `description` (o campo `is_gift` en el snapshot si preferimos mantener el precio original visible). **Decisión propuesta**: guardar el snapshot con `unit_price = 0` y descripción prefijada, para que versiones históricas de la factura sean fieles a lo cobrado.
-- `invoice-document.tsx` (PDF): renderiza la fila con badge/label **"Obsequio"** al lado de la descripción; columnas de precio y subtotal muestran `$0`. Total de la factura queda igual al `orders.total` recalculado por el trigger.
-
-## 5. Producción
-
-Sin cambios de lógica. El flujo de planimetría, envío a producción y fabricación ignora `is_gift`. Solo se añade el badge **"Obsequio"** en las vistas de producción (`production.$id.tsx`, tabla de items) para que el proveedor/producción sepa que es un regalo y no espere pago.
-
-## 6. Análisis / comisiones (KPI 3 margen)
-
-- `analytics-operations.functions.ts` y `commissions.functions.ts`: al calcular ingresos por venta excluyen `line_total = 0` naturalmente. En la métrica de "margen bruto", el costo real de los items obsequiados se sigue restando → **el obsequio reduce margen del vendedor**, que es el comportamiento correcto para desincentivar abuso.
-- Comisiones: los ítems obsequio no generan comisión (ingreso = 0).
-
-## 7. Criterios de aceptación
-
-- ✅ Toggle visible y funcional solo para admin y vendedor dueño.
-- ✅ Ítem marcado como obsequio: `unit_price` original conservado, `line_total = 0`, subtotal/total/saldo de la orden recalculados sin él.
-- ✅ Cuenta de cobro (PDF y UI): ítem visible con label "Obsequio" y precio $0; total no cambia.
-- ✅ Producción: el ítem sigue el flujo normal (planimetría, envío, fabricación, entrega).
-- ✅ Auditoría: `order_audit_log` registra quién marcó/desmarcó y cuándo.
-- ✅ Una factura con todos los ítems obsequio queda con total = $0 (permitido).
-
-## Riesgos y decisiones pendientes de confirmar
-
-1. **KPI 3 / margen**: propuesto → el costo del obsequio cuenta como costo, el ingreso no. Alternativa: excluir el item por completo del cálculo. Confirmar con PM.
-2. **Snapshot de factura**: propuesto → guardar `unit_price = 0` en la versión persistida para fidelidad histórica. Alternativa: preservar `unit_price` original y solo mostrar $0 vía flag `is_gift`.
-
-Si no hay observaciones, se procede con los defaults propuestos.
+## Criterios de aceptación
+- Vendedor entra a `/erp/production/:id` y ve: cabecera, detalles (estado/encargado/fecha en solo lectura, notas editables), planimetrías, bitácora.
+- No ve "Productos y márgenes".
+- No ve botones "Aceptar" ni "Rechazar".
+- Ve "Cancelar orden" y "Eliminar" solo si el estado es `pendiente`.
+- Puede subir/editar/eliminar planimetrías solo si el estado es `pendiente`; en cualquier otro estado quedan en solo lectura.
+- Puede guardar cambios en Notas internas en cualquier estado.

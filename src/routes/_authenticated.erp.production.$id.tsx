@@ -221,6 +221,9 @@ function ProductionDetail() {
   const p = prod.data;
   const order = p.order as any;
   const sellerLocked = isSellerOnly && isProductionLocked(p.status);
+  const isPending = p.status === "pendiente";
+  const sellerCanEditPlanimetry = isSellerOnly && isPending;
+  const sellerCanManageOrder = isSellerOnly && isPending;
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -246,18 +249,18 @@ function ProductionDetail() {
           )}
         </div>
         <div className="flex gap-2 flex-wrap">
-          {p.status === "pendiente" && (
+          {!isSellerOnly && p.status === "pendiente" && (
             <Button variant="outline" size="sm" onClick={() => setRejOpen(true)} className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10">
               <ShieldAlert className="h-4 w-4" /> Rechazar
             </Button>
           )}
-          {p.status === "pendiente" && (
+          {!isSellerOnly && p.status === "pendiente" && (
             <Button size="sm" onClick={() => accept.mutate()} disabled={accept.isPending} className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
               {accept.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               Aceptar orden
             </Button>
           )}
-          {p.status !== "pendiente" && p.status !== "rechazada" && (
+          {!isSellerOnly && p.status !== "pendiente" && p.status !== "rechazada" && (
             <Button variant="outline" size="sm" onClick={() => setRejOpen(true)} className="gap-1 text-amber-700 dark:text-amber-300">
               <ShieldAlert className="h-4 w-4" /> Rechazar
             </Button>
@@ -267,7 +270,7 @@ function ProductionDetail() {
               <XCircle className="h-4 w-4" /> Cancelar orden
             </Button>
           )}
-          {isAdmin && (
+          {(isAdmin || sellerCanManageOrder) && (
             <Button variant="outline" size="sm" onClick={() => setDelOpen(true)} className="text-destructive gap-1">
               <Trash2 className="h-4 w-4" /> Eliminar
             </Button>
@@ -325,28 +328,30 @@ function ProductionDetail() {
                   </Select>
                 )}
               </div>
-              {!sellerLocked && (
-                <div>
-                  <Label className="text-xs">Encargado</Label>
+              <div>
+                <Label className="text-xs">Encargado</Label>
+                <Input
+                  value={form.assigned_to_label || (isSellerOnly ? "—" : "")}
+                  onChange={(e) => update("assigned_to_label", e.target.value)}
+                  placeholder="Nombre del responsable"
+                  disabled={isSellerOnly}
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Entrega estimada</Label>
+                {isSellerOnly ? (
                   <Input
-                    value={form.assigned_to_label}
-                    onChange={(e) => update("assigned_to_label", e.target.value)}
-                    placeholder="Nombre del responsable"
-                    disabled={isSellerOnly}
+                    value={form.due_date ? new Date(form.due_date + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                    disabled
                   />
-                </div>
-              )}
-              {!sellerLocked && (
-                <div>
-                  <Label className="text-xs">Entrega estimada</Label>
+                ) : (
                   <Input
                     type="date"
                     value={form.due_date ?? ""}
                     onChange={(e) => update("due_date", e.target.value)}
-                    disabled={isSellerOnly}
                   />
-                </div>
-              )}
+                )}
+              </div>
             </div>
             <div>
               <Label className="text-xs">Notas internas</Label>
@@ -371,7 +376,7 @@ function ProductionDetail() {
           <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h2 className="text-sm font-medium text-muted-foreground">Planimetrías</h2>
-              {!sellerLocked && (
+              {!sellerLocked && !isSellerOnly && (
                 <Button size="sm" variant="outline" onClick={() => regen.mutate()}
                   disabled={regen.isPending || !p.order_id} className="gap-1">
                   {regen.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -386,8 +391,8 @@ function ProductionDetail() {
                 productionOrderId={p.id}
                 brandId={p.brand_id}
                 items={plan.data ?? []}
-                canDelete={isAdmin}
-                readOnly={sellerLocked}
+                canDelete={isAdmin || sellerCanEditPlanimetry}
+                readOnly={isSellerOnly ? !sellerCanEditPlanimetry : sellerLocked}
                 onChange={() => {
                   qc.invalidateQueries({ queryKey: ["planimetries", id] });
                   qc.invalidateQueries({ queryKey: ["production-audit", id] });
