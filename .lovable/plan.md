@@ -1,61 +1,70 @@
-# Ventas en Borrador
 
-Feature grande y transversal. Antes de escribir código quiero confirmar el alcance con vos.
+## 1. Renombrar rol y ajustar permisos (`src/lib/permissions.ts`)
 
-## 1. Base de datos (migración)
+- `ROLE_LABELS.operativo`: `"Operativo de Bodega"` → **`"Producción"`**.
+  (Mantenemos el slug interno `operativo` en BD para no migrar `user_roles`; solo cambia la etiqueta visible en UI y selectores de usuarios.)
+- Nuevos permisos para `operativo`:
 
-- Insertar un `order_statuses` de sistema llamado **"Borrador"** (color gris), marcado como no-final y excluido de conteos activos. Añadir columna `is_draft boolean` en `order_statuses` (default false) y marcarlo `true` solo para este.
-- En `orders`: nueva columna `last_draft_saved_at timestamptz` para el debounce y para calcular la alerta a 7 días.
-- Trigger `BEFORE INSERT/UPDATE` que impida:
-  - Vincular `invoices` a una orden con status borrador.
-  - Crear `production_orders` desde una orden borrador.
-- Función `has_active_draft(_user_id uuid)` para el dashboard.
-- Cron diario (`pg_cron`) que marque en `seller_tasks` los borradores con `last_draft_saved_at < now() - 7 days` para que el vendedor los revise.
-- **Todos los reportes/KPIs existentes** (finanzas, comisiones, metas, analytics) filtran por `status.is_draft = false`. Requiere revisar cada consulta — riesgo de regresión.
+  | Módulo | Antes | Ahora |
+  |---|---|---|
+  | dashboard | brand | brand |
+  | production | brand | brand |
+  | my_tasks | all | all |
+  | supplier_payments | — | **all** |
+  | suppliers | — | **all** |
+  | orders (Ventas) | brand | **quitado** |
+  | warehouse (Bodega) | brand | **quitado** |
+  | logistics | — | — (sigue oculto) |
 
-## 2. Auto-guardado en el formulario de venta
+Resultado en el sidebar de Alejandra: Dashboard · Producción · Mis tareas · Pagos a proveedores · Proveedores.
 
-- El "formulario de nueva venta" hoy vive en `_authenticated.erp.orders.$id.tsx` (se crea la orden vacía primero y luego se edita). Para soportar borradores desde cero:
-  1. Al hacer clic en **"Nueva venta"** crear inmediatamente una orden con `status = borrador`, redirigir a `/erp/orders/$id`.
-  2. Cada campo modificado dispara un `setTimeout` de **30s** (o al blur de campos importantes: cliente, ítems, montos). Escribe con `.update()` sobre esa orden.
-  3. Indicador visual "Guardado hace Xs" arriba del formulario.
-- Al cambiar el status a "activa" (envío a producción / confirmación explícita), se sale del modo borrador. Botón visible: **"Confirmar venta"**.
+## 2. Dashboard propio para Producción (`src/routes/_authenticated.erp.index.tsx`)
 
-## 3. Modal de confirmación al salir
+Cuando el usuario tenga rol `operativo` (y no sea admin ni ventas), renderizar una variante distinta del dashboard con foco operativo, no comercial:
 
-- Hook `useBeforeUnload` + interceptor de navegación de TanStack Router (`router.subscribe('onBeforeNavigate')`).
-- Solo si `status = borrador` y hay cambios sin guardar en el debounce pendiente.
-- Modal: **"Guardar como borrador"** (flush inmediato + navegar) / **"Descartar"** (delete + navegar) / **"Cancelar"**.
+- **Encabezado**: "Panel de Producción — {marca activa}" con el owner de la marca (Alejandra/Jonathan desde `brand-owners.ts`).
+- **KPIs superiores** (cards) leídos de `production_orders` filtrados por `brand_id`:
+  - OPs pendientes de revisar planimetría (`status = 'pendiente'`).
+  - OPs en proceso (`status = 'en_proceso'`).
+  - OPs en control de calidad (`status = 'control_calidad'`).
+  - OPs listas para entrega (`status = 'listo'`).
+  - Anticipos a proveedor pendientes de pago (cuenta desde `supplier-advance-payments`).
+- **Lista "Requieren tu atención"**: OPs `pendiente` de esta marca con link directo a `/erp/production/{id}`, ordenadas por fecha creación asc.
+- **Bloque "Novedades activas"**: OPs con `novedad` distinta de null.
+- Sin bloques de ventas, comisiones ni metas.
 
-## 4. Sección "Borradores" en dashboard
+El dashboard actual (ventas/finanzas/admin) queda intacto; se elige por rol al inicio del componente.
 
-- En `_authenticated.erp.my-tasks.tsx` (dashboard del vendedor) nueva tarjeta "Borradores" que lista órdenes del vendedor con `status.is_draft = true`, ordenadas por `last_draft_saved_at desc`.
-- Cada fila: cliente + total parcial + antigüedad + botones **Retomar** (navega) / **Eliminar** (confirmación).
-- Badge rojo en los que llevan +7 días.
+## 3. Notificación al aceptar/revisar nueva OP
 
-## 5. Bloqueos
+Hoy, cuando Claudia (vendedora) envía una venta a producción, se crea una fila en `production_orders` con `status = 'pendiente'`, pero **no** se genera ninguna `seller_task` para el equipo de producción. Por eso Alejandra no vio la alerta.
 
-- Botón "Enviar a producción" oculto/deshabilitado si `is_draft`.
-- Panel de facturación oculto si `is_draft`.
-- En la lista general `/erp/orders`: los borradores solo aparecen si el filtro incluye "Borrador" (no en la vista por defecto). Solo el vendedor dueño (y admin) los ve.
+### Migración SQL
+
+1. Nueva tabla `brand_production_owners(brand_id uuid, user_id uuid, PRIMARY KEY (brand_id, user_id))` con GRANTs y RLS (lectura para authenticated, escritura solo admin vía `has_role`). Seed inicial mapeando los brands actuales a los `user_id` reales de Alejandra y Jonathan (a partir de `profiles.email`).
+2. Nuevo trigger `trg_notify_production_new_op` en `AFTER INSERT ON public.production_orders`:
+   - Lee `brand_id` y `order_id` de la OP.
+   - Para cada `user_id` en `brand_production_owners` de esa marca, inserta una `seller_tasks` con:
+     - `seller_id = user_id`
+     - `type = 'production_review_op'`
+     - `title = 'Nueva orden de producción para revisar'`
+     - `reason = 'Claudia (o vendedor real) cargó la OP de la venta #NNN. Revisa la planimetría y acéptala o recházala.'`
+     - `severity = 'warning'`, `status = 'pendiente'`, `production_order_id`, `order_id`, `brand_id`.
+3. Trigger complementario en `AFTER UPDATE OF status` de `production_orders`: cuando la OP pasa de `pendiente` a cualquier otro estado (`en_proceso` = aceptada, `rechazada`), marca la task correspondiente como `resuelta` para que desaparezca de "Mis tareas".
+
+### UI (`src/routes/_authenticated.erp.my-tasks.tsx`)
+
+Agregar render para el nuevo `type: 'production_review_op'`: card en tono ámbar con título, número de venta, marca y botón **"Revisar OP"** que lleva a `/erp/production/{production_order_id}`. Al aceptar/rechazar la OP desde ese detalle, el trigger del paso 3 la archiva automáticamente.
+
+## 4. Verificación
+
+Con Alejandra logueada:
+- El sidebar muestra solo los 5 módulos indicados.
+- El dashboard es la nueva versión de producción.
+- Al pedirle a Claudia que envíe una nueva venta a producción, aparece la tarea en "Mis tareas" de Alejandra y se archiva sola cuando ella acepta o rechaza la OP.
 
 ## Detalles técnicos
 
-- Debounce implementado con `useRef<NodeJS.Timeout>` + flush en `beforeunload`.
-- Escrituras van directo a `orders` y `order_items` con las políticas RLS existentes (el vendedor ya puede editar su orden).
-- Cron con `pg_cron` + `net.http_post` a un server route en `/api/public/hooks/draft-alerts` (o directamente insertando en `seller_tasks` desde el propio SQL — más simple, sin round-trip).
-- Filtro `is_draft = false` a agregar en (mínimo, hay que revisar todas):
-  - `analytics-operations.functions.ts`
-  - `commissions.functions.ts`
-  - `sales-goals.functions.ts`
-  - `invoices.functions.ts` (receivables)
-  - Vistas de `_authenticated.erp.finance.*`
-
-## Preguntas antes de implementar
-
-1. **¿Debounce de 30s o al blur?** Propongo **ambos**: blur en campos clave (cliente, cada ítem, monto total) + timeout de 30s como red de seguridad. ¿OK?
-2. **¿Crear orden en DB al abrir "Nueva venta"** (más simple, siempre hay ID), o mantener creación diferida en memoria hasta el primer save (evita órdenes vacías si el vendedor abre y cierra sin tocar nada)? Recomiendo la primera y limpiar borradores vacíos con el cron de 7 días.
-3. **¿La alerta a 7 días** solo entra en `seller_tasks`, o también push/email? Asumo solo `seller_tasks` (que ya se muestra en el dashboard).
-4. **¿Solo el vendedor dueño ve sus borradores**, o los admin/producción también los ven en la lista general? Recomiendo: dueño + admin; producción no.
-
-Confirmá esas 4 y arranco con la migración + el auto-guardado. Es un cambio grande, prefiero acordar antes de tocar 8-10 archivos.
+- No se crea rol nuevo en BD; solo cambia el label y la matriz de permisos.
+- `brand_production_owners` reemplaza gradualmente el mapa hardcoded de `brand-owners.ts` (ese archivo se mantiene como fallback visual por ahora).
+- El trigger se ejecuta con `SECURITY DEFINER` y `search_path = public` para poder insertar en `seller_tasks` bajo RLS.
