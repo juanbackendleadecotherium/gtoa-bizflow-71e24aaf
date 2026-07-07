@@ -189,15 +189,24 @@ export async function generatePlanimetryForOrder(opts: {
   const { pdf } = await import("@react-pdf/renderer");
   const { PlanimetryDocument } = await import("./planimetry-document");
 
-  // Resolve per-item next version (independent counter per item).
-  const { data: existing } = await supabase
+  // Delete previous planimetries for the items we're about to regenerate,
+  // so only the newest version remains per item (both DB rows + storage files).
+  const { data: existingForItems } = await supabase
     .from("production_planimetries")
-    .select("order_item_id, version")
-    .eq("production_order_id", opts.productionOrderId);
-  const versionByItem = new Map<string, number>();
-  for (const row of (existing ?? []) as { order_item_id: string | null; version: number }[]) {
-    const key = row.order_item_id ?? "__legacy__";
-    versionByItem.set(key, Math.max(versionByItem.get(key) ?? 0, row.version));
+    .select("id, file_path, order_item_id")
+    .eq("production_order_id", opts.productionOrderId)
+    .in("order_item_id", opts.selectedItemIds);
+  const oldRows = (existingForItems ?? []) as { id: string; file_path: string; order_item_id: string | null }[];
+  if (oldRows.length > 0) {
+    const paths = oldRows.map((r) => r.file_path).filter(Boolean);
+    if (paths.length > 0) {
+      await supabase.storage.from("production-planimetries").remove(paths);
+    }
+    const { error: delErr } = await supabase
+      .from("production_planimetries")
+      .delete()
+      .in("id", oldRows.map((r) => r.id));
+    if (delErr) throw delErr;
   }
 
   // We need item ids aligned with fullPlan.items (buildPlanData sorts by sort_order).
@@ -208,6 +217,7 @@ export async function generatePlanimetryForOrder(opts: {
     .order("sort_order", { ascending: true });
   if (itemErr) throw itemErr;
   const orderedItemIds = (itemRows ?? []).map((r: any) => r.id as string);
+
 
   let lastVersion = 0;
 
