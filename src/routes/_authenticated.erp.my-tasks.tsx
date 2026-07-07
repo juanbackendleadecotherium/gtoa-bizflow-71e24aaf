@@ -451,6 +451,14 @@ function MyTasks() {
                           >
                             {ctaLabel} <ArrowRight className="h-3 w-3" />
                           </Link>
+                        ) : isProductionReviewOp && t.production_order_id ? (
+                          <Link
+                            to="/erp/production/$id"
+                            params={{ id: t.production_order_id }}
+                            className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
+                          >
+                            Revisar OP <ArrowRight className="h-3 w-3" />
+                          </Link>
                         ) : t.order_id ? (
                           <Link
                             to="/erp/orders/$id"
