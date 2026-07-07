@@ -920,11 +920,11 @@ export function NewCustomerDialog({
           >
             {/* Tipo de venta */}
             <FieldBlock label="Tipo de venta">
-              <div className="grid sm:grid-cols-2 gap-2">
+              <div className="grid sm:grid-cols-3 gap-2">
                 <button type="button"
                   onClick={() => { setO("sale_type", "normal"); setO("request_approval", false); }}
                   className={`rounded-lg border p-3 text-left transition-colors ${
-                    !isPlanSepare
+                    !isPlanSepare && !isPagoPaulatino
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   }`}>
@@ -945,7 +945,24 @@ export function NewCustomerDialog({
                     Congela precio con abono parcial. Producción arranca al 50%.
                   </div>
                 </button>
+                <button type="button"
+                  onClick={() => { setO("sale_type", "pago_paulatino"); setO("request_approval", false); }}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    isPagoPaulatino
+                      ? "border-orange-500 bg-orange-500/5"
+                      : "border-border hover:border-primary/50"
+                  }`}>
+                  <div className="text-sm font-medium">Pago Paulatino</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Arranca producción con cualquier anticipo. Tú quedas registrado como responsable.
+                  </div>
+                </button>
               </div>
+              {isPagoPaulatino && (
+                <p className="mt-2 text-[11px] text-orange-700 dark:text-orange-400">
+                  Al elegir Pago Paulatino, tú autorizas la excepción al 50% y quedas registrado en la auditoría de la venta.
+                </p>
+              )}
             </FieldBlock>
 
             <div className="grid sm:grid-cols-2 gap-4 mt-3">
