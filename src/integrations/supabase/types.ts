@@ -1118,8 +1118,12 @@ export type Database = {
           cost_notes: string | null
           created_at: string
           description: string
+          gifted_at: string | null
+          gifted_by: string | null
+          gifted_by_email: string | null
           id: string
           images: Json
+          is_gift: boolean
           is_standard_product: boolean
           line_total: number
           manufacturing_cost: number | null
@@ -1152,8 +1156,12 @@ export type Database = {
           cost_notes?: string | null
           created_at?: string
           description: string
+          gifted_at?: string | null
+          gifted_by?: string | null
+          gifted_by_email?: string | null
           id?: string
           images?: Json
+          is_gift?: boolean
           is_standard_product?: boolean
           line_total?: number
           manufacturing_cost?: number | null
@@ -1186,8 +1194,12 @@ export type Database = {
           cost_notes?: string | null
           created_at?: string
           description?: string
+          gifted_at?: string | null
+          gifted_by?: string | null
+          gifted_by_email?: string | null
           id?: string
           images?: Json
+          is_gift?: boolean
           is_standard_product?: boolean
           line_total?: number
           manufacturing_cost?: number | null
