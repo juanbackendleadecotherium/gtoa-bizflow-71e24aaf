@@ -21,7 +21,7 @@ type BrandRow = {
 };
 
 function BrandBillingPage() {
-  const { isAdmin, selectedBrandId, selectedBrand } = useBrand();
+  const { isAdmin, roles, selectedBrandId, selectedBrand } = useBrand();
   const qc = useQueryClient();
 
   const brandQuery = useQuery({
@@ -65,8 +65,10 @@ function BrandBillingPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!isAdmin) {
-    return <p className="text-sm text-muted-foreground">Solo administradores pueden editar los datos fiscales.</p>;
+  
+  const canEdit = isAdmin || roles.includes("vendedor");
+  if (!canEdit) {
+    return <p className="text-sm text-muted-foreground">No tienes permisos para editar los datos fiscales.</p>;
   }
 
   if (brandQuery.isLoading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;

@@ -15,7 +15,8 @@ export const Route = createFileRoute("/_authenticated/erp/settings/terms")({
 });
 
 function TermsPage() {
-  const { isAdmin } = useBrand();
+  const { isAdmin, roles } = useBrand();
+  const canEdit = isAdmin || roles.includes("vendedor");
   const qc = useQueryClient();
 
   const termsQuery = useQuery({
@@ -76,8 +77,8 @@ function TermsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!isAdmin) {
-    return <p className="text-sm text-muted-foreground">Solo administradores pueden gestionar los términos y condiciones.</p>;
+  if (!canEdit) {
+    return <p className="text-sm text-muted-foreground">No tienes permisos para gestionar los términos y condiciones.</p>;
   }
 
   return (
