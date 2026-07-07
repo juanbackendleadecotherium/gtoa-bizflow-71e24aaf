@@ -38,8 +38,10 @@ const STATUSES: Array<{ v: "pendiente" | "aprobada" | "rechazada" | "pagada"; la
 ];
 
 function CommissionsPage() {
-  const { isAdmin, roles } = useBrand();
+  const { isAdmin, roles, loading } = useBrand();
   const isFinance = isAdmin || roles.includes("finanzas");
+  const isSeller = roles.includes("vendedor");
+  const canView = isFinance || isSeller;
   const qc = useQueryClient();
   const [tab, setTab] = useState<"pendiente" | "aprobada" | "pagada" | "rechazada">("pendiente");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -54,9 +56,14 @@ function CommissionsPage() {
   const q = useQuery({
     queryKey: ["commissions", tab],
     queryFn: () => listFn({ data: { status: tab } }),
+    enabled: canView && !loading,
   });
 
-  const tiersQ = useQuery({ queryKey: ["commission-tiers"], queryFn: () => tiersFn() });
+  const tiersQ = useQuery({
+    queryKey: ["commission-tiers"],
+    queryFn: () => tiersFn(),
+    enabled: canView && !loading,
+  });
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["commissions"] });
@@ -99,7 +106,15 @@ function CommissionsPage() {
     setSelected(n);
   };
 
-  if (!isFinance) return <p className="text-sm text-muted-foreground">Solo administración o finanzas.</p>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!canView) return <p className="text-sm text-muted-foreground">Solo administración, finanzas o vendedor.</p>;
 
   return (
     <div className="space-y-6">
@@ -140,7 +155,7 @@ function CommissionsPage() {
           ))}
         </TabsList>
         <TabsContent value={tab} className="mt-4 space-y-2">
-          {tab === "aprobada" && rows.length > 0 && (
+          {tab === "aprobada" && isFinance && rows.length > 0 && (
             <div className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-lg border border-border bg-surface/95 backdrop-blur p-3 flex-wrap">
               <button onClick={toggleAll} className="inline-flex items-center gap-2 text-sm">
                 {selected.size === rows.length ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
@@ -171,7 +186,7 @@ function CommissionsPage() {
                   c={c}
                   isAdmin={isAdmin}
                   isFinance={isFinance}
-                  selectable={tab === "aprobada"}
+                  selectable={tab === "aprobada" && isFinance}
                   selected={selected.has(c.id)}
                   onToggle={() => toggleOne(c.id)}
                   onApprove={() => approve.mutate(c.id)}
