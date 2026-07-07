@@ -63,14 +63,14 @@ function OrderDetail() {
         .from("orders")
         .select(`
           id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date, scheduled_delivery_date, is_deferred_delivery, deferred_reason, deferred_at,
-          sale_type, separe_activated_at, separe_completed_at, price_locked_at,
+          sale_type, separe_activated_at, separe_completed_at, price_locked_at, seller_id,
           paulatino_authorized_by_email, paulatino_authorized_at, paulatino_advance_at_send,
           approval_status, approval_requested_at, approval_resolved_at, approval_note,
           payment_method, advance_amount, advance_deposit_account, payment_proof_url,
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color),
-          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at, is_standard_product, production_order:production_orders!production_order_id(status))
+          items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at, is_standard_product, is_gift, gifted_by_email, gifted_at, production_order:production_orders!production_order_id(status))
         `)
         .eq("id", id).maybeSingle();
       if (error) throw error;
