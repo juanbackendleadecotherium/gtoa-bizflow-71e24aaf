@@ -1,71 +1,59 @@
 ## Objetivo
 
-Permitir un tercer tipo de venta —**Pago Paulatino**— que el vendedor puede activar libremente por cliente. Habilita "Enviar a producción" con cualquier anticipo (incluso $0), sin pasar por gerencia y sin esperar al 50%. Cada excepción queda registrada con quién la autorizó, cuándo, y con qué anticipo al momento de enviar a producción.
+Permitir marcar cualquier `order_item` como **Obsequio**. El ítem se cobra $0, no impacta el total de la venta ni el saldo pendiente, aparece etiquetado en la cuenta de cobro, y **sigue el flujo normal de producción**.
 
-## Cambios
+## 1. Base de datos (migración única)
 
-### 1. Base de datos (una sola migración)
+Sobre `public.order_items`:
 
-En la tabla `orders`:
-- `sale_type` sigue siendo texto; ahora acepta `normal`, `plan_separe` y **`pago_paulatino`**.
-- Se agregan 4 campos nuevos de auditoría (todos opcionales, solo se llenan cuando aplica):
-  - `paulatino_authorized_by` — vendedor que activó el tipo (usa `seller_id` de la venta).
-  - `paulatino_authorized_by_email` — snapshot legible.
-  - `paulatino_authorized_at` — fecha/hora en que se marcó Pago Paulatino.
-  - `paulatino_advance_at_send` — monto del anticipo el día que se envió a producción.
+- Nueva columna `is_gift boolean NOT NULL DEFAULT false`.
+- Nueva columna de auditoría: `gifted_by uuid`, `gifted_by_email text`, `gifted_at timestamptz`.
+- Actualizar el trigger `set_line_total()` para que, si `NEW.is_gift = true`, force `line_total = 0` (independiente de `unit_price` × `quantity`). Se conserva `unit_price` original por trazabilidad — el precio "regalado" queda registrado.
+- Actualizar `compute_order_item_margin()` / `order_items_recalc_margin()` para que un ítem con `is_gift = true` **no contamine el margen**: se marca `margin_pct = NULL` y el costo se sigue registrando como costo real. En los KPIs de margen (Analytics/comisiones) se excluye del numerador de ingresos, pero **el costo sí cuenta** — así el obsequio se refleja como una decisión que reduce margen global sin distorsionar el % por línea. (Confirmar con PM si prefiere excluirlo por completo; el default propuesto es "cuenta como costo, no como venta".)
+- Nuevo trigger `BEFORE UPDATE OF is_gift`: si cambia `is_gift`, auto-llena `gifted_by = auth.uid()`, `gifted_by_email` desde `profiles`, `gifted_at = now()`; al desmarcar, limpia los tres campos.
+- Registro en `order_audit_log` con acción `item_marked_as_gift` / `item_unmarked_as_gift`.
+- `recalc_order_totals()` no requiere cambio: al sumar `line_total` (ya = 0 para obsequios) el `orders.subtotal/total` queda correcto automáticamente. El saldo pendiente (`total - pagos`) también, sin tocar código.
 
-Trigger `sync_paulatino_authorization`:
-- Al crear una venta con `sale_type = 'pago_paulatino'`, autocompleta `paulatino_authorized_by/at/email` desde `seller_id`.
-- Al vincular el primer `order_item.production_order_id`, si la venta es Pago Paulatino y `paulatino_advance_at_send` está nulo, lo llena con el `advance_amount` vigente en ese instante.
+**RLS / permisos**: nueva policy `UPDATE` sobre `order_items` limitada a la columna `is_gift` para: (a) admins vía `has_role(auth.uid(),'admin')`, o (b) el vendedor dueño de la orden (`orders.seller_id = auth.uid()`). Se implementa con un trigger `BEFORE UPDATE` que rechaza el cambio de `is_gift` si el usuario no cumple ninguna de las dos condiciones (más simple que columna-level GRANTs y consistente con el resto del proyecto).
 
-Además, entrada automática en `order_audit_log` con `action = 'paulatino_send_to_production'` y detalle del monto — reutiliza el registro que ya se usa para otras acciones de la venta.
+## 2. Tipos y capa de datos
 
-### 2. UI de creación (`new-customer-dialog.tsx`)
+Tras la migración, `src/integrations/supabase/types.ts` se regenera con los nuevos campos. Los SELECT existentes en `orders.$id.tsx`, `invoice-panel.tsx` y `invoice-document.tsx` se amplían para traer `is_gift` y `gifted_by_email/gifted_at`.
 
-Sección "Tipo de venta" pasa de 2 a 3 tarjetas:
+## 3. UI de la venta (`orders.$id.tsx` + `order-items-editor.tsx`)
 
-```text
-[ Venta normal ]   [ Plan Separe ]   [ Pago Paulatino ]
-50% de anticipo     Congela precio    Vendedor autoriza,
-                    Arranca al 50%    arranca con cualquier
-                                      anticipo, queda en
-                                      auditoría
-```
+- En cada fila del ítem: toggle **"Marcar como obsequio"** (icono 🎁, color verde). Visible solo si el usuario es admin o el vendedor de la orden; en caso contrario se muestra como badge readonly cuando ya está marcado.
+- Al activar el toggle: dialog de confirmación ("Este ítem se cobrará $0 y no sumará al total. ¿Confirmar?"). Al confirmar → `update({ is_gift: true })`.
+- Visual del ítem obsequio: `unit_price` tachado + badge naranja/verde **"Obsequio"** al lado del nombre; `line_total` mostrado como `$0`.
+- Subtotal live (`liveSubtotal`) recalculado excluyendo obsequios: `qty * unit_price * (is_gift ? 0 : 1)`.
+- Bloque "Auditoría del obsequio" (pequeño, colapsable): quién marcó y cuándo.
 
-Selección `pago_paulatino`:
-- Oculta la casilla "Solicitar aprobación gerencial" (no aplica).
-- Elimina la validación del 50% en el submit.
-- Muestra una nota clara: *"Tú quedas registrado como responsable de esta excepción."*
-- Advance permitido en $0.
+## 4. Cuenta de cobro / Factura
 
-### 3. Detalle de venta
+- `invoice-panel.tsx`: al construir `items` para la versión persistida, si `is_gift = true` → `unit_price` y `line_total` guardados como `0`, y se añade prefijo `"[OBSEQUIO] "` al `description` (o campo `is_gift` en el snapshot si preferimos mantener el precio original visible). **Decisión propuesta**: guardar el snapshot con `unit_price = 0` y descripción prefijada, para que versiones históricas de la factura sean fieles a lo cobrado.
+- `invoice-document.tsx` (PDF): renderiza la fila con badge/label **"Obsequio"** al lado de la descripción; columnas de precio y subtotal muestran `$0`. Total de la factura queda igual al `orders.total` recalculado por el trigger.
 
-- `SaleTypeBadge` gana un tercer caso: badge naranja "Pago Paulatino" con ícono `HandCoins`.
-- `SaleFlowCard` muestra un bloque naranja informativo cuando aplica: quién autorizó, fecha, y —si ya se envió a producción— con qué anticipo. Sin barra de progreso al 50%.
+## 5. Producción
 
-### 4. Gate de envío a producción
+Sin cambios de lógica. El flujo de planimetría, envío a producción y fabricación ignora `is_gift`. Solo se añade el badge **"Obsequio"** en las vistas de producción (`production.$id.tsx`, tabla de items) para que el proveedor/producción sepa que es un regalo y no espere pago.
 
-En `send-to-production-button.tsx` y en `canSendToProduction` (`sale-type-badge.tsx`):
-- Si `sale_type === 'pago_paulatino'`: se salta la validación del 50% y también la de aprobación gerencial (esa venta no debería tenerla, pero se cubre por defensa).
-- Cualquier anticipo (incluido $0) habilita el botón.
-- El trigger de BD hace el resto de la auditoría cuando el ítem queda vinculado a la orden de producción.
+## 6. Análisis / comisiones (KPI 3 margen)
 
-### 5. Consultas existentes
+- `analytics-operations.functions.ts` y `commissions.functions.ts`: al calcular ingresos por venta excluyen `line_total = 0` naturalmente. En la métrica de "margen bruto", el costo real de los items obsequiados se sigue restando → **el obsequio reduce margen del vendedor**, que es el comportamiento correcto para desincentivar abuso.
+- Comisiones: los ítems obsequio no generan comisión (ingreso = 0).
 
-- `orders` en `orders.index.tsx` y `orders.$id.tsx` ya seleccionan `sale_type`; solo se agrega el nuevo caso al render. No hay cambios de queries a nivel de rendimiento.
+## 7. Criterios de aceptación
 
-## Auditoría — dónde consultarla luego
+- ✅ Toggle visible y funcional solo para admin y vendedor dueño.
+- ✅ Ítem marcado como obsequio: `unit_price` original conservado, `line_total = 0`, subtotal/total/saldo de la orden recalculados sin él.
+- ✅ Cuenta de cobro (PDF y UI): ítem visible con label "Obsequio" y precio $0; total no cambia.
+- ✅ Producción: el ítem sigue el flujo normal (planimetría, envío, fabricación, entrega).
+- ✅ Auditoría: `order_audit_log` registra quién marcó/desmarcó y cuándo.
+- ✅ Una factura con todos los ítems obsequio queda con total = $0 (permitido).
 
-1. **En la venta**: badge + tarjeta muestran responsable y montos.
-2. **`order_audit_log`**: filtrable por `action = 'paulatino_send_to_production'` para revisar todos los envíos anticipados.
-3. **Timeline de la venta** (`AuditTimeline`) mostrará automáticamente la entrada.
+## Riesgos y decisiones pendientes de confirmar
 
-## Fuera de alcance (intencional)
+1. **KPI 3 / margen**: propuesto → el costo del obsequio cuenta como costo, el ingreso no. Alternativa: excluir el item por completo del cálculo. Confirmar con PM.
+2. **Snapshot de factura**: propuesto → guardar `unit_price = 0` en la versión persistida para fidelidad histórica. Alternativa: preservar `unit_price` original y solo mostrar $0 vía flag `is_gift`.
 
-- Sin marcaciones de "cliente confiable" — decisión libre del vendedor.
-- Sin monto mínimo — responsabilidad del vendedor.
-- Sin nueva pantalla de administración; toda la revisión sale de `order_audit_log` y la vista de detalle de venta.
-
-## Consumo estimado
-
-Cambios acotados: 1 migración (columnas + trigger), 4 archivos frontend tocados con edits pequeños, sin nuevas server functions ni nuevas rutas.
+Si no hay observaciones, se procede con los defaults propuestos.
