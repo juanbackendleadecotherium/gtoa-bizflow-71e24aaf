@@ -1,0 +1,2 @@
+ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_sale_type_check;
+ALTER TABLE public.orders ADD CONSTRAINT orders_sale_type_check CHECK (sale_type = ANY (ARRAY['normal'::text, 'plan_separe'::text, 'pago_paulatino'::text]));
