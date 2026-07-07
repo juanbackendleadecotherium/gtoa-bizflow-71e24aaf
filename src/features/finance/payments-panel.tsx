@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Banknote, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { Banknote, Plus, Trash2, ExternalLink, Loader2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ type Payment = {
   reference: string | null;
   note: string | null;
   proof_url: string | null;
+  proof_urls: string[] | null;
   created_by_email: string | null;
   deposit_account: string | null;
 };
@@ -36,7 +37,7 @@ export function PaymentsPanel({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_payments")
-        .select("id, amount, paid_at, method, reference, note, proof_url, created_by_email, deposit_account")
+        .select("id, amount, paid_at, method, reference, note, proof_url, proof_urls, created_by_email, deposit_account")
         .eq("order_id", orderId)
         .order("paid_at", { ascending: false });
       if (error) throw error;
@@ -56,6 +57,22 @@ export function PaymentsPanel({
       qc.invalidateQueries({ queryKey: ["finance-dashboard"] });
       qc.invalidateQueries({ queryKey: ["finance-receivables"] });
       qc.invalidateQueries({ queryKey: ["finance-accounts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const removeProof = useMutation({
+    mutationFn: async ({ paymentId, url, current }: { paymentId: string; url: string; current: string[] }) => {
+      const next = current.filter((u) => u !== url);
+      const { error } = await supabase
+        .from("order_payments")
+        .update({ proof_urls: next, proof_url: next[0] ?? null })
+        .eq("id", paymentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Comprobante quitado");
+      qc.invalidateQueries({ queryKey: ["order-payments", orderId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -103,7 +120,12 @@ export function PaymentsPanel({
         <Loader2 className="h-4 w-4 animate-spin mt-3 text-muted-foreground" />
       ) : payments.length > 0 ? (
         <ul className="mt-4 pt-3 border-t border-border space-y-2">
-          {payments.map((p) => (
+          {payments.map((p) => {
+            const proofs = (p.proof_urls && p.proof_urls.length > 0)
+              ? p.proof_urls
+              : (p.proof_url ? [p.proof_url] : []);
+            const isImage = (u: string) => /\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(u);
+            return (
             <li key={p.id} className="rounded-md border border-border bg-background px-2.5 py-2 text-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="tabular-nums font-medium">{formatMoney(p.amount)}</span>
@@ -112,10 +134,10 @@ export function PaymentsPanel({
               <div className="mt-0.5 flex items-center justify-between text-muted-foreground">
                 <span>{p.method || "—"}{p.reference ? ` · ${p.reference}` : ""}</span>
                 <div className="flex items-center gap-2">
-                  {p.proof_url && (
-                    <a href={p.proof_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">
-                      <ExternalLink className="h-3 w-3" />Comprobante
-                    </a>
+                  {proofs.length > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-foreground/70">
+                      <Paperclip className="h-3 w-3" />{proofs.length}
+                    </span>
                   )}
                   {isAdmin && (
                     <button onClick={() => del.mutate(p.id)} className="text-muted-foreground hover:text-destructive" title="Eliminar">
@@ -124,6 +146,40 @@ export function PaymentsPanel({
                   )}
                 </div>
               </div>
+              {proofs.length > 0 && (
+                <div className="mt-2 grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                  {proofs.map((url) => (
+                    <div key={url} className="relative group aspect-square rounded-md border border-border bg-muted/40 overflow-hidden">
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block w-full h-full"
+                        title="Ver en grande"
+                      >
+                        {isImage(url) ? (
+                          <img src={url} alt="Comprobante" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full grid place-items-center text-[10px] text-muted-foreground gap-1">
+                            <ExternalLink className="h-4 w-4" />
+                            <span>Ver</span>
+                          </div>
+                        )}
+                      </a>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => removeProof.mutate({ paymentId: p.id, url, current: proofs })}
+                          className="absolute top-0.5 right-0.5 h-5 w-5 grid place-items-center rounded-full bg-background/90 border border-border opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+                          aria-label="Quitar comprobante"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               {p.deposit_account && (
                 <p className="mt-1 text-[10px] inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-foreground/80">
                   → {formatDepositAccount(p.deposit_account)}
@@ -132,7 +188,8 @@ export function PaymentsPanel({
               {p.note && <p className="mt-1 text-foreground/80">{p.note}</p>}
               {p.created_by_email && <p className="mt-0.5 text-[10px] text-muted-foreground">Registrado por {p.created_by_email}</p>}
             </li>
-          ))}
+            );
+          })}
         </ul>
       ) : null}
 
