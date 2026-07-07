@@ -182,6 +182,24 @@ function ProductionDetail() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const [resubmitOpen, setResubmitOpen] = useState(false);
+  const resubmit = useMutation({
+    mutationFn: async (note: string) => {
+      const { error } = await supabase.rpc("resubmit_production_after_rejection", { p_id: id, p_note: note });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Orden reenviada — producción la verá de nuevo en la cola");
+      setResubmitOpen(false);
+      qc.invalidateQueries({ queryKey: ["production-order", id] });
+      qc.invalidateQueries({ queryKey: ["production-audit", id] });
+      qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
   const regen = useMutation({
     mutationFn: async () => {
       if (!prod.data?.order_id) throw new Error("Esta orden no está vinculada a una venta");
@@ -223,8 +241,12 @@ function ProductionDetail() {
   const order = p.order as any;
   const sellerLocked = isSellerOnly && isProductionLocked(p.status);
   const isPending = p.status === "pendiente";
-  const sellerCanEditPlanimetry = isSellerOnly && isPending;
+  const isRejected = p.status === "rechazada";
+  // El vendedor puede editar planimetrías mientras la orden esté pendiente
+  // o rechazada (justo cuando necesita corregir lo que producción le devolvió).
+  const sellerCanEditPlanimetry = isSellerOnly && (isPending || isRejected);
   const sellerCanManageOrder = isSellerOnly && isPending;
+  const sellerCanResubmit = isSellerRole && isRejected;
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
