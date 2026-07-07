@@ -46,19 +46,27 @@ export function PaymentDialog({
     setPaidAt(new Date().toISOString().slice(0, 10)); setNote(""); setPending([]);
   };
 
+  const MAX_TOTAL_MB = 40;
+
   const mut = useMutation({
     mutationFn: async () => {
       if (amount <= 0) throw new Error("El monto debe ser mayor a cero.");
       if (accountRequired && !depositAccount) {
         throw new Error("Selecciona la cuenta a la que llegó el dinero.");
       }
-      let proof_url: string | null = null;
-      if (pending[0]) {
-        proof_url = await uploadOrderImage(pending[0].file, `payments/${orderId}`);
+      const totalBytes = pending.reduce((s, p) => s + p.file.size, 0);
+      if (totalBytes > MAX_TOTAL_MB * 1024 * 1024) {
+        throw new Error(`El total de comprobantes supera ${MAX_TOTAL_MB} MB.`);
+      }
+      const proof_urls: string[] = [];
+      for (const p of pending) {
+        proof_urls.push(await uploadOrderImage(p.file, `payments/${orderId}`));
       }
       const { error } = await supabase.from("order_payments").insert({
         order_id: orderId, brand_id: brandId, amount, method,
-        reference: reference || null, paid_at: paidAt, note: note || null, proof_url,
+        reference: reference || null, paid_at: paidAt, note: note || null,
+        proof_url: proof_urls[0] ?? null,
+        proof_urls,
         deposit_account: depositAccount || null,
       });
       if (error) throw error;

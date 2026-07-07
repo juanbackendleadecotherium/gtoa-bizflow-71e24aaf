@@ -1273,6 +1273,7 @@ export type Database = {
           order_id: string
           paid_at: string
           proof_url: string | null
+          proof_urls: string[]
           reference: string | null
         }
         Insert: {
@@ -1288,6 +1289,7 @@ export type Database = {
           order_id: string
           paid_at?: string
           proof_url?: string | null
+          proof_urls?: string[]
           reference?: string | null
         }
         Update: {
@@ -1303,6 +1305,7 @@ export type Database = {
           order_id?: string
           paid_at?: string
           proof_url?: string | null
+          proof_urls?: string[]
           reference?: string | null
         }
         Relationships: []
