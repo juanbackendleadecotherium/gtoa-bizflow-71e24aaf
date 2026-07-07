@@ -65,7 +65,7 @@ function FinanceLayout() {
       </div>
 
       <div className="flex flex-wrap gap-1 border-b border-border">
-        {TABS.map((t) => {
+        {visibleTabs.map((t) => {
           const Icon = t.icon;
           const active = t.exact ? currentPath === t.to : currentPath.startsWith(t.to);
           return (
