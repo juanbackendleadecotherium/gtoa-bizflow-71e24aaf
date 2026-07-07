@@ -1,4 +1,4 @@
-import { Bookmark, Clock3, CheckCircle2, XCircle } from "lucide-react";
+import { Bookmark, Clock3, CheckCircle2, XCircle, HandCoins } from "lucide-react";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { SaleTypeBadge, ApprovalStatusBadge } from "@/features/orders/sale-type-badge";
 
@@ -13,12 +13,14 @@ type OrderLite = {
   approval_requested_at: string | null;
   approval_resolved_at: string | null;
   approval_note: string | null;
+  paulatino_authorized_by_email?: string | null;
+  paulatino_authorized_at?: string | null;
+  paulatino_advance_at_send?: number | null;
 };
 
 /**
- * Muestra el estado del "tipo de venta" (normal / Plan Separe) y del flujo de
- * aprobación gerencial en el detalle de la orden. Los controles de aprobar/
- * rechazar viven exclusivamente en "Mis tareas" del administrador.
+ * Muestra el estado del "tipo de venta" (normal / Plan Separe / Pago Paulatino)
+ * y del flujo de aprobación gerencial en el detalle de la orden.
  */
 export function SaleFlowCard({
   order,
@@ -30,6 +32,7 @@ export function SaleFlowCard({
   const total = Number(order.total ?? 0);
   const pct = total > 0 ? Math.min(100, (paidTotal / total) * 100) : 0;
   const isSepare = order.sale_type === "plan_separe";
+  const isPaulatino = order.sale_type === "pago_paulatino";
   const separeDone = !!order.separe_completed_at;
 
   return (
@@ -72,6 +75,41 @@ export function SaleFlowCard({
         </div>
       )}
 
+      {isPaulatino && (
+        <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 p-3 space-y-1.5">
+          <p className="text-xs font-medium text-orange-700 dark:text-orange-400 flex items-center gap-1">
+            <HandCoins className="h-3.5 w-3.5" /> Excepción autorizada por el vendedor
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Producción se puede iniciar con cualquier anticipo, sin pasar por gerencia. El vendedor asume el recaudo del saldo.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
+            <div>
+              <span className="text-muted-foreground block">Autorizó</span>
+              <span className="font-medium text-foreground">
+                {order.paulatino_authorized_by_email ?? "—"}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block">Fecha</span>
+              <span className="font-medium text-foreground">
+                {order.paulatino_authorized_at
+                  ? new Date(order.paulatino_authorized_at).toLocaleString("es-CO")
+                  : "—"}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block">Anticipo al enviar a producción</span>
+              <span className="font-medium tabular-nums text-foreground">
+                {order.paulatino_advance_at_send != null
+                  ? formatMoney(Number(order.paulatino_advance_at_send))
+                  : "— aún no enviado"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {order.approval_status === "pendiente" && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-1">
           <p className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1">
@@ -106,3 +144,4 @@ export function SaleFlowCard({
     </section>
   );
 }
+
