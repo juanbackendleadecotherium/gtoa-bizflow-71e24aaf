@@ -985,6 +985,8 @@ export function NewCustomerDialog({
               </FieldBlock>
               <FieldBlock label={isPlanSepare
                 ? "Abono inicial (opcional en Plan Separe)"
+                : isPagoPaulatino
+                ? "Abono inicial (opcional en Pago Paulatino)"
                 : `Abono * (mín. ${subtotal > 0 ? formatMoney(minAdvance) : "50% del total"})`}>
                 <MoneyInput
                   value={draft.order.advance_amount}
