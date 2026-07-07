@@ -52,7 +52,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   ventas: "Gerente de Ventas",
   finanzas: "Gerente de Finanzas",
   vendedor: "Vendedor",
-  operativo: "Operativo de Bodega",
+  operativo: "Producción",
   logistica: "Logística",
 };
 
