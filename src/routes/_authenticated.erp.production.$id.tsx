@@ -246,7 +246,7 @@ function ProductionDetail() {
   // o rechazada (justo cuando necesita corregir lo que producción le devolvió).
   const sellerCanEditPlanimetry = isSellerOnly && (isPending || isRejected);
   const sellerCanManageOrder = isSellerOnly && isPending;
-  const sellerCanResubmit = isSellerRole && isRejected;
+  const sellerCanResubmit = (isSellerRole || isAdmin) && isRejected;
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
