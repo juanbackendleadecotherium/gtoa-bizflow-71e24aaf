@@ -321,6 +321,7 @@ function MyTasks() {
                   t.type === "partial_shipment_forms_done" ||
                   t.type === "invoice_collection_forms_done";
                 const isApprovalGranted = t.type === "approval_granted" || t.type === "production_accepted";
+                const isProductionReviewOp = t.type === "production_review_op";
                 const isInfo =
                   isPaidNotice ||
                   isCommissionNotice ||
