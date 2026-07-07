@@ -398,25 +398,15 @@ export function NewCustomerDialog({
         customer_contact_type: c.contact_type || null,
       });
 
-      const requestedInvoice = draft.order.invoice_number.trim() || null;
-      let { data: order, error: orderErr } = await supabase
+      // SIEMPRE dejamos que el trigger del backend asigne el consecutivo
+      // atómicamente (allocate_invoice_number con advisory lock por marca).
+      // El valor previsualizado en la UI puede quedar obsoleto si otro
+      // vendedor tomó el número, y enviarlo dispara duplicate key.
+      const { data: order, error: orderErr } = await supabase
         .from("orders")
-        .insert(buildOrderPayload(requestedInvoice) as never)
+        .insert(buildOrderPayload(null) as never)
         .select()
         .single();
-      if (
-        orderErr &&
-        requestedInvoice &&
-        (orderErr.code === "23505" || /orders_brand_invoice_unique|duplicate key/i.test(orderErr.message))
-      ) {
-        const retry = await supabase
-          .from("orders")
-          .insert(buildOrderPayload(null) as never)
-          .select()
-          .single();
-        order = retry.data;
-        orderErr = retry.error;
-      }
       if (orderErr) throw orderErr;
       if (!order) throw new Error("No se pudo crear el pedido");
 
