@@ -418,6 +418,7 @@ export function NewCustomerDialog({
         orderErr = retry.error;
       }
       if (orderErr) throw orderErr;
+      if (!order) throw new Error("No se pudo crear el pedido");
 
       const itemsPayload = draft.items.map((it, idx) => ({
         order_id: order.id,
