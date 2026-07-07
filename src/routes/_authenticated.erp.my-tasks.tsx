@@ -320,10 +320,12 @@ function MyTasks() {
                 const isProductionForwarded =
                   t.type === "partial_shipment_forms_done" ||
                   t.type === "invoice_collection_forms_done";
+                const isApprovalGranted = t.type === "approval_granted";
                 const isInfo =
                   isPaidNotice ||
                   isCommissionNotice ||
                   isProductionForwarded ||
+                  isApprovalGranted ||
                   t.severity === "info" ||
                   t.type === "production_started";
                 const isPlanimetry = t.type === "upload_planimetry";
@@ -340,29 +342,35 @@ function MyTasks() {
                   : t.reason;
                 const wrapCls = overdue
                   ? "border-red-500/60 bg-red-500/5"
-                  : isPayAdvance || isCommissionApproval || isCommissionReadyToPay
+                  : isApprovalGranted
                     ? (pending ? "border-emerald-500/60 bg-emerald-500/5" : "border-border bg-surface")
-                    : isFormsTask
-                      ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
-                      : isInfo
-                        ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
-                        : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
+                    : isPayAdvance || isCommissionApproval || isCommissionReadyToPay
+                      ? (pending ? "border-emerald-500/60 bg-emerald-500/5" : "border-border bg-surface")
+                      : isFormsTask
+                        ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
+                        : isInfo
+                          ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
+                          : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
                 const Icon = overdue
                   ? AlertOctagon
-                  : (isFormsTask || isPayAdvance || isAnyCommission)
-                    ? DollarSign
-                    : isPlanimetry
-                      ? FileUp
-                      : isInfo
-                        ? Rocket
-                        : AlertTriangle;
+                  : isApprovalGranted
+                    ? ThumbsUp
+                    : (isFormsTask || isPayAdvance || isAnyCommission)
+                      ? DollarSign
+                      : isPlanimetry
+                        ? FileUp
+                        : isInfo
+                          ? Rocket
+                          : AlertTriangle;
                 const iconCls = overdue
                   ? "text-red-600 dark:text-red-400"
-                  : (isFormsTask || isPayAdvance || isCommissionApproval || isCommissionReadyToPay)
+                  : isApprovalGranted
                     ? "text-emerald-600 dark:text-emerald-400"
-                    : isInfo
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-amber-600 dark:text-amber-400";
+                    : (isFormsTask || isPayAdvance || isCommissionApproval || isCommissionReadyToPay)
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : isInfo
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-amber-600 dark:text-amber-400";
                 const ctaLabel = isPayAdvance
                   ? "Ir a pagos a proveedores"
                   : isCommissionApproval
