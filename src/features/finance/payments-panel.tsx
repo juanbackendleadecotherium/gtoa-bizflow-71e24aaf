@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Banknote, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { Banknote, Plus, Trash2, ExternalLink, Loader2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ type Payment = {
   reference: string | null;
   note: string | null;
   proof_url: string | null;
+  proof_urls: string[] | null;
   created_by_email: string | null;
   deposit_account: string | null;
 };
