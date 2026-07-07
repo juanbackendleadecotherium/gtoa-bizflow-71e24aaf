@@ -42,9 +42,11 @@ export function ImageUploader({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const pasteZoneRef = useRef<HTMLButtonElement>(null);
   const [processing, setProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [justPasted, setJustPasted] = useState(false);
+  const [pasteFocused, setPasteFocused] = useState(false);
   useEffect(() => {
     return () => {
       pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
