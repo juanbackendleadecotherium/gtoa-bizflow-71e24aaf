@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle, Rocket, Check, FileUp, Clock, AlertOctagon, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle2, ListTodo, Loader2, ArrowRight, AlertTriangle, Rocket, Check, FileUp, Clock, AlertOctagon, DollarSign, ChevronLeft, ChevronRight, ThumbsUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -320,10 +320,12 @@ function MyTasks() {
                 const isProductionForwarded =
                   t.type === "partial_shipment_forms_done" ||
                   t.type === "invoice_collection_forms_done";
+                const isApprovalGranted = t.type === "approval_granted";
                 const isInfo =
                   isPaidNotice ||
                   isCommissionNotice ||
                   isProductionForwarded ||
+                  isApprovalGranted ||
                   t.severity === "info" ||
                   t.type === "production_started";
                 const isPlanimetry = t.type === "upload_planimetry";
@@ -340,29 +342,35 @@ function MyTasks() {
                   : t.reason;
                 const wrapCls = overdue
                   ? "border-red-500/60 bg-red-500/5"
-                  : isPayAdvance || isCommissionApproval || isCommissionReadyToPay
+                  : isApprovalGranted
                     ? (pending ? "border-emerald-500/60 bg-emerald-500/5" : "border-border bg-surface")
-                    : isFormsTask
-                      ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
-                      : isInfo
-                        ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
-                        : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
+                    : isPayAdvance || isCommissionApproval || isCommissionReadyToPay
+                      ? (pending ? "border-emerald-500/60 bg-emerald-500/5" : "border-border bg-surface")
+                      : isFormsTask
+                        ? (pending ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-surface")
+                        : isInfo
+                          ? (pending ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-surface")
+                          : (pending ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-surface");
                 const Icon = overdue
                   ? AlertOctagon
-                  : (isFormsTask || isPayAdvance || isAnyCommission)
-                    ? DollarSign
-                    : isPlanimetry
-                      ? FileUp
-                      : isInfo
-                        ? Rocket
-                        : AlertTriangle;
+                  : isApprovalGranted
+                    ? ThumbsUp
+                    : (isFormsTask || isPayAdvance || isAnyCommission)
+                      ? DollarSign
+                      : isPlanimetry
+                        ? FileUp
+                        : isInfo
+                          ? Rocket
+                          : AlertTriangle;
                 const iconCls = overdue
                   ? "text-red-600 dark:text-red-400"
-                  : (isFormsTask || isPayAdvance || isCommissionApproval || isCommissionReadyToPay)
+                  : isApprovalGranted
                     ? "text-emerald-600 dark:text-emerald-400"
-                    : isInfo
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-amber-600 dark:text-amber-400";
+                    : (isFormsTask || isPayAdvance || isCommissionApproval || isCommissionReadyToPay)
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : isInfo
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-amber-600 dark:text-amber-400";
                 const ctaLabel = isPayAdvance
                   ? "Ir a pagos a proveedores"
                   : isCommissionApproval
@@ -402,10 +410,10 @@ function MyTasks() {
                           )}
                         </p>
                         {displayReason ? (
-                          <div className={`mt-2 rounded-md p-2.5 border ${isInfo ? "bg-blue-500/10 border-blue-500/30" : isFormsTask ? "bg-emerald-500/10 border-emerald-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
-                            {!isInfo && (
-                              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${isFormsTask ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
-                                {isPlanimetry ? "Acción requerida" : isFormsTask ? "Pasos para completar" : "Qué debes corregir"}
+                          <div className={`mt-2 rounded-md p-2.5 border ${isApprovalGranted ? "bg-emerald-500/10 border-emerald-500/30" : isInfo ? "bg-blue-500/10 border-blue-500/30" : isFormsTask ? "bg-emerald-500/10 border-emerald-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
+                            {(!isInfo || isApprovalGranted) && (
+                              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${isApprovalGranted || isFormsTask ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
+                                {isApprovalGranted ? "Excelente noticia" : isPlanimetry ? "Acción requerida" : isFormsTask ? "Pasos para completar" : "Qué debes corregir"}
                               </p>
                             )}
                             <p className="text-sm text-foreground whitespace-pre-wrap">{displayReason}</p>
