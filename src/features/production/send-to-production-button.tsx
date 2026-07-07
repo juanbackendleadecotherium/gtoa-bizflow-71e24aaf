@@ -461,7 +461,11 @@ export function ProductionSection({
   const freeItemsCount = allItems.filter((i) => !getItemLock(i).disabled).length;
 
   // Gate: Plan Separe sin 50% completado o aprobación pendiente/rechazada bloquea.
+  // Pago Paulatino: el vendedor autoriza la excepción — se salta ambas validaciones.
   const gate: { ok: boolean; reason?: string } = (() => {
+    if (saleType === "pago_paulatino") {
+      return { ok: true };
+    }
     if (saleType === "plan_separe" && !separeCompletedAt) {
       const t = Number(total ?? 0), p = Number(paidTotal ?? 0);
       const pct = t > 0 ? (p / t) * 100 : 0;

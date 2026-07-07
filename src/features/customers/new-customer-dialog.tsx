@@ -96,7 +96,7 @@ type OrderDraft = {
   payment_method: string;
   advance_amount: number;
   advance_deposit_account: string;
-  sale_type: "normal" | "plan_separe";
+  sale_type: "normal" | "plan_separe" | "pago_paulatino";
   request_approval: boolean;
   approval_note: string;
 };
@@ -321,14 +321,15 @@ export function NewCustomerDialog({
       if (_subtotal <= 0) throw new Error("El subtotal de la venta debe ser mayor a cero");
 
       const isPlanSepare = draft.order.sale_type === "plan_separe";
+      const isPagoPaulatino = draft.order.sale_type === "pago_paulatino";
       const wantsApproval = draft.order.request_approval;
 
-      // Plan Separe permite arrancar con cualquier abono (incluso 0). Venta
-      // normal exige el 50% salvo que el vendedor solicite aprobación gerencial.
-      if (!isPlanSepare && !wantsApproval && _advance < _subtotal * 0.5 - 0.01) {
+      // Plan Separe y Pago Paulatino permiten arrancar con cualquier abono.
+      // Venta normal exige 50% salvo excepción gerencial.
+      if (!isPlanSepare && !isPagoPaulatino && !wantsApproval && _advance < _subtotal * 0.5 - 0.01) {
         throw new Error(
           `El abono debe ser mínimo el 50% del total (${formatMoney(_subtotal * 0.5)}). ` +
-          `Marca "Plan Separe" o solicita aprobación gerencial para excepción.`,
+          `Marca "Plan Separe", "Pago Paulatino" o solicita aprobación gerencial para excepción.`,
         );
       }
       if (wantsApproval && !draft.order.approval_note.trim()) {
@@ -513,12 +514,14 @@ export function NewCustomerDialog({
   const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
   const minAdvance = subtotal * 0.5;
   const isPlanSepare = draft.order.sale_type === "plan_separe";
+  const isPagoPaulatino = draft.order.sale_type === "pago_paulatino";
   const wantsApproval = draft.order.request_approval;
-  // Plan Separe permite arrancar con cualquier abono. Aprobación gerencial
-  // exime del 50%. Solo la venta normal sin excepción exige el 50%.
+  // Plan Separe permite arrancar con cualquier abono. Pago Paulatino también
+  // (vendedor autoriza y queda registrado). Aprobación gerencial exime del 50%.
+  // Solo la venta normal sin excepción exige el 50%.
   const advanceOk =
     subtotal > 0 &&
-    (isPlanSepare || wantsApproval || (draft.order.advance_amount || 0) >= minAdvance - 0.01);
+    (isPlanSepare || isPagoPaulatino || wantsApproval || (draft.order.advance_amount || 0) >= minAdvance - 0.01);
   const paymentMethodOk = !!draft.order.payment_method;
   // Cuando el abono es 0 (típico de Plan Separe) no exigimos cuenta destino.
   const depositAccountOk =
@@ -917,11 +920,11 @@ export function NewCustomerDialog({
           >
             {/* Tipo de venta */}
             <FieldBlock label="Tipo de venta">
-              <div className="grid sm:grid-cols-2 gap-2">
+              <div className="grid sm:grid-cols-3 gap-2">
                 <button type="button"
                   onClick={() => { setO("sale_type", "normal"); setO("request_approval", false); }}
                   className={`rounded-lg border p-3 text-left transition-colors ${
-                    !isPlanSepare
+                    !isPlanSepare && !isPagoPaulatino
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   }`}>
@@ -942,7 +945,24 @@ export function NewCustomerDialog({
                     Congela precio con abono parcial. Producción arranca al 50%.
                   </div>
                 </button>
+                <button type="button"
+                  onClick={() => { setO("sale_type", "pago_paulatino"); setO("request_approval", false); }}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    isPagoPaulatino
+                      ? "border-orange-500 bg-orange-500/5"
+                      : "border-border hover:border-primary/50"
+                  }`}>
+                  <div className="text-sm font-medium">Pago Paulatino</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Arranca producción con cualquier anticipo. Tú quedas registrado como responsable.
+                  </div>
+                </button>
               </div>
+              {isPagoPaulatino && (
+                <p className="mt-2 text-[11px] text-orange-700 dark:text-orange-400">
+                  Al elegir Pago Paulatino, tú autorizas la excepción al 50% y quedas registrado en la auditoría de la venta.
+                </p>
+              )}
             </FieldBlock>
 
             <div className="grid sm:grid-cols-2 gap-4 mt-3">
@@ -965,6 +985,8 @@ export function NewCustomerDialog({
               </FieldBlock>
               <FieldBlock label={isPlanSepare
                 ? "Abono inicial (opcional en Plan Separe)"
+                : isPagoPaulatino
+                ? "Abono inicial (opcional en Pago Paulatino)"
                 : `Abono * (mín. ${subtotal > 0 ? formatMoney(minAdvance) : "50% del total"})`}>
                 <MoneyInput
                   value={draft.order.advance_amount}
@@ -993,7 +1015,7 @@ export function NewCustomerDialog({
             )}
 
             {/* Aprobación gerencial — solo si es Venta normal con anticipo < 50% */}
-            {!isPlanSepare && subtotal > 0 && (draft.order.advance_amount || 0) < minAdvance - 0.01 && (
+            {!isPlanSepare && !isPagoPaulatino && subtotal > 0 && (draft.order.advance_amount || 0) < minAdvance - 0.01 && (
               <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input

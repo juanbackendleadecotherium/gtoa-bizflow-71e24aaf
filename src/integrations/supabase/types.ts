@@ -1440,6 +1440,10 @@ export type Database = {
           is_deferred_delivery: boolean
           notes: string | null
           order_number: string
+          paulatino_advance_at_send: number | null
+          paulatino_authorized_at: string | null
+          paulatino_authorized_by: string | null
+          paulatino_authorized_by_email: string | null
           payment_method: string | null
           payment_proof_url: string | null
           price_locked_at: string | null
@@ -1496,6 +1500,10 @@ export type Database = {
           is_deferred_delivery?: boolean
           notes?: string | null
           order_number: string
+          paulatino_advance_at_send?: number | null
+          paulatino_authorized_at?: string | null
+          paulatino_authorized_by?: string | null
+          paulatino_authorized_by_email?: string | null
           payment_method?: string | null
           payment_proof_url?: string | null
           price_locked_at?: string | null
@@ -1552,6 +1560,10 @@ export type Database = {
           is_deferred_delivery?: boolean
           notes?: string | null
           order_number?: string
+          paulatino_advance_at_send?: number | null
+          paulatino_authorized_at?: string | null
+          paulatino_authorized_by?: string | null
+          paulatino_authorized_by_email?: string | null
           payment_method?: string | null
           payment_proof_url?: string | null
           price_locked_at?: string | null
