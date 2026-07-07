@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react";
-import { FileUp, Loader2, X, FileText, ImageIcon } from "lucide-react";
+import { FileUp, Loader2, X, FileText, ImageIcon, ClipboardPaste } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlanimetryFile } from "@/lib/planimetry-upload";
 
