@@ -165,29 +165,48 @@ export function PlanimetryFilesUploader({
       />
 
       {isEmpty ? (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
-          className={cn(
-            "w-full rounded-lg border-2 border-dashed border-amber-500/40 bg-amber-500/[0.04]",
-            "hover:border-amber-500/70 hover:bg-amber-500/[0.07] transition-colors",
-            "px-4 py-5 flex flex-col items-center justify-center gap-1.5 text-amber-700 dark:text-amber-300",
-            isDragging && "border-amber-500 bg-amber-500/[0.08]",
-          )}
-        >
-          {busy ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <>
-              <FileUp className="h-5 w-5" />
-              <span className="text-sm font-medium">Subir planimetría</span>
-              <span className="text-[10px]">
-                Imagen o PDF · obligatoria para enviar a producción
-              </span>
-            </>
-          )}
-        </button>
+        <div className="space-y-1.5">
+          <button
+            ref={pasteZoneRef}
+            type="button"
+            onClick={() => pasteZoneRef.current?.focus()}
+            onFocus={() => setPasteFocused(true)}
+            onBlur={() => setPasteFocused(false)}
+            disabled={busy}
+            aria-label="Área para pegar planimetría con Ctrl+V"
+            className={cn(
+              "w-full rounded-lg border-2 border-dashed border-amber-500/40 bg-amber-500/[0.04]",
+              "hover:border-amber-500/70 hover:bg-amber-500/[0.07] transition-colors",
+              "px-4 py-5 flex flex-col items-center justify-center gap-1.5 text-amber-700 dark:text-amber-300 outline-none",
+              "focus-visible:border-amber-500 focus-visible:bg-amber-500/[0.10] focus-visible:ring-2 focus-visible:ring-amber-500/40",
+              isDragging && "border-amber-500 bg-amber-500/[0.08]",
+              pasteFocused && "border-amber-500 bg-amber-500/[0.10]",
+            )}
+          >
+            {busy ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                <ClipboardPaste className="h-5 w-5" />
+                <span className="text-sm font-medium">
+                  {pasteFocused ? "Ahora pega con Ctrl/Cmd+V" : "Haz clic aquí y pega con Ctrl+V"}
+                </span>
+                <span className="text-[10px]">
+                  Imagen o PDF · también puedes arrastrar el archivo
+                </span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            className="w-full rounded-md border border-amber-500/40 bg-background hover:bg-amber-500/[0.06] transition-colors px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-300 flex items-center justify-center gap-2"
+          >
+            <FileUp className="h-4 w-4" />
+            O elegir archivo desde el explorador
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {existing.map((f) => (
