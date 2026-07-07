@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, Save, Trash2, History, ExternalLink, ShieldAlert, RefreshCw, Check, XCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, History, ExternalLink, ShieldAlert, RefreshCw, Check, XCircle, Send } from "lucide-react";
 import { generatePlanimetryForOrder } from "@/features/production/send-to-production-button";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/features/brands/brand-context";
@@ -182,6 +182,24 @@ function ProductionDetail() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const [resubmitOpen, setResubmitOpen] = useState(false);
+  const resubmit = useMutation({
+    mutationFn: async (note: string) => {
+      const { error } = await supabase.rpc("resubmit_production_after_rejection", { p_id: id, p_note: note });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Orden reenviada — producción la verá de nuevo en la cola");
+      setResubmitOpen(false);
+      qc.invalidateQueries({ queryKey: ["production-order", id] });
+      qc.invalidateQueries({ queryKey: ["production-audit", id] });
+      qc.invalidateQueries({ queryKey: ["production-orders-pending"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["production-hub-counts"], refetchType: "all" });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
   const regen = useMutation({
     mutationFn: async () => {
       if (!prod.data?.order_id) throw new Error("Esta orden no está vinculada a una venta");
@@ -223,8 +241,12 @@ function ProductionDetail() {
   const order = p.order as any;
   const sellerLocked = isSellerOnly && isProductionLocked(p.status);
   const isPending = p.status === "pendiente";
-  const sellerCanEditPlanimetry = isSellerOnly && isPending;
+  const isRejected = p.status === "rechazada";
+  // El vendedor puede editar planimetrías mientras la orden esté pendiente
+  // o rechazada (justo cuando necesita corregir lo que producción le devolvió).
+  const sellerCanEditPlanimetry = isSellerOnly && (isPending || isRejected);
   const sellerCanManageOrder = isSellerOnly && isPending;
+  const sellerCanResubmit = (isSellerRole || isAdmin) && isRejected;
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -277,6 +299,12 @@ function ProductionDetail() {
               <XCircle className="h-4 w-4" /> Cancelar orden
             </Button>
           )}
+          {sellerCanResubmit && (
+            <Button size="sm" onClick={() => setResubmitOpen(true)} disabled={resubmit.isPending} className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+              {resubmit.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Reenviar a producción
+            </Button>
+          )}
           {(isAdmin || sellerCanManageOrder) && (
             <Button variant="outline" size="sm" onClick={() => setDelOpen(true)} className="text-destructive gap-1">
               <Trash2 className="h-4 w-4" /> Eliminar
@@ -315,6 +343,14 @@ function ProductionDetail() {
         confirmVariant="destructive"
         pending={cancelOrder.isPending}
         onConfirm={(r) => cancelOrder.mutate(r)}
+      />
+      <ReasonDialog
+        open={resubmitOpen} onOpenChange={setResubmitOpen}
+        title="Reenviar orden corregida a producción"
+        description="Cuéntale a producción qué corregiste (materiales, medidas, planimetría, etc.). La orden volverá a la cola de aprobación de producción."
+        confirmLabel="Reenviar"
+        pending={resubmit.isPending}
+        onConfirm={(r) => resubmit.mutate(r)}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
