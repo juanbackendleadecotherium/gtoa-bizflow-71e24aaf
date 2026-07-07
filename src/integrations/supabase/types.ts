@@ -2879,6 +2879,10 @@ export type Database = {
         Args: { p_decision: string; p_note?: string; p_order_id: string }
         Returns: undefined
       }
+      resubmit_production_after_rejection: {
+        Args: { p_id: string; p_note: string }
+        Returns: undefined
+      }
       revert_invoice_electronic: {
         Args: { p_invoice_id: string; p_reason: string }
         Returns: undefined
