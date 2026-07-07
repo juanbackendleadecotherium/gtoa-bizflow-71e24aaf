@@ -299,6 +299,12 @@ function ProductionDetail() {
               <XCircle className="h-4 w-4" /> Cancelar orden
             </Button>
           )}
+          {sellerCanResubmit && (
+            <Button size="sm" onClick={() => setResubmitOpen(true)} disabled={resubmit.isPending} className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+              {resubmit.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Reenviar a producción
+            </Button>
+          )}
           {(isAdmin || sellerCanManageOrder) && (
             <Button variant="outline" size="sm" onClick={() => setDelOpen(true)} className="text-destructive gap-1">
               <Trash2 className="h-4 w-4" /> Eliminar
