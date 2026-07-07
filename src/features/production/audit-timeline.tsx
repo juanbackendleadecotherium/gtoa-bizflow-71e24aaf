@@ -46,6 +46,13 @@ function describe(a: AuditRow): { icon: React.ReactNode; title: string; tone: st
       tone: "bg-destructive/15 text-destructive border-destructive/30",
     };
   }
+  if (a.action === "resubmitted") {
+    return {
+      icon: <RefreshCw className="h-3.5 w-3.5" />,
+      title: "Reenviada a producción con correcciones",
+      tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+    };
+  }
   if (a.action === "status") {
     const to = typeof a.new_value === "string" ? a.new_value : a.new_value?.toString?.() ?? "";
     const from = typeof a.old_value === "string" ? a.old_value : "";
