@@ -42,9 +42,11 @@ export function ImageUploader({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const pasteZoneRef = useRef<HTMLButtonElement>(null);
   const [processing, setProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [justPasted, setJustPasted] = useState(false);
+  const [pasteFocused, setPasteFocused] = useState(false);
   useEffect(() => {
     return () => {
       pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -244,30 +246,51 @@ export function ImageUploader({
       )}
 
       {all.length === 0 && (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={processing}
-          className={cn(
-            "w-full rounded-lg border border-dashed border-border bg-background/40 hover:border-accent/60 hover:bg-accent/[0.04] transition-colors px-4 py-5 flex flex-col items-center justify-center gap-1.5 text-muted-foreground",
-            isDragging && "border-accent bg-accent/[0.06] text-foreground",
-          )}
-        >
-          {processing ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <>
-              <ImagePlus className="h-5 w-5" />
-              <span className="text-sm font-medium">
-                {isDragging ? "Suelta para subir" : label}
-              </span>
-              <span className="text-[10px] flex items-center gap-1">
-                <ClipboardPaste className="h-3 w-3" />
-                Arrastra, pega (Ctrl/Cmd+V) o haz clic
-              </span>
-            </>
-          )}
-        </button>
+        <div className="space-y-1.5">
+          <button
+            ref={pasteZoneRef}
+            type="button"
+            onClick={() => pasteZoneRef.current?.focus()}
+            onFocus={() => setPasteFocused(true)}
+            onBlur={() => setPasteFocused(false)}
+            disabled={processing}
+            aria-label="Área para pegar imagen con Ctrl+V"
+            className={cn(
+              "w-full rounded-lg border-2 border-dashed border-border bg-background/40 transition-colors px-4 py-5 flex flex-col items-center justify-center gap-1.5 text-muted-foreground outline-none",
+              "hover:border-accent/60 hover:bg-accent/[0.04]",
+              "focus-visible:border-accent focus-visible:bg-accent/[0.08] focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40",
+              isDragging && "border-accent bg-accent/[0.06] text-foreground",
+              pasteFocused && "border-accent bg-accent/[0.08] text-foreground",
+            )}
+          >
+            {processing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                <ClipboardPaste className="h-5 w-5" />
+                <span className="text-sm font-medium">
+                  {isDragging
+                    ? "Suelta para subir"
+                    : pasteFocused
+                      ? "Ahora pega con Ctrl/Cmd+V"
+                      : "Haz clic aquí y pega con Ctrl+V"}
+                </span>
+                <span className="text-[10px]">También puedes arrastrar una imagen</span>
+              </>
+            )}
+          </button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+            disabled={processing}
+            className="w-full gap-2"
+          >
+            <ImagePlus className="h-4 w-4" />
+            {label}
+          </Button>
+        </div>
       )}
 
       {all.length > 0 && (
