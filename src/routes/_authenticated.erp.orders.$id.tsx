@@ -37,6 +37,7 @@ import { DeliveryDeferralCard } from "@/features/orders/delivery-deferral-card";
 import { SaleFlowCard } from "@/features/orders/sale-flow-card";
 import { isProductionLocked, useSellerRestricted } from "@/features/production/seller-restrictions";
 import { useRealtimeSync } from "@/lib/use-realtime-sync";
+import { useSession } from "@/lib/use-session";
 
 export const Route = createFileRoute("/_authenticated/erp/orders/$id")({
   component: OrderDetail,
