@@ -47,8 +47,10 @@ function OrderDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { selectedBrandId } = useBrand();
+  const { selectedBrandId, isAdmin } = useBrand();
   const { isSellerRestricted } = useSellerRestricted();
+  const session = useSession();
+  const currentUserId = session.session?.user.id ?? null;
 
   // Realtime: reflect approval, payments, invoices and seller tasks on this order without reloading
   useRealtimeSync("orders", { column: "id", value: id }, [["order", id], ["order-history", id], ["order-audit", id]]);
