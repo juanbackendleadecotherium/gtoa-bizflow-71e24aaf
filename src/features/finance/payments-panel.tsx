@@ -37,7 +37,7 @@ export function PaymentsPanel({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_payments")
-        .select("id, amount, paid_at, method, reference, note, proof_url, created_by_email, deposit_account")
+        .select("id, amount, paid_at, method, reference, note, proof_url, proof_urls, created_by_email, deposit_account")
         .eq("order_id", orderId)
         .order("paid_at", { ascending: false });
       if (error) throw error;
