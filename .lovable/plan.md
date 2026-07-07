@@ -1,78 +1,71 @@
-# Fase 3 · Bloque 0 — Permisos del rol `vendedor` para crear ventas
+## Objetivo
 
-## Diagnóstico (causa raíz)
+Permitir un tercer tipo de venta —**Pago Paulatino**— que el vendedor puede activar libremente por cliente. Habilita "Enviar a producción" con cualquier anticipo (incluso $0), sin pasar por gerencia y sin esperar al 50%. Cada excepción queda registrada con quién la autorizó, cuándo, y con qué anticipo al momento de enviar a producción.
 
-Al revisar las políticas RLS en la BD, el rol `vendedor` **no tiene ningún permiso de escritura**. Todas las políticas de INSERT/UPDATE/DELETE de las tablas del flujo de venta se apoyan en la función `can_write_brand(uid, brand_id)`, cuya definición actual es:
+## Cambios
 
-```sql
-SELECT has_role(_user_id, 'admin')
-    OR (has_role(_user_id, 'ventas') AND has_brand_access(_user_id, _brand_id));
+### 1. Base de datos (una sola migración)
+
+En la tabla `orders`:
+- `sale_type` sigue siendo texto; ahora acepta `normal`, `plan_separe` y **`pago_paulatino`**.
+- Se agregan 4 campos nuevos de auditoría (todos opcionales, solo se llenan cuando aplica):
+  - `paulatino_authorized_by` — vendedor que activó el tipo (usa `seller_id` de la venta).
+  - `paulatino_authorized_by_email` — snapshot legible.
+  - `paulatino_authorized_at` — fecha/hora en que se marcó Pago Paulatino.
+  - `paulatino_advance_at_send` — monto del anticipo el día que se envió a producción.
+
+Trigger `sync_paulatino_authorization`:
+- Al crear una venta con `sale_type = 'pago_paulatino'`, autocompleta `paulatino_authorized_by/at/email` desde `seller_id`.
+- Al vincular el primer `order_item.production_order_id`, si la venta es Pago Paulatino y `paulatino_advance_at_send` está nulo, lo llena con el `advance_amount` vigente en ese instante.
+
+Además, entrada automática en `order_audit_log` con `action = 'paulatino_send_to_production'` y detalle del monto — reutiliza el registro que ya se usa para otras acciones de la venta.
+
+### 2. UI de creación (`new-customer-dialog.tsx`)
+
+Sección "Tipo de venta" pasa de 2 a 3 tarjetas:
+
+```text
+[ Venta normal ]   [ Plan Separe ]   [ Pago Paulatino ]
+50% de anticipo     Congela precio    Vendedor autoriza,
+                    Arranca al 50%    arranca con cualquier
+                                      anticipo, queda en
+                                      auditoría
 ```
 
-Solo `admin` o `ventas` pueden escribir — `vendedor` queda fuera. Por eso Claudia no puede crear la venta: cualquier INSERT en `orders`, `order_items`, `customers`, `order_payments`, `production_planimetries`, `seller_tasks` es rechazado por RLS.
+Selección `pago_paulatino`:
+- Oculta la casilla "Solicitar aprobación gerencial" (no aplica).
+- Elimina la validación del 50% en el submit.
+- Muestra una nota clara: *"Tú quedas registrado como responsable de esta excepción."*
+- Advance permitido en $0.
 
-Adicional: `has_brand_access` (que decide qué puede *ver*) requiere una fila en `user_brands` para ese usuario+marca. Si Claudia no está mapeada a la marca en `user_brands`, tampoco ve ni marca ni sus propios pedidos aunque se corrija la escritura.
+### 3. Detalle de venta
 
-## Cambios propuestos
+- `SaleTypeBadge` gana un tercer caso: badge naranja "Pago Paulatino" con ícono `HandCoins`.
+- `SaleFlowCard` muestra un bloque naranja informativo cuando aplica: quién autorizó, fecha, y —si ya se envió a producción— con qué anticipo. Sin barra de progreso al 50%.
 
-### 1. Extender `can_write_brand` para incluir `vendedor` con acceso a la marca
+### 4. Gate de envío a producción
 
-```sql
-CREATE OR REPLACE FUNCTION public.can_write_brand(_user_id uuid, _brand_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT
-    has_role(_user_id, 'admin')
-    OR (has_role(_user_id, 'ventas')    AND has_brand_access(_user_id, _brand_id))
-    OR (has_role(_user_id, 'vendedor')  AND has_brand_access(_user_id, _brand_id));
-$$;
-```
+En `send-to-production-button.tsx` y en `canSendToProduction` (`sale-type-badge.tsx`):
+- Si `sale_type === 'pago_paulatino'`: se salta la validación del 50% y también la de aprobación gerencial (esa venta no debería tenerla, pero se cubre por defensa).
+- Cualquier anticipo (incluido $0) habilita el botón.
+- El trigger de BD hace el resto de la auditoría cuando el ítem queda vinculado a la orden de producción.
 
-Con esto, un vendedor asignado a la marca puede crear la venta y sus dependientes sin cambiar ninguna política individual. Las políticas SELECT que ya filtran por `is_pure_vendedor` (orders/invoices/order_payments/order_deletions) siguen funcionando: sólo ve lo suyo aunque tenga la marca.
+### 5. Consultas existentes
 
-### 2. Cerrar rutas de escritura que un vendedor no debería tocar
+- `orders` en `orders.index.tsx` y `orders.$id.tsx` ya seleccionan `sale_type`; solo se agrega el nuevo caso al render. No hay cambios de queries a nivel de rendimiento.
 
-`can_write_brand` con vendedor incluido abre también:
-- `production_orders` INSERT/UPDATE
-- `production_planimetries` INSERT/UPDATE
-- `order_payments` INSERT (registro de pagos del cliente)
-- `seller_tasks` INSERT
+## Auditoría — dónde consultarla luego
 
-Según Fase 1, el vendedor **sí** debe poder subir planimetría inicial y crear la venta, pero **no** editar producción ni registrar pagos de finanzas. Añadir políticas más estrictas encima:
+1. **En la venta**: badge + tarjeta muestran responsable y montos.
+2. **`order_audit_log`**: filtrable por `action = 'paulatino_send_to_production'` para revisar todos los envíos anticipados.
+3. **Timeline de la venta** (`AuditTimeline`) mostrará automáticamente la entrada.
 
-- `order_payments` INSERT: restringir el WITH CHECK a `admin OR finanzas OR ventas` (nunca vendedor puro).
-- `production_orders` INSERT/UPDATE: restringir a `admin OR ventas OR operativo` (excluye vendedor puro). El vendedor no lo crea directamente: lo dispara el flujo del servidor cuando corresponde.
-- `production_planimetries`: dejar INSERT/UPDATE abiertos vía `can_write_brand` (vendedor sí sube planimetría inicial). El bloqueo cuando la OP entra a producción activa ya está manejado en UI (`isProductionLocked`) — no es RLS.
-- `seller_tasks` INSERT: dejarlo, el vendedor puede crear sus tareas propias.
+## Fuera de alcance (intencional)
 
-### 3. Asegurar el mapeo Claudia → marca
+- Sin marcaciones de "cliente confiable" — decisión libre del vendedor.
+- Sin monto mínimo — responsabilidad del vendedor.
+- Sin nueva pantalla de administración; toda la revisión sale de `order_audit_log` y la vista de detalle de venta.
 
-Verificar en `user_brands` que Claudia tenga fila para la marca donde crea ventas. Sin eso, `has_brand_access` es false y ni la SELECT del listado carga. Este es dato, no schema — se corrige desde Ajustes → Usuarios (ya soportado) o por SQL puntual.
+## Consumo estimado
 
-### 4. Confirmar auto-asignación de `seller_id`
-
-Revisar que al insertar `orders` desde el flujo del vendedor, `seller_id` se setea a `auth.uid()`. Si el formulario permite dejarlo vacío o elegir otro, el vendedor perdería visibilidad de su propia venta por la política SELECT (`is_pure_vendedor AND seller_id = auth.uid()`). Se puede blindar con un trigger `BEFORE INSERT` que, si el actor es `is_pure_vendedor` y `seller_id IS NULL`, lo fuerce a `auth.uid()`.
-
-## Riesgo / seguridad de la venta actual
-
-- Todos los cambios son **sólo aditivos** sobre políticas (amplían permisos del vendedor, restringen `order_payments`/`production_orders` que hoy nunca usa un vendedor). No se tocan datos ni el esquema de `orders`/`order_items`. La venta ya ingresada no se modifica.
-- Antes de aplicar: correr `SELECT COUNT(*) FROM orders`, `order_items`, `order_payments` y anotar valores; verificar después que no cambian.
-
-## Validación (criterio de aceptación)
-
-Con Claudia logueada como vendedor puro:
-1. Crea cliente nuevo → OK
-2. Crea orden (auto-`seller_id`) → OK
-3. Agrega ítems → OK
-4. Sube planimetría → OK
-5. Ve la orden en su listado, no ve las de otros vendedores → OK
-6. **NO** puede registrar pago de cliente, ni forzar estado de producción → bloqueado por RLS
-
-## Entrega
-
-1. Migración con los cambios de las secciones 1 y 2 + trigger opcional de la sección 4.
-2. Verificar/insertar la fila de `user_brands` para Claudia (sección 3) según la marca real.
-3. Prueba manual del flujo end-to-end en preview antes de tocar producción.
-
-## Pregunta antes de ejecutar
-
-¿Confirmás que el vendedor debe estar restringido a las marcas asignadas vía `user_brands` (mismo modelo que `ventas`), y que Claudia ya debería estar mapeada a su marca? Si es así, procedo con la migración descrita.
+Cambios acotados: 1 migración (columnas + trigger), 4 archivos frontend tocados con edits pequeños, sin nuevas server functions ni nuevas rutas.
