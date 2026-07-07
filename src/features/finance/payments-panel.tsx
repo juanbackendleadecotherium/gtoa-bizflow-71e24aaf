@@ -61,6 +61,22 @@ export function PaymentsPanel({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const removeProof = useMutation({
+    mutationFn: async ({ paymentId, url, current }: { paymentId: string; url: string; current: string[] }) => {
+      const next = current.filter((u) => u !== url);
+      const { error } = await supabase
+        .from("order_payments")
+        .update({ proof_urls: next, proof_url: next[0] ?? null })
+        .eq("id", paymentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Comprobante quitado");
+      qc.invalidateQueries({ queryKey: ["order-payments", orderId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const payments = q.data ?? [];
   const paymentsSum = payments.reduce((s, p) => s + Number(p.amount), 0);
   const paid = Number(advance || 0) + paymentsSum;
