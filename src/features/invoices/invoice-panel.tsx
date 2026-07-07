@@ -141,12 +141,15 @@ export function InvoicePanel({ order }: { order: Order }) {
       if (!brand) throw new Error("No se pudo cargar la marca emisora.");
 
       const sortedItems = order.items.slice().sort((a, b) => a.sort_order - b.sort_order);
-      const items: InvoiceItemSnapshot[] = sortedItems.map((it) => ({
-        description: it.description,
-        quantity: Number(it.quantity),
-        unit_price: Number(it.unit_price),
-        line_total: Number(it.line_total),
-      }));
+      const items: InvoiceItemSnapshot[] = sortedItems.map((it) => {
+        const gift = !!it.is_gift;
+        return {
+          description: gift ? `[OBSEQUIO] ${it.description}` : it.description,
+          quantity: Number(it.quantity),
+          unit_price: gift ? 0 : Number(it.unit_price),
+          line_total: gift ? 0 : Number(it.line_total),
+        };
+      });
       const total = Number(order.total);
       const paymentsSum = (paymentsRes.data ?? []).reduce((s, p: any) => s + Number(p.amount), 0);
       const advance = Number(order.advance_amount || 0) + paymentsSum;
