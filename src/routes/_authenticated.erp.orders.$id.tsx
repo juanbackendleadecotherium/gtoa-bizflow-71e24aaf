@@ -916,8 +916,37 @@ function OrderItemReadCard({
               <AlertTriangle className="h-3 w-3" /> Falta planimetría
             </span>
           )}
+          {isGift && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-pink-500/15 text-pink-700 dark:text-pink-300 font-semibold">
+              🎁 Obsequio
+            </span>
+          )}
+          {canManageGift && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setConfirmGift(isGift ? "unmark" : "mark")}
+              disabled={toggleGift.isPending}
+            >
+              {isGift ? "Quitar obsequio" : "Marcar como obsequio"}
+            </Button>
+          )}
         </div>
       </div>
+
+      {isGift && (
+        <div className="rounded-md border border-pink-500/30 bg-pink-500/5 px-3 py-1.5 text-[11px] text-pink-900 dark:text-pink-200">
+          Este ítem se cobra <strong>$0</strong>. No suma al total ni genera saldo pendiente.
+          {giftedByEmail && (
+            <span className="block text-[10px] text-muted-foreground mt-0.5">
+              Autorizado por {giftedByEmail}
+              {giftedAt ? ` · ${new Date(giftedAt).toLocaleString("es-CO")}` : ""}
+            </span>
+          )}
+        </div>
+      )}
+
 
 
 
