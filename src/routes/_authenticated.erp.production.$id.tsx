@@ -221,6 +221,9 @@ function ProductionDetail() {
   const p = prod.data;
   const order = p.order as any;
   const sellerLocked = isSellerOnly && isProductionLocked(p.status);
+  const isPending = p.status === "pendiente";
+  const sellerCanEditPlanimetry = isSellerOnly && isPending;
+  const sellerCanManageOrder = isSellerOnly && isPending;
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
