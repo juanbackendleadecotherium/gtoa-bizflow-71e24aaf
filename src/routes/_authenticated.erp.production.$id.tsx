@@ -344,6 +344,14 @@ function ProductionDetail() {
         pending={cancelOrder.isPending}
         onConfirm={(r) => cancelOrder.mutate(r)}
       />
+      <ReasonDialog
+        open={resubmitOpen} onOpenChange={setResubmitOpen}
+        title="Reenviar orden corregida a producción"
+        description="Cuéntale a producción qué corregiste (materiales, medidas, planimetría, etc.). La orden volverá a la cola de aprobación de producción."
+        confirmLabel="Reenviar"
+        pending={resubmit.isPending}
+        onConfirm={(r) => resubmit.mutate(r)}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
