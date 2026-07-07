@@ -513,12 +513,14 @@ export function NewCustomerDialog({
   const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
   const minAdvance = subtotal * 0.5;
   const isPlanSepare = draft.order.sale_type === "plan_separe";
+  const isPagoPaulatino = draft.order.sale_type === "pago_paulatino";
   const wantsApproval = draft.order.request_approval;
-  // Plan Separe permite arrancar con cualquier abono. Aprobación gerencial
-  // exime del 50%. Solo la venta normal sin excepción exige el 50%.
+  // Plan Separe permite arrancar con cualquier abono. Pago Paulatino también
+  // (vendedor autoriza y queda registrado). Aprobación gerencial exime del 50%.
+  // Solo la venta normal sin excepción exige el 50%.
   const advanceOk =
     subtotal > 0 &&
-    (isPlanSepare || wantsApproval || (draft.order.advance_amount || 0) >= minAdvance - 0.01);
+    (isPlanSepare || isPagoPaulatino || wantsApproval || (draft.order.advance_amount || 0) >= minAdvance - 0.01);
   const paymentMethodOk = !!draft.order.payment_method;
   // Cuando el abono es 0 (típico de Plan Separe) no exigimos cuenta destino.
   const depositAccountOk =
