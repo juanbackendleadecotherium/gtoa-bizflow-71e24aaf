@@ -1271,6 +1271,7 @@ export type Database = {
           negotiated_by: string | null
           negotiated_cost: number | null
           order_id: string
+          parent_item_id: string | null
           partial_delivered_at: string | null
           partial_shipment_enabled: boolean
           partial_shipment_enabled_at: string | null
@@ -1310,6 +1311,7 @@ export type Database = {
           negotiated_by?: string | null
           negotiated_cost?: number | null
           order_id: string
+          parent_item_id?: string | null
           partial_delivered_at?: string | null
           partial_shipment_enabled?: boolean
           partial_shipment_enabled_at?: string | null
@@ -1349,6 +1351,7 @@ export type Database = {
           negotiated_by?: string | null
           negotiated_cost?: number | null
           order_id?: string
+          parent_item_id?: string | null
           partial_delivered_at?: string | null
           partial_shipment_enabled?: boolean
           partial_shipment_enabled_at?: string | null
@@ -1382,6 +1385,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_parent_item_id_fkey"
+            columns: ["parent_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
             referencedColumns: ["id"]
           },
           {
