@@ -97,19 +97,46 @@ export function ItemMarginsSection({
   const min = Number(settings.data?.min_margin_pct ?? 45);
   const list = items.data ?? [];
 
+  const phasedItemIds = useMemo(() => list.filter((i) => i.has_phases).map((i) => i.id), [list]);
+
+  const phasesCosts = useQuery({
+    queryKey: ["item-phases-costs", productionOrderId, phasedItemIds.join(",")],
+    enabled: phasedItemIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("order_item_phases")
+        .select("order_item_id, manufacturing_cost, negotiated_cost")
+        .in("order_item_id", phasedItemIds);
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const p of (data ?? []) as any[]) {
+        const eff = p.negotiated_cost ?? p.manufacturing_cost;
+        if (eff == null) continue;
+        map.set(p.order_item_id, (map.get(p.order_item_id) ?? 0) + Number(eff));
+      }
+      return map;
+    },
+  });
+
   const totals = useMemo(() => {
     let sale = 0;
     let cost = 0;
     let allHaveCost = list.length > 0;
     for (const it of list) {
       sale += Number(it.line_total) || 0;
-      const effective = it.negotiated_cost ?? it.manufacturing_cost;
-      if (effective == null) allHaveCost = false;
-      else cost += Number(effective);
+      if (it.has_phases) {
+        const c = phasesCosts.data?.get(it.id);
+        if (c == null || c <= 0) allHaveCost = false;
+        else cost += c;
+      } else {
+        const effective = it.negotiated_cost ?? it.manufacturing_cost;
+        if (effective == null) allHaveCost = false;
+        else cost += Number(effective);
+      }
     }
     const pct = allHaveCost && sale > 0 ? ((sale - cost) / sale) * 100 : null;
     return { sale, cost: allHaveCost ? cost : null, pct };
-  }, [list]);
+  }, [list, phasesCosts.data]);
 
   return (
     <section className="rounded-2xl border border-border bg-gradient-to-br from-surface to-surface/40 overflow-hidden shadow-sm">
