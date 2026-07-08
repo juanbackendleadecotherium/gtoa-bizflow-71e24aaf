@@ -153,6 +153,8 @@ export function ItemMarginsSection({
               item={it}
               min={min}
               suppliers={suppliers.data ?? []}
+              brandId={brandId}
+              productionOrderId={productionOrderId}
               onSaved={() => {
                 qc.invalidateQueries({ queryKey: ["production-order-items", productionOrderId, orderId] });
                 qc.invalidateQueries({ queryKey: ["production-audit", productionOrderId] });
