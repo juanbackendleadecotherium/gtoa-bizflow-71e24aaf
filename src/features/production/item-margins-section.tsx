@@ -217,6 +217,7 @@ function ItemCard({
   const [supplierId, setSupplierId] = useState(item.supplier_id ?? "");
   const [quotationDate, setQuotationDate] = useState(item.quotation_date ?? "");
   const [dirty, setDirty] = useState(false);
+  const [hasPhases, setHasPhases] = useState<boolean>(!!item.has_phases);
 
   useEffect(() => {
     setCost(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
@@ -225,8 +226,54 @@ function ItemCard({
     setHasNegotiated(item.negotiated_cost != null);
     setSupplierId(item.supplier_id ?? "");
     setQuotationDate(item.quotation_date ?? "");
+    setHasPhases(!!item.has_phases);
     setDirty(false);
-  }, [item.id, item.manufacturing_cost, item.negotiated_cost, item.supplier_id, item.quotation_date]);
+  }, [item.id, item.manufacturing_cost, item.negotiated_cost, item.supplier_id, item.quotation_date, item.has_phases]);
+
+  const toggleHasPhases = useMutation({
+    mutationFn: async (next: boolean) => {
+      if (!next) {
+        // Solo permitir apagar si no hay fases (evita perder datos)
+        const { count } = await (supabase as any)
+          .from("order_item_phases")
+          .select("id", { count: "exact", head: true })
+          .eq("order_item_id", item.id);
+        if ((count ?? 0) > 0) {
+          throw new Error("Elimina primero todas las fases para volver a modo proveedor único.");
+        }
+      }
+      const { error } = await supabase
+        .from("order_items")
+        .update({ has_phases: next })
+        .eq("id", item.id);
+      if (error) throw error;
+      // Al activar y no haber fases aún, crear la primera automáticamente
+      if (next) {
+        const { count } = await (supabase as any)
+          .from("order_item_phases")
+          .select("id", { count: "exact", head: true })
+          .eq("order_item_id", item.id);
+        if ((count ?? 0) === 0) {
+          const { error: insErr } = await (supabase as any).from("order_item_phases").insert({
+            order_item_id: item.id,
+            order_id: item.order_id,
+            brand_id: brandId,
+            production_order_id: productionOrderId,
+            phase_index: 1,
+            name: "Fase 1",
+            status: "pendiente",
+          });
+          if (insErr) throw insErr;
+        }
+      }
+    },
+    onSuccess: (_r, next) => {
+      setHasPhases(next);
+      toast.success(next ? "Producto marcado como multi-proveedor" : "Volviste a proveedor único");
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
 
   const line = Number(item.line_total) || 0;
   const originalPct = useMemo(() => {
