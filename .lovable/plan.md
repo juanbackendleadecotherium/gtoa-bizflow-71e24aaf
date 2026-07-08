@@ -1,94 +1,67 @@
-
 ## Objetivo
 
-Permitir que Producción defina, para cada item de una venta, **una o más fases** (ej. "Construcción", "Pintado"), asigne un **proveedor distinto por fase**, y maneje **costo, anticipo y pago final independientes por fase**. Aplica a los dos módulos (Producción clásica y Producción Real). El avance por fase es libre (paralelo).
+Que cada producto en producción muestre una interfaz distinta según si tiene **un solo proveedor** o **múltiples proveedores (fases)**. Cuando el usuario active "más de un proveedor", los campos de proveedor único (proveedor, costo, fecha cotización, prom/real proveedor, "ya se le pagó al proveedor") deben desaparecer, y solo quedar la sección de fases. Esto debe reflejarse **también** en la vista de Seguimiento de Producción (`/erp/production/tracking`), que hoy solo muestra el layout de proveedor único.
 
-## 1. Modelo de datos (migración SQL)
+## Cambios
 
-### Nueva tabla `order_item_phases`
-Una fila = una fase de producción de un item.
+### 1. `ItemCard` en `src/features/production/item-margins-section.tsx` (módulo de márgenes)
 
-Campos de dominio:
-- `order_item_id` (FK → `order_items.id`, cascada)
-- `production_order_id` / `real_production_order_id` (nullables, para joins rápidos según módulo)
-- `brand_id`, `order_id` (denormalizados, igual patrón que `order_item_supplier_payments`)
-- `phase_index` (int, orden dentro del item: 1, 2, 3…)
-- `name` (text, ej. "Construcción", "Pintado", "Tapizado")
-- `supplier_id` (FK → `suppliers.id`, nullable hasta asignar)
-- `manufacturing_cost` (numeric), `negotiated_cost` (numeric, nullable), `negotiated_at`, `negotiated_by`
-- `quotation_date` (date, gatilla cola de pagos financieros)
-- `supplier_promised_date`, `supplier_actual_date`
-- `started_at`, `finished_at`, `finished_by`
-- `status` (text: `pendiente` | `en_proceso` | `terminado`)
-- `notes`
-- Únicos: `(order_item_id, phase_index)`
-- Timestamps y trigger `updated_at`
+- Un toggle superior "Este producto tiene más de un proveedor" ligado a `item.has_phases`.
+- Cuando **está apagado** (proveedor único): mostrar la UI actual (costo, proveedor, cotización, negociación, margen) — igual que hoy, sin fases.
+- Cuando **está encendido** (multi-proveedor):
+  - Ocultar los inputs de proveedor único (`Costo proveedor`, `Proveedor`, `Fecha de cotización`, bloque de negociación).
+  - El margen del producto se recalcula sumando `negotiated_cost ?? manufacturing_cost` de todas las fases (ya existe `get_item_effective_cost` en DB; en el cliente usamos el mismo criterio).
+  - Mostrar `ItemPhasesEditor` como bloque principal.
+- Al activar el toggle: si no hay fases, crear automáticamente la primera fase (para arrancar). Al desactivar: solo permitir si no hay fases; si hay, pedir confirmación y borrarlas.
+- Al guardar, además de los campos actuales, actualizar `has_phases` (el trigger de DB ya lo sincroniza, pero el toggle debe persistir el estado inicial cuando aún no hay fases).
 
-Con GRANTs (`authenticated` full, `service_role` all) y RLS espejando las policies de `order_items` (acceso por marca del usuario + admin).
+### 2. `ExpandedPanel` en `src/routes/_authenticated.erp.production.tracking.tsx` (Seguimiento)
 
-### Cambios en tablas existentes
-- `order_items`: los campos `supplier_id`, `manufacturing_cost`, `negotiated_cost`, `quotation_date`, `supplier_promised_date`, `supplier_actual_date`, `production_started_at`, `production_finished_at` **se mantienen** por compatibilidad y como "resumen" (agregado de fases). Se agrega:
-  - `has_phases` boolean default false — se prende cuando el item tiene ≥1 fase creada.
-- `order_item_supplier_payments`: agregar columna nullable `phase_id` (FK → `order_item_phases.id`). Cuando `has_phases = true`, todo pago (anticipo/final) debe referenciar una fase; cuando es false, sigue funcionando contra el item entero (retrocompatible).
+- Cargar también `has_phases` en la consulta de `order_items` (línea ~162).
+- Cargar las fases (`order_item_phases`) del item cuando `has_phases = true`, por ítem visible.
+- En el render de cada `<li>` del item:
+  - Si `!it.has_phases` → mantener el layout actual (proveedor, cotización, costo, prom/real proveedor, botón Inicio hoy, `SupplierAdvancePaymentCard/Notice/Form`, `SupplierQuickPaymentCheck`).
+  - Si `it.has_phases` → **reemplazar** ese bloque por un nuevo componente `ItemPhasesTracking` que liste las fases con:
+    - Nombre, proveedor, costo efectivo, fecha cotización, prom/real proveedor.
+    - Estado (pendiente / en proceso / terminado) y botones **Iniciar / Terminar** fase (RPCs `start_item_phase` / `finish_item_phase` — ya existen).
+    - Edición inline de proveedor, costo y fechas por fase (update directo sobre `order_item_phases`).
+    - Sección de pago al proveedor **por fase** (usando `phase_id` en `order_item_supplier_payments`, ya soportado). En esta iteración: mostrar el mismo `SupplierQuickPaymentCheck` / `SupplierAdvancePaymentForm` extendidos con `phaseId?` opcional para registrar el pago contra la fase.
+  - Al finalizar todas las fases del item, se marca automáticamente el ítem como terminado (trigger nuevo: cuando todas las fases quedan en `terminado`, setear `production_finished_at` en `order_items`).
+- Total del ítem en el header sigue siendo el `line_total` (venta); el "costo efectivo" mostrado usa la suma de fases cuando aplica.
 
-### Funciones/RPCs
-- Nueva RPC `start_item_phase(_phase_id uuid, _started_at timestamptz)` análoga a `start_real_production`: marca la fase `en_proceso`, sella `started_at`, y si TODAS las fases están iniciadas → sella `order_items.production_started_at`.
-- Nueva RPC `finish_item_phase(_phase_id uuid, _finished_at timestamptz)`: marca fase `terminado`; si TODAS las fases están `terminado` → sella `order_items.production_finished_at` y dispara la lógica actual de item terminado.
-- Actualizar (o duplicar como v2) `confirm_supplier_final_payment` para aceptar `_phase_id` opcional y validar contra el costo de la fase en lugar del item.
-- Función helper `get_item_effective_cost(item_id uuid) returns numeric`: si `has_phases`, suma `coalesce(negotiated_cost, manufacturing_cost)` de las fases; si no, retorna la del item. Usada por márgenes y cola de finanzas.
+### 3. Nuevo componente `src/features/production/item-phases-tracking.tsx`
 
-### Migración de datos
-Sin backfill: items existentes quedan con `has_phases = false` y siguen usando los campos actuales. Solo items nuevos (o los que Producción decida "convertir a fases") usarán la nueva tabla.
+Versión compacta y en modo "seguimiento" (no editor completo) para usar dentro de `ExpandedPanel`. Reutiliza estilos existentes y llama las mismas mutaciones/RPCs de `ItemPhasesEditor`, pero con densidad de fila-por-fase apropiada para el listado del tracking.
 
-## 2. Cambios en Producción clásica (`production_orders`)
+### 4. Extender pagos por fase (mínimo)
 
-Archivo principal: `src/features/production/item-margins-section.tsx` (componente `ItemCard`).
+- `SupplierAdvancePaymentForm`, `SupplierAdvancePaymentCard` y `SupplierQuickPaymentCheck`: aceptar prop opcional `phaseId?: string`. Cuando se envía, guardar `phase_id` en el insert de `order_item_supplier_payments` y en la RPC `confirm_supplier_advance_payment` (agregar parámetro opcional `_phase_id`).
+- Migración: actualizar la firma de `confirm_supplier_advance_payment` para aceptar `_phase_id uuid default null` y guardarlo.
 
-- Agregar botón **"Dividir en fases"** en cada `ItemCard`. Al presionarlo:
-  - Se despliega un editor de fases (lista con drag-order): `Nombre`, `Proveedor`, `Costo`, `Fecha cotización`, `Fechas prometidas`, `Notas`.
-  - Botón "+ Agregar fase" y eliminar fase.
-  - `has_phases` se pone en true al guardar la primera fase; el select de proveedor y el input de costo del item se ocultan/deshabilitan y se reemplazan por un resumen: "N fases · Costo total $X · Margen Y%".
-- Cada fase muestra su propio bloque de:
-  - `SupplierAdvancePaymentCard` / `SupplierAdvancePaymentForm` reutilizados, ahora aceptando prop `phaseId`.
-  - Estado de fase (`pendiente` / `en_proceso` / `terminado`) con botones para avanzar (independientes entre fases — avance paralelo/libre).
-- `effective-cost.ts`: actualizar para que, cuando `has_phases`, sume costos efectivos de fases.
-- `margin-pill.tsx` / `item-margins-section.tsx` cálculo de margen: usar el costo agregado.
+### 5. Trigger de auto-finalización del ítem
 
-## 3. Cambios en Producción Real (`real_production_orders`)
+Nueva migración: trigger `AFTER UPDATE OF status ON order_item_phases` — si todas las fases del `order_item_id` quedan `terminado`, hacer `UPDATE order_items SET production_finished_at = now(), production_finished_by = auth.uid()` cuando aún esté null.
 
-Hoy el módulo maneja **un solo proveedor y costo a nivel de OP**. Para respetar el requisito "por item, con fases":
+## Detalle técnico
 
-- En `src/routes/_authenticated.erp.real-production.$id.tsx`, reemplazar el bloque único de `supplier_id` + `supplier_cost` por una **tabla de items de la venta** (leyendo `order_items` del `order_id` asociado a la RPO). Cada fila del item incluye el mismo editor de fases descrito en la sección 2, reutilizando el componente.
-- Los campos `real_production_orders.supplier_id` y `supplier_cost` se mantienen como snapshot histórico pero dejan de ser el input principal — se calculan desde el agregado de fases (proveedor "múltiple" si hay >1 distinto; costo = suma).
-- El `stage` de la RPO sigue a nivel de orden (planimetría → proveedor → … → entregado). La transición a `aprobado` requiere que **todos los items tengan al menos una fase con proveedor asignado y costo** (validación en el botón).
-- `MarginIndicator` (`src/features/real-production/margin-indicator.tsx`): usar la RPC/helper `get_item_effective_cost` agregado sobre todos los items.
+- Regla de "costo efectivo" del ítem cuando `has_phases`:
+  ```ts
+  effectiveCost = sum(phases.map(p => p.negotiated_cost ?? p.manufacturing_cost ?? 0))
+  ```
+  Reemplaza a `getEffectiveCost(item)` solo en las vistas que ya conocen las fases.
 
-## 4. Cola de finanzas y pagos a proveedores
+- Persistencia del toggle sin fases aún: el trigger `sync_order_item_has_phases` solo reacciona a INSERT/DELETE en `order_item_phases`. Para permitir activar el modo antes de crear fases, el toggle escribe `has_phases = true` directo en `order_items` y crea la primera fase en la misma acción; al eliminar la última fase, el trigger lo baja a `false`.
 
-Archivo: `src/lib/supplier-advance-payments.functions.ts`.
+- No se elimina información existente: los ítems con `has_phases = false` siguen usando exactamente la UI y flujos actuales (compatibilidad total).
 
-- `listPendingSupplierPayments`: cambiar la query para que cuando un item tenga `has_phases`, enumere **una fila por fase** que cumpla (proveedor asignado, quotation_date presente, costo > 0, sin anticipo). El item sin fases sigue apareciendo como una sola fila.
-- `confirmSupplierAdvancePayment` / `confirmSupplierFinalPayment`: aceptar `phaseId?: string`. Al insertar en `order_item_supplier_payments`, guardar `phase_id`. Si `phaseId` está presente, llamar `start_item_phase` en vez de `start_real_production`.
-- `getSupplierAdvancePaymentForItem` → nueva variante `getSupplierAdvancePaymentForPhase(phaseId)`.
-- UI de finanzas (`_authenticated.erp.finance.supplier-payments.tsx`): mostrar nombre de fase junto al item cuando aplique ("Silla Barcelona · Fase: Pintado — Proveedor Pinturas SA").
+## Archivos que se van a tocar
 
-## 5. UI y textos
-
-- Nuevo componente `src/features/production/item-phases-editor.tsx` con la tabla editable de fases (usado por ambos módulos).
-- Nuevo componente `src/features/production/phase-supplier-payment-block.tsx` que envuelve advance/final por fase.
-- Badges de estado por fase (reusar estilo de `status-badge`).
-- Actualizar `.lovable/plan.md` si aplica.
-
-## 6. Verificación
-
-- Crear venta con 2 items → mandar a producción → dividir un item en 2 fases con proveedores distintos → cada fase aparece como pago pendiente independiente en Finanzas → confirmar anticipo de fase 1 marca la fase `en_proceso` sin tocar la fase 2 → terminar ambas fases sella `production_finished_at` del item.
-- El otro item (sin fases) sigue funcionando exactamente como hoy.
-- Migración corre sin romper datos existentes.
-
-## Detalles técnicos clave
-
-- La tabla `order_item_phases` es la nueva fuente de verdad para el "por dónde va cada parte del producto". El item conserva sus campos agregados sólo por compatibilidad y como cache.
-- `order_item_supplier_payments.phase_id` es nullable para no romper filas históricas.
-- RLS: espejar policies de `order_items` (por marca + admin), sin `TO anon`.
-- Todas las policies y GRANTs van en la misma migración que crea la tabla.
-- Avance libre: no hay validación de secuencia entre fases; la única regla de agregación es "todas terminadas ⇒ item terminado".
+- `src/features/production/item-margins-section.tsx` — toggle + render condicional.
+- `src/routes/_authenticated.erp.production.tracking.tsx` — cargar `has_phases`, render condicional por ítem.
+- `src/features/production/item-phases-tracking.tsx` — **nuevo**.
+- `src/features/production/supplier-advance-payment-form.tsx` — prop `phaseId?`.
+- `src/features/production/supplier-advance-payment-card.tsx` — prop `phaseId?` (listar pagos por fase).
+- `src/features/production/supplier-quick-payment-check.tsx` — prop `phaseId?`.
+- Migración SQL:
+  - `ALTER FUNCTION confirm_supplier_advance_payment` para aceptar `_phase_id`.
+  - Nuevo trigger de auto-finish de ítem por fases completas.
