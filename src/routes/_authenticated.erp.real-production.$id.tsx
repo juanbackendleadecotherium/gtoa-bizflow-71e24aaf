@@ -388,6 +388,41 @@ function RealProductionDetail() {
             </section>
           )}
 
+          {/* Fases por producto — permite múltiples proveedores por item */}
+          {!inLogistica && (orderItems.data ?? []).length > 0 && (
+            <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
+              <div>
+                <h2 className="text-sm font-medium text-muted-foreground">Productos y fases</h2>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Divide cada producto en fases (construcción, pintura, tapizado…) y asigna un proveedor y costo distinto por cada fase.
+                </p>
+              </div>
+              {(orderItems.data ?? []).map((it: any) => (
+                <div key={it.id} className="rounded-lg border border-border bg-background p-3 space-y-2">
+                  <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                    <p className="text-sm font-semibold">
+                      {(it.description || "").split("\n")[0]}
+                      <span className="text-[11px] text-muted-foreground ml-2">×{Number(it.quantity)}</span>
+                    </p>
+                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                      Venta: {formatMoney(Number(it.line_total))}
+                    </span>
+                  </div>
+                  <ItemPhasesEditor
+                    orderItemId={it.id}
+                    orderId={it.order_id}
+                    brandId={p.brand_id}
+                    realProductionOrderId={id}
+                    suppliers={(suppliers.data ?? []) as any}
+                    onChanged={() => {
+                      qc.invalidateQueries({ queryKey: ["real-production-items", rpo.data?.order_id] });
+                    }}
+                  />
+                </div>
+              ))}
+            </section>
+          )}
+
           {/* Notas */}
           <section className="rounded-xl border border-border bg-surface p-5 space-y-2">
             <h2 className="text-sm font-medium text-muted-foreground">Notas internas</h2>
