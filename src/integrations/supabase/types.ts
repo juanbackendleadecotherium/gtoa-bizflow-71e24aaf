@@ -1010,6 +1010,134 @@ export type Database = {
         }
         Relationships: []
       }
+      order_item_phases: {
+        Row: {
+          brand_id: string
+          created_at: string
+          finished_at: string | null
+          finished_by: string | null
+          id: string
+          manufacturing_cost: number | null
+          name: string
+          negotiated_at: string | null
+          negotiated_by: string | null
+          negotiated_cost: number | null
+          notes: string | null
+          order_id: string
+          order_item_id: string
+          phase_index: number
+          production_order_id: string | null
+          quotation_date: string | null
+          real_production_order_id: string | null
+          started_at: string | null
+          status: string
+          supplier_actual_date: string | null
+          supplier_id: string | null
+          supplier_promised_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          finished_at?: string | null
+          finished_by?: string | null
+          id?: string
+          manufacturing_cost?: number | null
+          name: string
+          negotiated_at?: string | null
+          negotiated_by?: string | null
+          negotiated_cost?: number | null
+          notes?: string | null
+          order_id: string
+          order_item_id: string
+          phase_index?: number
+          production_order_id?: string | null
+          quotation_date?: string | null
+          real_production_order_id?: string | null
+          started_at?: string | null
+          status?: string
+          supplier_actual_date?: string | null
+          supplier_id?: string | null
+          supplier_promised_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          finished_at?: string | null
+          finished_by?: string | null
+          id?: string
+          manufacturing_cost?: number | null
+          name?: string
+          negotiated_at?: string | null
+          negotiated_by?: string | null
+          negotiated_cost?: number | null
+          notes?: string | null
+          order_id?: string
+          order_item_id?: string
+          phase_index?: number
+          production_order_id?: string | null
+          quotation_date?: string | null
+          real_production_order_id?: string | null
+          started_at?: string | null
+          status?: string
+          supplier_actual_date?: string | null
+          supplier_id?: string | null
+          supplier_promised_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_item_phases_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_phases_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_item_phases_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_phases_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_phases_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_phases_real_production_order_id_fkey"
+            columns: ["real_production_order_id"]
+            isOneToOne: false
+            referencedRelation: "real_production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_phases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_item_supplier_payments: {
         Row: {
           amount: number
@@ -1022,6 +1150,7 @@ export type Database = {
           order_item_id: string
           paid_at: string
           payment_type: string
+          phase_id: string | null
           production_order_id: string | null
           receipt_mime: string | null
           receipt_path: string | null
@@ -1041,6 +1170,7 @@ export type Database = {
           order_item_id: string
           paid_at: string
           payment_type?: string
+          phase_id?: string | null
           production_order_id?: string | null
           receipt_mime?: string | null
           receipt_path?: string | null
@@ -1060,6 +1190,7 @@ export type Database = {
           order_item_id?: string
           paid_at?: string
           payment_type?: string
+          phase_id?: string | null
           production_order_id?: string | null
           receipt_mime?: string | null
           receipt_path?: string | null
@@ -1098,6 +1229,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "order_item_supplier_payments_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "order_item_phases"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "order_item_supplier_payments_production_order_id_fkey"
             columns: ["production_order_id"]
             isOneToOne: false
@@ -1121,6 +1259,7 @@ export type Database = {
           gifted_at: string | null
           gifted_by: string | null
           gifted_by_email: string | null
+          has_phases: boolean
           id: string
           images: Json
           is_gift: boolean
@@ -1159,6 +1298,7 @@ export type Database = {
           gifted_at?: string | null
           gifted_by?: string | null
           gifted_by_email?: string | null
+          has_phases?: boolean
           id?: string
           images?: Json
           is_gift?: boolean
@@ -1197,6 +1337,7 @@ export type Database = {
           gifted_at?: string | null
           gifted_by?: string | null
           gifted_by_email?: string | null
+          has_phases?: boolean
           id?: string
           images?: Json
           is_gift?: boolean
@@ -2789,6 +2930,10 @@ export type Database = {
         Args: { _item_id: string }
         Returns: string
       }
+      finish_item_phase: {
+        Args: { _finished_at?: string; _phase_id: string }
+        Returns: undefined
+      }
       get_commission_audit: {
         Args: { _id: string }
         Returns: {
@@ -2800,6 +2945,7 @@ export type Database = {
           reference: string
         }[]
       }
+      get_item_effective_cost: { Args: { _item_id: string }; Returns: number }
       has_brand_access: {
         Args: { _brand_id: string; _user_id: string }
         Returns: boolean
@@ -2890,6 +3036,10 @@ export type Database = {
       set_logistics_availability_bulk: {
         Args: { _available: boolean; _dates: string[]; _note?: string }
         Returns: number
+      }
+      start_item_phase: {
+        Args: { _phase_id: string; _started_at?: string }
+        Returns: undefined
       }
       start_real_production: {
         Args: { p_item_id: string; p_started_at?: string }
