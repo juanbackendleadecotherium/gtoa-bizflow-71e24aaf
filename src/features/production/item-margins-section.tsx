@@ -409,9 +409,20 @@ function ItemCard({
               <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 whitespace-pre-line">{details}</p>
             )}
           </div>
-          <div className="text-right shrink-0">
+          <div className="text-right shrink-0 flex flex-col items-end gap-1">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Venta</p>
             <p className="font-bold tabular-nums text-base">{fmtMoney(line)}</p>
+            {hasPhases && (
+              <div className="flex flex-col items-end gap-0.5 mt-1">
+                <span className="text-[10px] text-muted-foreground">Margen (fases)</span>
+                <MarginPill pct={livePct} min={min} />
+                {phasesCost != null && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Costo fases: <span className="tabular-nums font-medium">{fmtMoney(phasesCost)}</span>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
