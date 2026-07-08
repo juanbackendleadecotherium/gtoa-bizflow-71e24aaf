@@ -419,6 +419,17 @@ function ItemCard({
         </div>
 
 
+        {/* Fases de producción — permite dividir el item en múltiples proveedores */}
+        <ItemPhasesEditor
+          orderItemId={item.id}
+          orderId={item.order_id}
+          brandId={brandId}
+          productionOrderId={productionOrderId}
+          suppliers={suppliers}
+          onChanged={onSaved}
+        />
+
+
         {/* Save button */}
         {dirty && (
           <div className="flex justify-end pt-1">
