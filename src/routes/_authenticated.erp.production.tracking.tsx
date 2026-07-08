@@ -655,7 +655,16 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
                   <span className="text-xs font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
                 </div>
 
-                {!isSellerRestricted && (<>
+                {!isSellerRestricted && it.has_phases && (
+                  <ItemPhasesTracking
+                    orderItemId={it.id}
+                    orderId={it.order_id ?? row.order_id}
+                    brandId={row.brand_id}
+                    suppliers={suppliers}
+                  />
+                )}
+
+                {!isSellerRestricted && !it.has_phases && (<>
                 <div className="grid sm:grid-cols-2 gap-2">
                   <label className="block">
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Proveedor</span>
