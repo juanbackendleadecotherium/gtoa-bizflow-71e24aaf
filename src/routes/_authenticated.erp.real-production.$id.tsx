@@ -80,6 +80,20 @@ function RealProductionDetail() {
     },
   });
 
+  const orderItems = useQuery({
+    queryKey: ["real-production-items", rpo.data?.order_id],
+    enabled: !!rpo.data?.order_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("id, description, quantity, line_total, order_id, has_phases")
+        .eq("order_id", rpo.data!.order_id)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const [form, setForm] = useState({
     supplier_id: "" as string,
     supplier_cost: "" as string,
