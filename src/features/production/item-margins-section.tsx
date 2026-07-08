@@ -303,23 +303,56 @@ function ItemCard({
   });
 
   const line = Number(item.line_total) || 0;
+
+  // Fases: cargamos su costo total cuando el producto es multi-proveedor
+  const itemPhases = useQuery({
+    queryKey: ["item-phases", item.id],
+    enabled: hasPhases,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("order_item_phases")
+        .select("id, manufacturing_cost, negotiated_cost")
+        .eq("order_item_id", item.id);
+      if (error) throw error;
+      return (data ?? []) as { id: string; manufacturing_cost: number | null; negotiated_cost: number | null }[];
+    },
+  });
+
+  const phasesCost = useMemo(() => {
+    if (!hasPhases || !itemPhases.data) return null;
+    let total = 0;
+    let any = false;
+    for (const p of itemPhases.data) {
+      const eff = p.negotiated_cost ?? p.manufacturing_cost;
+      if (eff == null) continue;
+      any = true;
+      total += Number(eff);
+    }
+    return any ? total : null;
+  }, [hasPhases, itemPhases.data]);
+
+  const phasesPct = useMemo(() => {
+    if (!hasPhases || phasesCost == null || line <= 0) return null;
+    return ((line - phasesCost) / line) * 100;
+  }, [hasPhases, phasesCost, line]);
+
   const originalPct = useMemo(() => {
     if (!hasCost || line <= 0) return null;
     return ((line - cost) / line) * 100;
   }, [cost, hasCost, line]);
 
   // El negociado solo aplica cuando el original está por debajo del mínimo
-  const showNegotiation = hasCost && originalPct != null && originalPct < min;
+  const showNegotiation = !hasPhases && hasCost && originalPct != null && originalPct < min;
 
   const negotiatedPct = useMemo(() => {
     if (!hasNegotiated || line <= 0) return null;
     return ((line - negotiatedCost) / line) * 100;
   }, [negotiatedCost, hasNegotiated, line]);
 
-  // El margen "real" toma negociado cuando existe
-  const livePct = hasNegotiated ? negotiatedPct : originalPct;
+  // El margen "real": multi-proveedor usa suma de fases; single usa negociado ?? original
+  const livePct = hasPhases ? phasesPct : (hasNegotiated ? negotiatedPct : originalPct);
 
-  const savingsPct = (hasCost && hasNegotiated && cost > 0)
+  const savingsPct = (!hasPhases && hasCost && hasNegotiated && cost > 0)
     ? ((cost - negotiatedCost) / cost) * 100
     : null;
 
