@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { STAGES, PRODUCTION_STAGES, LOGISTICA_STAGES, stageMeta, DELIVERY_TARGETS, type Stage } from "@/features/real-production/meta";
 import { StageBadge } from "@/features/real-production/stage-badge";
 import { MarginIndicator, formatMoney } from "@/features/real-production/margin-indicator";
+import { ItemPhasesEditor } from "@/features/production/item-phases-editor";
 
 export const Route = createFileRoute("/_authenticated/erp/real-production/$id")({
   component: RealProductionDetail,
@@ -74,6 +75,20 @@ function RealProductionDetail() {
         .from("real_production_audit_log")
         .select("*").eq("real_production_order_id", id)
         .order("created_at", { ascending: false }).limit(80);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const orderItems = useQuery({
+    queryKey: ["real-production-items", rpo.data?.order_id],
+    enabled: !!rpo.data?.order_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("id, description, quantity, line_total, order_id, has_phases")
+        .eq("order_id", rpo.data!.order_id)
+        .order("sort_order", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
@@ -370,6 +385,41 @@ function RealProductionDetail() {
                   <p className="text-xs text-emerald-700 dark:text-emerald-300">✓ Entregado el {p.delivered_at ? new Date(p.delivered_at).toLocaleString("es-CO") : "—"}</p>
                 )}
               </div>
+            </section>
+          )}
+
+          {/* Fases por producto — permite múltiples proveedores por item */}
+          {!inLogistica && (orderItems.data ?? []).length > 0 && (
+            <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
+              <div>
+                <h2 className="text-sm font-medium text-muted-foreground">Productos y fases</h2>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Divide cada producto en fases (construcción, pintura, tapizado…) y asigna un proveedor y costo distinto por cada fase.
+                </p>
+              </div>
+              {(orderItems.data ?? []).map((it: any) => (
+                <div key={it.id} className="rounded-lg border border-border bg-background p-3 space-y-2">
+                  <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                    <p className="text-sm font-semibold">
+                      {(it.description || "").split("\n")[0]}
+                      <span className="text-[11px] text-muted-foreground ml-2">×{Number(it.quantity)}</span>
+                    </p>
+                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                      Venta: {formatMoney(Number(it.line_total))}
+                    </span>
+                  </div>
+                  <ItemPhasesEditor
+                    orderItemId={it.id}
+                    orderId={it.order_id}
+                    brandId={p.brand_id}
+                    realProductionOrderId={id}
+                    suppliers={(suppliers.data ?? []) as any}
+                    onChanged={() => {
+                      qc.invalidateQueries({ queryKey: ["real-production-items", rpo.data?.order_id] });
+                    }}
+                  />
+                </div>
+              ))}
             </section>
           )}
 

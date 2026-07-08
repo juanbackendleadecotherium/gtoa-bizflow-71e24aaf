@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/features/orders/money-input";
 import { MarginPill, marginTone } from "./margin-pill";
+import { ItemPhasesEditor } from "./item-phases-editor";
 
 type Item = {
   id: string;
@@ -22,6 +23,8 @@ type Item = {
   supplier_id: string | null;
   cost_notes: string | null;
   quotation_date: string | null;
+  has_phases?: boolean | null;
+  order_id: string;
 };
 
 function fmtMoney(n: number | null | undefined) {
@@ -82,7 +85,7 @@ export function ItemMarginsSection({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, negotiated_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date, production_order_id, order_id")
+        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, negotiated_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date, production_order_id, order_id, has_phases")
         .or(`production_order_id.eq.${productionOrderId},and(order_id.eq.${orderId},production_order_id.is.null)`)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -150,6 +153,8 @@ export function ItemMarginsSection({
               item={it}
               min={min}
               suppliers={suppliers.data ?? []}
+              brandId={brandId}
+              productionOrderId={productionOrderId}
               onSaved={() => {
                 qc.invalidateQueries({ queryKey: ["production-order-items", productionOrderId, orderId] });
                 qc.invalidateQueries({ queryKey: ["production-audit", productionOrderId] });
@@ -194,11 +199,15 @@ function ItemCard({
   item,
   min,
   suppliers,
+  brandId,
+  productionOrderId,
   onSaved,
 }: {
   item: Item;
   min: number;
   suppliers: { id: string; name: string }[];
+  brandId: string;
+  productionOrderId: string;
   onSaved: () => void;
 }) {
   const [cost, setCost] = useState<number>(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
@@ -408,6 +417,17 @@ function ItemCard({
             className="h-9 max-w-[220px]"
           />
         </div>
+
+
+        {/* Fases de producción — permite dividir el item en múltiples proveedores */}
+        <ItemPhasesEditor
+          orderItemId={item.id}
+          orderId={item.order_id}
+          brandId={brandId}
+          productionOrderId={productionOrderId}
+          suppliers={suppliers}
+          onChanged={onSaved}
+        />
 
 
         {/* Save button */}
