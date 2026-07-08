@@ -16,6 +16,7 @@ import { SupplierAdvancePaymentNotice } from "@/features/production/supplier-adv
 import { SupplierAdvancePaymentForm } from "@/features/production/supplier-advance-payment-form";
 import { SupplierAdvancePaymentCard } from "@/features/production/supplier-advance-payment-card";
 import { SupplierQuickPaymentCheck } from "@/features/production/supplier-quick-payment-check";
+import { ItemPhasesTracking } from "@/features/production/item-phases-tracking";
 import { FinishItemButton } from "@/features/production/finish-item-button";
 import { InvoiceProgressPill } from "@/features/production/invoice-progress-pill";
 import { getEffectiveCost, hasNegotiation } from "@/features/production/effective-cost";
