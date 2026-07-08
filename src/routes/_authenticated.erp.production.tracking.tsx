@@ -16,6 +16,7 @@ import { SupplierAdvancePaymentNotice } from "@/features/production/supplier-adv
 import { SupplierAdvancePaymentForm } from "@/features/production/supplier-advance-payment-form";
 import { SupplierAdvancePaymentCard } from "@/features/production/supplier-advance-payment-card";
 import { SupplierQuickPaymentCheck } from "@/features/production/supplier-quick-payment-check";
+import { ItemPhasesTracking } from "@/features/production/item-phases-tracking";
 import { FinishItemButton } from "@/features/production/finish-item-button";
 import { InvoiceProgressPill } from "@/features/production/invoice-progress-pill";
 import { getEffectiveCost, hasNegotiation } from "@/features/production/effective-cost";
@@ -159,7 +160,7 @@ function TrackingPage() {
         poIds.length
           ? supabase
               .from("order_items")
-              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_id, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date, quotation_date, manufacturing_cost, negotiated_cost, production_finished_at, production_finished_by_email, order_id, is_standard_product")
+              .select("id, production_order_id, description, quantity, unit_price, line_total, sort_order, supplier_id, supplier_promised_date, supplier_actual_date, production_started_at, production_due_date, quotation_date, manufacturing_cost, negotiated_cost, production_finished_at, production_finished_by_email, order_id, is_standard_product, has_phases")
               .in("production_order_id", poIds)
               .order("sort_order", { ascending: true })
           : Promise.resolve({ data: [], error: null } as any),
@@ -654,7 +655,16 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
                   <span className="text-xs font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
                 </div>
 
-                {!isSellerRestricted && (<>
+                {!isSellerRestricted && it.has_phases && (
+                  <ItemPhasesTracking
+                    orderItemId={it.id}
+                    orderId={it.order_id ?? row.order_id}
+                    brandId={row.brand_id}
+                    suppliers={suppliers}
+                  />
+                )}
+
+                {!isSellerRestricted && !it.has_phases && (<>
                 <div className="grid sm:grid-cols-2 gap-2">
                   <label className="block">
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Proveedor</span>

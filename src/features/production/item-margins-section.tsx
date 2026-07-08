@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays, Handshake } from "lucide-react";
+import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays, Handshake, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -217,6 +217,7 @@ function ItemCard({
   const [supplierId, setSupplierId] = useState(item.supplier_id ?? "");
   const [quotationDate, setQuotationDate] = useState(item.quotation_date ?? "");
   const [dirty, setDirty] = useState(false);
+  const [hasPhases, setHasPhases] = useState<boolean>(!!item.has_phases);
 
   useEffect(() => {
     setCost(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
@@ -225,8 +226,54 @@ function ItemCard({
     setHasNegotiated(item.negotiated_cost != null);
     setSupplierId(item.supplier_id ?? "");
     setQuotationDate(item.quotation_date ?? "");
+    setHasPhases(!!item.has_phases);
     setDirty(false);
-  }, [item.id, item.manufacturing_cost, item.negotiated_cost, item.supplier_id, item.quotation_date]);
+  }, [item.id, item.manufacturing_cost, item.negotiated_cost, item.supplier_id, item.quotation_date, item.has_phases]);
+
+  const toggleHasPhases = useMutation({
+    mutationFn: async (next: boolean) => {
+      if (!next) {
+        // Solo permitir apagar si no hay fases (evita perder datos)
+        const { count } = await (supabase as any)
+          .from("order_item_phases")
+          .select("id", { count: "exact", head: true })
+          .eq("order_item_id", item.id);
+        if ((count ?? 0) > 0) {
+          throw new Error("Elimina primero todas las fases para volver a modo proveedor único.");
+        }
+      }
+      const { error } = await supabase
+        .from("order_items")
+        .update({ has_phases: next })
+        .eq("id", item.id);
+      if (error) throw error;
+      // Al activar y no haber fases aún, crear la primera automáticamente
+      if (next) {
+        const { count } = await (supabase as any)
+          .from("order_item_phases")
+          .select("id", { count: "exact", head: true })
+          .eq("order_item_id", item.id);
+        if ((count ?? 0) === 0) {
+          const { error: insErr } = await (supabase as any).from("order_item_phases").insert({
+            order_item_id: item.id,
+            order_id: item.order_id,
+            brand_id: brandId,
+            production_order_id: productionOrderId,
+            phase_index: 1,
+            name: "Fase 1",
+            status: "pendiente",
+          });
+          if (insErr) throw insErr;
+        }
+      }
+    },
+    onSuccess: (_r, next) => {
+      setHasPhases(next);
+      toast.success(next ? "Producto marcado como multi-proveedor" : "Volviste a proveedor único");
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
 
   const line = Number(item.line_total) || 0;
   const originalPct = useMemo(() => {
@@ -308,126 +355,154 @@ function ItemCard({
           </div>
         </div>
 
-        {/* Inputs row */}
-        <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-          <div>
-            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mb-1.5">
-              <TrendingUp className="h-3 w-3" /> Costo proveedor (COP)
-            </Label>
-            <MoneyInput
-              value={cost}
-              onValueChange={(n) => {
-                setCost(n);
-                setHasCost(true);
-                setDirty(true);
-              }}
-              placeholder="0"
-              className="h-9"
-            />
-          </div>
-          <div>
-            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mb-1.5">
-              <Building2 className="h-3 w-3" /> Proveedor
-            </Label>
-            <Select
-              value={supplierId || "__none__"}
-              onValueChange={(v) => {
-                setSupplierId(v === "__none__" ? "" : v);
-                setDirty(true);
-              }}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Sin proveedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Sin proveedor</SelectItem>
-                {suppliers.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col items-end gap-1.5">
-            <span className="text-[11px] text-muted-foreground">Margen</span>
-            <MarginPill pct={livePct} min={min} />
-            {hasNegotiated && originalPct != null && (
-              <span className="text-[10px] text-muted-foreground">
-                Original: <span className="line-through">{originalPct.toFixed(1)}%</span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Bloque de negociación: aparece cuando el margen original está bajo el mínimo */}
-        {showNegotiation && (
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <Handshake className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300" />
-              <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">
-                Negociación requerida — margen original {originalPct?.toFixed(1)}%
+        {/* Toggle multi-proveedor: cambia toda la vista del producto */}
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold leading-tight">Este producto tiene más de un proveedor</p>
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                Actívalo para dividir el producto en fases (ej. construcción, pintura) con proveedor y costo independiente.
               </p>
             </div>
-            <p className="text-[11px] text-amber-700/90 dark:text-amber-200/80">
-              Negocia con el proveedor para alcanzar al menos {min}%. Este será el costo real que usará producción y queda registrado para evaluar tu gestión.
-            </p>
-            <div className="grid sm:grid-cols-2 gap-3 items-end">
+          </div>
+          <label className="inline-flex items-center gap-2 cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={hasPhases}
+              disabled={toggleHasPhases.isPending}
+              onChange={(e) => toggleHasPhases.mutate(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            <span className="text-[11px] font-medium">{hasPhases ? "Multi-proveedor" : "Un proveedor"}</span>
+          </label>
+        </div>
+
+        {!hasPhases && (
+          <>
+            {/* Inputs row */}
+            <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
               <div>
-                <Label className="text-[11px] text-muted-foreground mb-1.5 block">
-                  Costo proveedor con negociación (COP)
+                <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                  <TrendingUp className="h-3 w-3" /> Costo proveedor (COP)
                 </Label>
                 <MoneyInput
-                  value={negotiatedCost}
+                  value={cost}
                   onValueChange={(n) => {
-                    setNegotiatedCost(n);
-                    setHasNegotiated(n > 0);
+                    setCost(n);
+                    setHasCost(true);
                     setDirty(true);
                   }}
                   placeholder="0"
-                  className="h-9 bg-background"
+                  className="h-9"
                 />
               </div>
-              {hasNegotiated && savingsPct != null && (
-                <div className="text-[11px] space-y-0.5">
-                  <p className="text-muted-foreground">
-                    {fmtMoney(cost)} → <span className="font-semibold text-foreground">{fmtMoney(negotiatedCost)}</span>
-                  </p>
-                  <p className={savingsPct > 0 ? "text-emerald-700 dark:text-emerald-300 font-medium" : "text-muted-foreground"}>
-                    Ahorro: {savingsPct.toFixed(1)}% · Nuevo margen: {negotiatedPct?.toFixed(1)}%
+              <div>
+                <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                  <Building2 className="h-3 w-3" /> Proveedor
+                </Label>
+                <Select
+                  value={supplierId || "__none__"}
+                  onValueChange={(v) => {
+                    setSupplierId(v === "__none__" ? "" : v);
+                    setDirty(true);
+                  }}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Sin proveedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin proveedor</SelectItem>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col items-end gap-1.5">
+                <span className="text-[11px] text-muted-foreground">Margen</span>
+                <MarginPill pct={livePct} min={min} />
+                {hasNegotiated && originalPct != null && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Original: <span className="line-through">{originalPct.toFixed(1)}%</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Bloque de negociación */}
+            {showNegotiation && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Handshake className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300" />
+                  <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">
+                    Negociación requerida — margen original {originalPct?.toFixed(1)}%
                   </p>
                 </div>
-              )}
+                <p className="text-[11px] text-amber-700/90 dark:text-amber-200/80">
+                  Negocia con el proveedor para alcanzar al menos {min}%. Este será el costo real que usará producción y queda registrado para evaluar tu gestión.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3 items-end">
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground mb-1.5 block">
+                      Costo proveedor con negociación (COP)
+                    </Label>
+                    <MoneyInput
+                      value={negotiatedCost}
+                      onValueChange={(n) => {
+                        setNegotiatedCost(n);
+                        setHasNegotiated(n > 0);
+                        setDirty(true);
+                      }}
+                      placeholder="0"
+                      className="h-9 bg-background"
+                    />
+                  </div>
+                  {hasNegotiated && savingsPct != null && (
+                    <div className="text-[11px] space-y-0.5">
+                      <p className="text-muted-foreground">
+                        {fmtMoney(cost)} → <span className="font-semibold text-foreground">{fmtMoney(negotiatedCost)}</span>
+                      </p>
+                      <p className={savingsPct > 0 ? "text-emerald-700 dark:text-emerald-300 font-medium" : "text-muted-foreground"}>
+                        Ahorro: {savingsPct.toFixed(1)}% · Nuevo margen: {negotiatedPct?.toFixed(1)}%
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Fecha de cotización por producto */}
+            <div>
+              <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                <CalendarDays className="h-3 w-3" /> Fecha de cotización (este producto)
+              </Label>
+              <Input
+                type="date"
+                value={quotationDate}
+                onChange={(e) => {
+                  setQuotationDate(e.target.value);
+                  setDirty(true);
+                }}
+                className="h-9 max-w-[220px]"
+              />
             </div>
-          </div>
+          </>
         )}
 
-        {/* Per-item quotation date — supports cotizar cada producto en días distintos */}
-        <div>
-          <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mb-1.5">
-            <CalendarDays className="h-3 w-3" /> Fecha de cotización (este producto)
-          </Label>
-          <Input
-            type="date"
-            value={quotationDate}
-            onChange={(e) => {
-              setQuotationDate(e.target.value);
-              setDirty(true);
-            }}
-            className="h-9 max-w-[220px]"
+        {hasPhases && (
+          <ItemPhasesEditor
+            orderItemId={item.id}
+            orderId={item.order_id}
+            brandId={brandId}
+            productionOrderId={productionOrderId}
+            suppliers={suppliers}
+            onChanged={onSaved}
           />
-        </div>
+        )}
 
-
-        {/* Fases de producción — permite dividir el item en múltiples proveedores */}
-        <ItemPhasesEditor
-          orderItemId={item.id}
-          orderId={item.order_id}
-          brandId={brandId}
-          productionOrderId={productionOrderId}
-          suppliers={suppliers}
-          onChanged={onSaved}
-        />
 
 
         {/* Save button */}
