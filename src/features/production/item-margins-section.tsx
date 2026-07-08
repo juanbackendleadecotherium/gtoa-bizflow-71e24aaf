@@ -23,6 +23,8 @@ type Item = {
   supplier_id: string | null;
   cost_notes: string | null;
   quotation_date: string | null;
+  has_phases?: boolean | null;
+  order_id: string;
 };
 
 function fmtMoney(n: number | null | undefined) {
