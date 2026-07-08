@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { STAGES, PRODUCTION_STAGES, LOGISTICA_STAGES, stageMeta, DELIVERY_TARGETS, type Stage } from "@/features/real-production/meta";
 import { StageBadge } from "@/features/real-production/stage-badge";
 import { MarginIndicator, formatMoney } from "@/features/real-production/margin-indicator";
+import { ItemPhasesEditor } from "@/features/production/item-phases-editor";
 
 export const Route = createFileRoute("/_authenticated/erp/real-production/$id")({
   component: RealProductionDetail,
