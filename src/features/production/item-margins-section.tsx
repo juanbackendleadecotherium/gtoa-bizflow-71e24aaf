@@ -185,6 +185,8 @@ export function ItemMarginsSection({
               onSaved={() => {
                 qc.invalidateQueries({ queryKey: ["production-order-items", productionOrderId, orderId] });
                 qc.invalidateQueries({ queryKey: ["production-audit", productionOrderId] });
+                qc.invalidateQueries({ queryKey: ["item-phases-costs", productionOrderId] });
+                qc.invalidateQueries({ queryKey: ["item-phases", it.id] });
               }}
 
             />
