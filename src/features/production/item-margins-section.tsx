@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/features/orders/money-input";
 import { MarginPill, marginTone } from "./margin-pill";
+import { ItemPhasesEditor } from "./item-phases-editor";
 
 type Item = {
   id: string;
