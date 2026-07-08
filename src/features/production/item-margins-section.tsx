@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays, Handshake, Layers } from "lucide-react";
+import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays, Handshake, Layers, Link2, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/features/orders/money-input";
 import { MarginPill, marginTone } from "./margin-pill";
 import { ItemPhasesEditor } from "./item-phases-editor";
+import { LinkChildItemDialog } from "./link-child-item-dialog";
 
 type Item = {
   id: string;
@@ -24,6 +25,7 @@ type Item = {
   cost_notes: string | null;
   quotation_date: string | null;
   has_phases?: boolean | null;
+  parent_item_id?: string | null;
   order_id: string;
 };
 
@@ -85,7 +87,7 @@ export function ItemMarginsSection({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, negotiated_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date, production_order_id, order_id, has_phases")
+        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, negotiated_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date, production_order_id, order_id, has_phases, parent_item_id")
         .or(`production_order_id.eq.${productionOrderId},and(order_id.eq.${orderId},production_order_id.is.null)`)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -96,6 +98,22 @@ export function ItemMarginsSection({
 
   const min = Number(settings.data?.min_margin_pct ?? 45);
   const list = items.data ?? [];
+
+  // Agrupar por padre
+  const { roots, childrenByParent } = useMemo(() => {
+    const roots: Item[] = [];
+    const map = new Map<string, Item[]>();
+    for (const it of list) {
+      if (it.parent_item_id) {
+        const arr = map.get(it.parent_item_id) ?? [];
+        arr.push(it);
+        map.set(it.parent_item_id, arr);
+      } else {
+        roots.push(it);
+      }
+    }
+    return { roots, childrenByParent: map };
+  }, [list]);
 
   const phasedItemIds = useMemo(() => list.filter((i) => i.has_phases).map((i) => i.id), [list]);
 
@@ -118,25 +136,48 @@ export function ItemMarginsSection({
     },
   });
 
+  // Costo efectivo por ítem (fases o negociado/original)
+  const effectiveCostFor = (it: Item): number | null => {
+    if (it.has_phases) {
+      const c = phasesCosts.data?.get(it.id);
+      return c != null && c > 0 ? c : null;
+    }
+    const eff = it.negotiated_cost ?? it.manufacturing_cost;
+    return eff == null ? null : Number(eff);
+  };
+
+  // Totales: solo raíces suman venta; costos suman todo (raíces + hijos)
   const totals = useMemo(() => {
     let sale = 0;
     let cost = 0;
     let allHaveCost = list.length > 0;
-    for (const it of list) {
-      sale += Number(it.line_total) || 0;
-      if (it.has_phases) {
-        const c = phasesCosts.data?.get(it.id);
-        if (c == null || c <= 0) allHaveCost = false;
-        else cost += c;
-      } else {
-        const effective = it.negotiated_cost ?? it.manufacturing_cost;
-        if (effective == null) allHaveCost = false;
-        else cost += Number(effective);
+    for (const root of roots) {
+      sale += Number(root.line_total) || 0;
+      const rc = effectiveCostFor(root);
+      if (rc == null) allHaveCost = false;
+      else cost += rc;
+      const kids = childrenByParent.get(root.id) ?? [];
+      for (const child of kids) {
+        const cc = effectiveCostFor(child);
+        if (cc == null) allHaveCost = false;
+        else cost += cc;
       }
     }
     const pct = allHaveCost && sale > 0 ? ((sale - cost) / sale) * 100 : null;
     return { sale, cost: allHaveCost ? cost : null, pct };
-  }, [list, phasesCosts.data]);
+  }, [list, roots, childrenByParent, phasesCosts.data]);
+
+  // Items elegibles para vincular como hijos (misma orden, sin padre, sin hijos, no is self)
+  const parentIds = useMemo(() => new Set(list.map((i) => i.parent_item_id).filter(Boolean) as string[]), [list]);
+  const eligibleFor = (rootId: string) =>
+    list.filter((i) => i.id !== rootId && !i.parent_item_id && !parentIds.has(i.id));
+
+  const invalidateAll = (itemId?: string) => {
+    qc.invalidateQueries({ queryKey: ["production-order-items", productionOrderId, orderId] });
+    qc.invalidateQueries({ queryKey: ["production-audit", productionOrderId] });
+    qc.invalidateQueries({ queryKey: ["item-phases-costs", productionOrderId] });
+    if (itemId) qc.invalidateQueries({ queryKey: ["item-phases", itemId] });
+  };
 
   return (
     <section className="rounded-2xl border border-border bg-gradient-to-br from-surface to-surface/40 overflow-hidden shadow-sm">
@@ -174,23 +215,49 @@ export function ItemMarginsSection({
         ) : list.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">Esta orden no tiene productos vinculados.</p>
         ) : (
-          list.map((it) => (
-            <ItemCard
-              key={it.id}
-              item={it}
-              min={min}
-              suppliers={suppliers.data ?? []}
-              brandId={brandId}
-              productionOrderId={productionOrderId}
-              onSaved={() => {
-                qc.invalidateQueries({ queryKey: ["production-order-items", productionOrderId, orderId] });
-                qc.invalidateQueries({ queryKey: ["production-audit", productionOrderId] });
-                qc.invalidateQueries({ queryKey: ["item-phases-costs", productionOrderId] });
-                qc.invalidateQueries({ queryKey: ["item-phases", it.id] });
-              }}
-
-            />
-          ))
+          roots.map((it) => {
+            const kids = childrenByParent.get(it.id) ?? [];
+            const kidsCost = kids.reduce((acc, k) => {
+              const c = effectiveCostFor(k);
+              return acc + (c ?? 0);
+            }, 0);
+            const kidsAllHaveCost = kids.every((k) => effectiveCostFor(k) != null);
+            return (
+              <ItemCard
+                key={it.id}
+                item={it}
+                min={min}
+                suppliers={suppliers.data ?? []}
+                brandId={brandId}
+                productionOrderId={productionOrderId}
+                isChild={false}
+                childrenItems={kids}
+                childrenCost={kidsCost}
+                childrenAllHaveCost={kidsAllHaveCost}
+                eligibleChildren={eligibleFor(it.id)}
+                onSaved={() => invalidateAll(it.id)}
+                onChildAction={() => invalidateAll()}
+                renderChild={(child) => (
+                  <ItemCard
+                    key={child.id}
+                    item={child}
+                    min={min}
+                    suppliers={suppliers.data ?? []}
+                    brandId={brandId}
+                    productionOrderId={productionOrderId}
+                    isChild
+                    childrenItems={[]}
+                    childrenCost={0}
+                    childrenAllHaveCost={true}
+                    eligibleChildren={[]}
+                    onSaved={() => invalidateAll(child.id)}
+                    onChildAction={() => invalidateAll()}
+                    renderChild={() => null}
+                  />
+                )}
+              />
+            );
+          })
         )}
       </div>
     </section>
@@ -230,14 +297,28 @@ function ItemCard({
   suppliers,
   brandId,
   productionOrderId,
+  isChild,
+  childrenItems,
+  childrenCost,
+  childrenAllHaveCost,
+  eligibleChildren,
   onSaved,
+  onChildAction,
+  renderChild,
 }: {
   item: Item;
   min: number;
   suppliers: { id: string; name: string }[];
   brandId: string;
   productionOrderId: string;
+  isChild: boolean;
+  childrenItems: Item[];
+  childrenCost: number;
+  childrenAllHaveCost: boolean;
+  eligibleChildren: Item[];
   onSaved: () => void;
+  onChildAction: () => void;
+  renderChild: (child: Item) => React.ReactNode;
 }) {
   const [cost, setCost] = useState<number>(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
   const [hasCost, setHasCost] = useState<boolean>(item.manufacturing_cost != null);
@@ -247,6 +328,7 @@ function ItemCard({
   const [quotationDate, setQuotationDate] = useState(item.quotation_date ?? "");
   const [dirty, setDirty] = useState(false);
   const [hasPhases, setHasPhases] = useState<boolean>(!!item.has_phases);
+  const [linkOpen, setLinkOpen] = useState(false);
 
   useEffect(() => {
     setCost(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
@@ -262,7 +344,6 @@ function ItemCard({
   const toggleHasPhases = useMutation({
     mutationFn: async (next: boolean) => {
       if (!next) {
-        // Solo permitir apagar si no hay fases (evita perder datos)
         const { count } = await (supabase as any)
           .from("order_item_phases")
           .select("id", { count: "exact", head: true })
@@ -276,7 +357,6 @@ function ItemCard({
         .update({ has_phases: next })
         .eq("id", item.id);
       if (error) throw error;
-      // Al activar y no haber fases aún, crear la primera automáticamente
       if (next) {
         const { count } = await (supabase as any)
           .from("order_item_phases")
@@ -304,9 +384,69 @@ function ItemCard({
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const unlink = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("order_items")
+        .update({ parent_item_id: null } as any)
+        .eq("id", item.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Producto desvinculado");
+      onChildAction();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
   const line = Number(item.line_total) || 0;
 
-  // Fases: cargamos su costo total cuando el producto es multi-proveedor
+  const originalPct = useMemo(() => {
+    if (!hasCost || line <= 0) return null;
+    return ((line - cost) / line) * 100;
+  }, [cost, hasCost, line]);
+
+  const showNegotiation = !isChild && !hasPhases && hasCost && originalPct != null && originalPct < min;
+
+  const negotiatedPct = useMemo(() => {
+    if (!hasNegotiated || line <= 0) return null;
+    return ((line - negotiatedCost) / line) * 100;
+  }, [negotiatedCost, hasNegotiated, line]);
+
+  // Costo efectivo propio (proveedor único o fases via prop de padre... aquí lo aproximamos:
+  // si has_phases queda al header del root gestionar; en padre calculamos abajo).
+  const ownEffective: number | null = hasPhases
+    ? null // el header del root se apoya en childrenCost + query externa; en child no aplica al margen
+    : (hasNegotiated ? negotiatedCost : (hasCost ? cost : null));
+
+  // Margen del grupo (solo tiene sentido en el padre = !isChild)
+  const groupCostSelf = useMemo(() => {
+    // Cuando es padre con fases, no conocemos aquí el costo de fases; se refleja a través
+    // de invalidaciones y re-render con phasesCost via query externa; para el pill del padre
+    // aquí usamos "self only if !has_phases".
+    if (isChild) return null;
+    if (hasPhases) {
+      // Delegamos: si tiene fases, aproximamos con lo que llegue en la query externa.
+      // El pill fase-only ya se muestra abajo; aquí devolvemos null para no mostrar duplicado engañoso.
+      return null;
+    }
+    const eff = hasNegotiated ? negotiatedCost : (hasCost ? cost : null);
+    return eff;
+  }, [isChild, hasPhases, hasCost, hasNegotiated, cost, negotiatedCost]);
+
+  const groupTotalCost = useMemo(() => {
+    if (isChild) return null;
+    if (groupCostSelf == null || !childrenAllHaveCost) return null;
+    return groupCostSelf + childrenCost;
+  }, [isChild, groupCostSelf, childrenAllHaveCost, childrenCost]);
+
+  const groupPct = useMemo(() => {
+    if (isChild) return null;
+    if (groupTotalCost == null || line <= 0) return null;
+    return ((line - groupTotalCost) / line) * 100;
+  }, [isChild, groupTotalCost, line]);
+
+  // Fases del item (para mostrar costo y margen cuando has_phases=true, sin depender del padre externo)
   const itemPhases = useQuery({
     queryKey: ["item-phases", item.id],
     enabled: hasPhases,
@@ -333,26 +473,26 @@ function ItemCard({
     return any ? total : null;
   }, [hasPhases, itemPhases.data]);
 
-  const phasesPct = useMemo(() => {
-    if (!hasPhases || phasesCost == null || line <= 0) return null;
-    return ((line - phasesCost) / line) * 100;
-  }, [hasPhases, phasesCost, line]);
+  // Costo efectivo del ítem (para mostrar como "aporta al grupo" en un child)
+  const effectiveForDisplay = hasPhases ? phasesCost : ownEffective;
 
-  const originalPct = useMemo(() => {
-    if (!hasCost || line <= 0) return null;
-    return ((line - cost) / line) * 100;
-  }, [cost, hasCost, line]);
+  // Margen que se muestra en el pill:
+  // - Padre con hijos: groupPct (usa phasesCost si tiene fases, sumando hijos)
+  // - Padre sin hijos: comportamiento anterior (fases o negociado/original)
+  // - Child: sin pill
+  const parentGroupPctWithPhases = useMemo(() => {
+    if (isChild || childrenItems.length === 0) return null;
+    const self = hasPhases ? phasesCost : ownEffective;
+    if (self == null || !childrenAllHaveCost) return null;
+    if (line <= 0) return null;
+    return ((line - (self + childrenCost)) / line) * 100;
+  }, [isChild, childrenItems.length, hasPhases, phasesCost, ownEffective, childrenAllHaveCost, childrenCost, line]);
 
-  // El negociado solo aplica cuando el original está por debajo del mínimo
-  const showNegotiation = !hasPhases && hasCost && originalPct != null && originalPct < min;
+  const soloPct = !hasPhases
+    ? (hasNegotiated ? negotiatedPct : originalPct)
+    : (phasesCost != null && line > 0 ? ((line - phasesCost) / line) * 100 : null);
 
-  const negotiatedPct = useMemo(() => {
-    if (!hasNegotiated || line <= 0) return null;
-    return ((line - negotiatedCost) / line) * 100;
-  }, [negotiatedCost, hasNegotiated, line]);
-
-  // El margen "real": multi-proveedor usa suma de fases; single usa negociado ?? original
-  const livePct = hasPhases ? phasesPct : (hasNegotiated ? negotiatedPct : originalPct);
+  const livePct = isChild ? null : (childrenItems.length > 0 ? parentGroupPctWithPhases : soloPct);
 
   const savingsPct = (!hasPhases && hasCost && hasNegotiated && cost > 0)
     ? ((cost - negotiatedCost) / cost) * 100
@@ -360,8 +500,9 @@ function ItemCard({
 
   const tone = marginTone(livePct, min);
 
-  const accentBar =
-    tone === "ok"
+  const accentBar = isChild
+    ? "bg-primary/40"
+    : tone === "ok"
       ? "bg-emerald-500"
       : tone === "warn"
         ? "bg-amber-500"
@@ -397,13 +538,20 @@ function ItemCard({
   const details = restLines(item.description);
 
   return (
-    <article className="relative rounded-xl border border-border bg-background overflow-hidden transition-shadow hover:shadow-sm">
+    <article className={`relative rounded-xl border overflow-hidden transition-shadow hover:shadow-sm ${
+      isChild ? "border-border/60 bg-muted/20 ml-4" : "border-border bg-background"
+    }`}>
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${accentBar}`} />
       <div className="p-4 pl-5 space-y-4">
-        {/* Top row: product + sale + margin pill */}
+        {/* Top row */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2 flex-wrap">
+              {isChild && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold uppercase tracking-wide">
+                  Vinculado
+                </span>
+              )}
               <h3 className="font-semibold text-sm leading-tight">{title}</h3>
               <span className="text-[11px] text-muted-foreground">×{Number(item.quantity)}</span>
             </div>
@@ -412,23 +560,47 @@ function ItemCard({
             )}
           </div>
           <div className="text-right shrink-0 flex flex-col items-end gap-1">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Venta</p>
-            <p className="font-bold tabular-nums text-base">{fmtMoney(line)}</p>
-            {hasPhases && (
-              <div className="flex flex-col items-end gap-0.5 mt-1">
-                <span className="text-[10px] text-muted-foreground">Margen (fases)</span>
-                <MarginPill pct={livePct} min={min} />
-                {phasesCost != null && (
-                  <span className="text-[10px] text-muted-foreground">
-                    Costo fases: <span className="tabular-nums font-medium">{fmtMoney(phasesCost)}</span>
-                  </span>
+            {isChild ? (
+              <>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Aporta al grupo</p>
+                <p className="font-bold tabular-nums text-sm">{fmtMoney(effectiveForDisplay)}</p>
+                <button
+                  onClick={() => unlink.mutate()}
+                  disabled={unlink.isPending}
+                  className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-rose-600 transition-colors"
+                  title="Desvincular del padre"
+                >
+                  <Unlink className="h-3 w-3" /> Desvincular
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Venta</p>
+                <p className="font-bold tabular-nums text-base">{fmtMoney(line)}</p>
+                {(childrenItems.length > 0 || hasPhases) && (
+                  <div className="flex flex-col items-end gap-0.5 mt-1">
+                    <span className="text-[10px] text-muted-foreground">
+                      {childrenItems.length > 0 ? "Margen (grupo)" : "Margen (fases)"}
+                    </span>
+                    <MarginPill pct={livePct} min={min} />
+                    {childrenItems.length > 0 && groupTotalCost != null && (
+                      <span className="text-[10px] text-muted-foreground">
+                        Costo grupo: <span className="tabular-nums font-medium">{fmtMoney(groupTotalCost)}</span>
+                      </span>
+                    )}
+                    {childrenItems.length === 0 && hasPhases && phasesCost != null && (
+                      <span className="text-[10px] text-muted-foreground">
+                        Costo fases: <span className="tabular-nums font-medium">{fmtMoney(phasesCost)}</span>
+                      </span>
+                    )}
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         </div>
 
-        {/* Toggle multi-proveedor: cambia toda la vista del producto */}
+        {/* Toggle multi-proveedor */}
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
           <div className="flex items-center gap-2 min-w-0">
             <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -453,7 +625,6 @@ function ItemCard({
 
         {!hasPhases && (
           <>
-            {/* Inputs row */}
             <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
               <div>
                 <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mb-1.5">
@@ -494,19 +665,20 @@ function ItemCard({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex flex-col items-end gap-1.5">
-                <span className="text-[11px] text-muted-foreground">Margen</span>
-                <MarginPill pct={livePct} min={min} />
-                {hasNegotiated && originalPct != null && (
-                  <span className="text-[10px] text-muted-foreground">
-                    Original: <span className="line-through">{originalPct.toFixed(1)}%</span>
-                  </span>
-                )}
-              </div>
+              {!isChild && childrenItems.length === 0 && (
+                <div className="flex flex-col items-end gap-1.5">
+                  <span className="text-[11px] text-muted-foreground">Margen</span>
+                  <MarginPill pct={livePct} min={min} />
+                  {hasNegotiated && originalPct != null && (
+                    <span className="text-[10px] text-muted-foreground">
+                      Original: <span className="line-through">{originalPct.toFixed(1)}%</span>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Bloque de negociación */}
-            {showNegotiation && (
+            {showNegotiation && childrenItems.length === 0 && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <Handshake className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300" />
@@ -547,7 +719,6 @@ function ItemCard({
               </div>
             )}
 
-            {/* Fecha de cotización por producto */}
             <div>
               <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mb-1.5">
                 <CalendarDays className="h-3 w-3" /> Fecha de cotización (este producto)
@@ -576,9 +747,6 @@ function ItemCard({
           />
         )}
 
-
-
-        {/* Save button */}
         {dirty && (
           <div className="flex justify-end pt-1">
             <Button
@@ -591,6 +759,51 @@ function ItemCard({
               Guardar
             </Button>
           </div>
+        )}
+
+        {/* Hijos vinculados dentro de la card del padre */}
+        {!isChild && childrenItems.length > 0 && (
+          <div className="pt-2 border-t border-dashed border-border space-y-2">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold flex items-center gap-1.5">
+              <Link2 className="h-3 w-3" /> Productos vinculados ({childrenItems.length})
+            </p>
+            {childrenItems.map((child) => renderChild(child))}
+          </div>
+        )}
+
+        {/* Botón para vincular productos: solo en el padre */}
+        {!isChild && (
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 h-7 text-[11px]"
+              onClick={() => setLinkOpen(true)}
+              disabled={eligibleChildren.length === 0}
+              title={eligibleChildren.length === 0 ? "No hay más productos disponibles en esta orden" : "Vincular productos hijos"}
+            >
+              <Link2 className="h-3 w-3" />
+              Vincular productos
+            </Button>
+            {eligibleChildren.length === 0 && childrenItems.length === 0 && (
+              <span className="text-[10px] text-muted-foreground">No hay más productos disponibles</span>
+            )}
+          </div>
+        )}
+
+        {!isChild && (
+          <LinkChildItemDialog
+            open={linkOpen}
+            onOpenChange={setLinkOpen}
+            parentId={item.id}
+            eligible={eligibleChildren.map((e) => ({
+              id: e.id,
+              description: e.description,
+              quantity: e.quantity,
+              line_total: e.line_total,
+            }))}
+            onLinked={onChildAction}
+          />
         )}
       </div>
     </article>
