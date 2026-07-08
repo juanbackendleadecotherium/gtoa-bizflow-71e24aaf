@@ -745,3 +745,193 @@ function DateField({ label, value, onSave, readOnly, hint }: { label: string; va
     </label>
   );
 }
+
+function ProductItemBody({
+  it, row, suppliers, patchItem, startProd, canFinish, isAdmin, isSellerRestricted, canRegisterPayment,
+}: {
+  it: any;
+  row: any;
+  suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[];
+  patchItem: any;
+  startProd: any;
+  canFinish: boolean;
+  isAdmin: boolean;
+  isSellerRestricted: boolean;
+  canRegisterPayment: boolean;
+}) {
+  const effCost = getEffectiveCost(it);
+  const negotiated = hasNegotiation(it);
+  return (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-xs font-medium leading-tight">{firstLine(it.description) || "Producto"}</p>
+            {it.is_standard_product && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold uppercase tracking-wide">
+                Estándar
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            ×{Number(it.quantity)} · {fmtMoney(Number(it.unit_price))} c/u
+            {it.production_due_date && (
+              <> · <span className="text-foreground">Entrega prod: {fmtDateShort(it.production_due_date)}</span></>
+            )}
+          </p>
+        </div>
+        <span className="text-xs font-semibold tabular-nums shrink-0">{fmtMoney(Number(it.line_total))}</span>
+      </div>
+
+      {!isSellerRestricted && it.has_phases && (
+        <ItemPhasesTracking
+          orderItemId={it.id}
+          orderId={it.order_id ?? row.order_id}
+          brandId={row.brand_id}
+          suppliers={suppliers}
+        />
+      )}
+
+      {!isSellerRestricted && !it.has_phases && (<>
+      <div className="grid sm:grid-cols-2 gap-2">
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Proveedor</span>
+          <select
+            value={it.supplier_id ?? ""}
+            onChange={(e) =>
+              patchItem.mutate({ id: it.id, patch: { supplier_id: e.target.value || null } })
+            }
+            className="mt-0.5 w-full bg-background border border-border hover:border-primary/50 focus:border-primary rounded-md px-2 py-1 text-xs outline-none transition-colors"
+          >
+            <option value="">— Sin proveedor</option>
+            {suppliers.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </label>
+        <DateField
+          label="Cotización"
+          value={it.quotation_date}
+          onSave={(v) => patchItem.mutate({ id: it.id, patch: { quotation_date: v } })}
+        />
+      </div>
+
+      <div>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium flex items-center gap-1.5">
+            Costo proveedor (COP)
+            {negotiated && (
+              <span
+                title={`Precio negociado. Original: ${fmtMoney(Number(it.manufacturing_cost))}`}
+                className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wide"
+              >
+                Negociado
+              </span>
+            )}
+          </span>
+          <InlineMoney
+            value={effCost ?? 0}
+            hasValue={effCost != null}
+            onSave={(n, hasValue) => {
+              const field = negotiated ? "negotiated_cost" : "manufacturing_cost";
+              patchItem.mutate({ id: it.id, patch: { [field]: hasValue ? n : null } });
+            }}
+          />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+        <DateField
+          label="Prom. proveedor"
+          value={it.supplier_promised_date}
+          onSave={(v) => patchItem.mutate({ id: it.id, patch: { supplier_promised_date: v } })}
+        />
+        <DateField
+          label="Real proveedor"
+          value={it.supplier_actual_date}
+          onSave={(v) => patchItem.mutate({ id: it.id, patch: { supplier_actual_date: v } })}
+        />
+        {it.production_started_at ? (
+          <DateField
+            label="Inicio prod."
+            value={it.production_started_at ? String(it.production_started_at).slice(0, 10) : null}
+            onSave={(v) =>
+              patchItem.mutate({
+                id: it.id,
+                patch: { production_started_at: v ? new Date(v + "T12:00:00").toISOString() : null },
+              })
+            }
+          />
+        ) : (() => {
+          const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
+          if (sup?.requires_advance_payment) return <span className="text-[10px] text-muted-foreground self-end pb-1.5">Requiere pago anticipado ↓</span>;
+          return (
+            <button
+              type="button"
+              onClick={() => startProd.mutate(it.id)}
+              disabled={startProd.isPending && startProd.variables === it.id}
+              className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50 self-end"
+              title="Marcar inicio real de producción hoy (notifica al vendedor)"
+            >
+              {startProd.isPending && startProd.variables === it.id
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : "🚀"} Inicio hoy
+            </button>
+          );
+        })()}
+      </div>
+
+      {(() => {
+        const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
+        if (!sup) return null;
+        if (it.production_started_at) {
+          return <SupplierAdvancePaymentCard orderItemId={it.id} />;
+        }
+        if (sup.requires_advance_payment) {
+          return (
+            <div className="space-y-2">
+              <SupplierAdvancePaymentNotice supplierName={sup.name} pct={Number(sup.advance_payment_pct ?? 50)} />
+              {canRegisterPayment ? (
+                <SupplierAdvancePaymentForm
+                  orderItemId={it.id}
+                  brandId={row.brand_id}
+                  orderId={it.order_id ?? row.order_id}
+                  suggestedAmount={effCost}
+                  pct={Number(sup.advance_payment_pct ?? 50)}
+                />
+              ) : (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5 text-[11px] text-amber-800 dark:text-amber-200">
+                  Pendiente de pago al proveedor por finanzas. Solo el gerente
+                  financiero puede registrar este pago.
+                </div>
+              )}
+            </div>
+          );
+        }
+        return (
+          <SupplierQuickPaymentCheck
+            orderItemId={it.id}
+            supplierName={sup.name}
+            suggestedCost={effCost}
+          />
+        );
+      })()}
+      </>)}
+
+      {it.production_started_at && (
+        <div className="pt-1 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+            Estado producción
+          </span>
+          <FinishItemButton
+            itemId={it.id}
+            finishedAt={it.production_finished_at ?? null}
+            finishedByEmail={it.production_finished_by_email ?? null}
+            canFinish={canFinish}
+            isAdmin={isAdmin}
+          />
+        </div>
+      )}
+    </>
+  );
+}
