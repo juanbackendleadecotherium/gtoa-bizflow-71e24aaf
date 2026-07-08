@@ -199,11 +199,15 @@ function ItemCard({
   item,
   min,
   suppliers,
+  brandId,
+  productionOrderId,
   onSaved,
 }: {
   item: Item;
   min: number;
   suppliers: { id: string; name: string }[];
+  brandId: string;
+  productionOrderId: string;
   onSaved: () => void;
 }) {
   const [cost, setCost] = useState<number>(item.manufacturing_cost != null ? Number(item.manufacturing_cost) : 0);
