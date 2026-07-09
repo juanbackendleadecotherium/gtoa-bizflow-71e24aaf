@@ -26,6 +26,7 @@ type Item = {
   quotation_date: string | null;
   has_phases?: boolean | null;
   parent_item_id?: string | null;
+  ready_for_advance_payment?: boolean | null;
   order_id: string;
 };
 
