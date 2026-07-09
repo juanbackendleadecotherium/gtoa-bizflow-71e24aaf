@@ -292,18 +292,6 @@ function PhaseRow({
         placeholder="Notas de la fase (opcional)" className="text-xs" />
 
       <div className="flex items-center justify-end gap-2 flex-wrap">
-        {phase.status === "pendiente" && (
-          <Button size="sm" variant="outline" className="h-7 gap-1"
-            onClick={() => startPhase.mutate()} disabled={startPhase.isPending || !supplierId}>
-            <Play className="h-3 w-3" /> Iniciar
-          </Button>
-        )}
-        {phase.status !== "terminado" && (
-          <Button size="sm" variant="outline" className="h-7 gap-1"
-            onClick={() => finishPhase.mutate()} disabled={finishPhase.isPending}>
-            <CheckCircle2 className="h-3 w-3" /> Terminar
-          </Button>
-        )}
         {dirty && (
           <Button size="sm" className="h-7 gap-1"
             onClick={() => save.mutate()} disabled={save.isPending}>
