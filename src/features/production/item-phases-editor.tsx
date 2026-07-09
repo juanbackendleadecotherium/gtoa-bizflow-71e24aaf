@@ -24,6 +24,7 @@ type Phase = {
   started_at: string | null;
   finished_at: string | null;
   notes: string | null;
+  ready_for_advance_payment?: boolean | null;
 };
 
 type Supplier = { id: string; name: string; category?: string | null };
