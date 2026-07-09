@@ -32,7 +32,7 @@ export const confirmSupplierAdvancePayment = createServerFn({ method: "POST" })
     // 1. Load item + supplier
     const { data: item, error: itemErr } = await supabase
       .from("order_items")
-      .select("id, order_id, production_order_id, supplier_id, description")
+      .select("id, order_id, production_order_id, supplier_id, description, negotiated_cost, manufacturing_cost")
       .eq("id", data.orderItemId)
       .maybeSingle();
     if (itemErr) throw itemErr;
