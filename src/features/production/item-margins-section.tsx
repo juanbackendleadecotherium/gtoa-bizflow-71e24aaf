@@ -535,6 +535,35 @@ function ItemCard({
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const isReady = !!item.ready_for_advance_payment;
+  const canApprove =
+    !isChild &&
+    !hasPhases &&
+    !!supplierId &&
+    !!quotationDate &&
+    ((hasNegotiated && negotiatedCost > 0) || (hasCost && cost > 0)) &&
+    !dirty;
+
+  const toggleApproval = useMutation({
+    mutationFn: async (next: boolean) => {
+      const { data: u } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("order_items")
+        .update({
+          ready_for_advance_payment: next,
+          ready_for_advance_payment_at: next ? new Date().toISOString() : null,
+          ready_for_advance_payment_by: next ? (u.user?.id ?? null) : null,
+        } as any)
+        .eq("id", item.id);
+      if (error) throw error;
+    },
+    onSuccess: (_r, next) => {
+      toast.success(next ? "Cotización aprobada — enviada a pagos" : "Aprobación revertida");
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
   const title = firstLine(item.description) || "Producto";
   const details = restLines(item.description);
 
