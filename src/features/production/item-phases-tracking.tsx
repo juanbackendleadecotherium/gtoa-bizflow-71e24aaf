@@ -251,6 +251,24 @@ function PhaseRow({
           onChange={(v) => { setActual(v); savePatch.mutate({ supplier_actual_date: v || null }); }} />
       </div>
 
+      {!actual && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              const today = new Date().toISOString().slice(0, 10);
+              setActual(today);
+              savePatch.mutate({ supplier_actual_date: today });
+            }}
+            disabled={savePatch.isPending}
+            className="inline-flex items-center gap-1 rounded-md bg-foreground hover:bg-foreground/90 text-background text-[11px] font-semibold px-2 py-1 disabled:opacity-50"
+            title="Marcar hoy como inicio real de esta fase"
+          >
+            <Rocket className="h-3 w-3" /> Inicio hoy
+          </button>
+        </div>
+      )}
+
     </li>
   );
 }
