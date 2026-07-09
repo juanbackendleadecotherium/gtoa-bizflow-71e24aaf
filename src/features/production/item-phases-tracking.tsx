@@ -200,9 +200,6 @@ function PhaseRow({
           onBlur={() => name !== phase.name && savePatch.mutate({ name: name.trim() || `Fase ${phase.phase_index}` })}
           className="flex-1 min-w-[120px] bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary text-xs font-medium outline-none px-1"
         />
-        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${statusStyle(phase.status)}`}>
-          {statusLabel(phase.status)}
-        </span>
         <button
           type="button"
           onClick={() => { if (confirm(`¿Eliminar "${phase.name}"?`)) removeM.mutate(); }}
