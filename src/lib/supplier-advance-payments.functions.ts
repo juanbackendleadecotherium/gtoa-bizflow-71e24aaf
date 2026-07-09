@@ -95,12 +95,14 @@ export const confirmSupplierAdvancePayment = createServerFn({ method: "POST" })
       .single();
     if (insErr) throw insErr;
 
-    // 5. Trigger the existing production-started flow with paid_at as the effective start.
-    //    The RPC inserts the seller_task notification (same type, same recipients).
-    const startedAtIso = new Date(data.paidAt + "T12:00:00").toISOString();
-    const { error: rpcErr } = await supabase.rpc("start_real_production", {
+    // 5. Notificar al encargado de producción (operativo) para que comparta al proveedor.
+    //    Ya NO se inicia producción automáticamente: Alejandra la marca manualmente.
+    const cost = Number((item as any).negotiated_cost ?? (item as any).manufacturing_cost ?? 0);
+    const pct = cost > 0 ? (data.amount / cost) * 100 : null;
+    const { error: rpcErr } = await supabase.rpc("notify_operativo_supplier_paid", {
       p_item_id: item.id,
-      p_started_at: startedAtIso,
+      p_amount: data.amount,
+      p_pct: pct,
     });
     if (rpcErr) throw rpcErr;
 

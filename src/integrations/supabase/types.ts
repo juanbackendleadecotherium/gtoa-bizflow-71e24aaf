@@ -3003,6 +3003,10 @@ export type Database = {
         Args: { _order_id: string }
         Returns: undefined
       }
+      notify_operativo_supplier_paid: {
+        Args: { p_amount: number; p_item_id: string; p_pct?: number }
+        Returns: undefined
+      }
       notify_seller_invoice_ready: {
         Args: { _order_id: string }
         Returns: undefined
