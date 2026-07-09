@@ -172,30 +172,6 @@ function PhaseRow({
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
-  const startM = useMutation({
-    mutationFn: async () => {
-      const { error } = await (supabase as any).rpc("start_item_phase", {
-        _phase_id: phase.id,
-        _started_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Fase iniciada"); onChanged(); },
-    onError: (e: any) => toast.error(e.message ?? "Error"),
-  });
-
-  const finishM = useMutation({
-    mutationFn: async () => {
-      const { error } = await (supabase as any).rpc("finish_item_phase", {
-        _phase_id: phase.id,
-        _finished_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Fase terminada"); onChanged(); },
-    onError: (e: any) => toast.error(e.message ?? "Error"),
-  });
-
   const removeM = useMutation({
     mutationFn: async () => {
       const { error } = await (supabase as any).from("order_item_phases").delete().eq("id", phase.id);
