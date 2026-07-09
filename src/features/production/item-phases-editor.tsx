@@ -301,6 +301,92 @@ function PhaseRow({
           </Button>
         )}
       </div>
+
+      <PhaseApprovalCard
+        phaseId={phase.id}
+        isReady={!!phase.ready_for_advance_payment}
+        dirty={dirty}
+        canApproveBase={
+          !!supplierId &&
+          !!quotationDate &&
+          ((hasNegotiated && negotiatedCost > 0) || (!hasNegotiated && cost > 0))
+        }
+        onChanged={onChanged}
+      />
+    </div>
+  );
+}
+
+function PhaseApprovalCard({
+  phaseId,
+  isReady,
+  dirty,
+  canApproveBase,
+  onChanged,
+}: {
+  phaseId: string;
+  isReady: boolean;
+  dirty: boolean;
+  canApproveBase: boolean;
+  onChanged: () => void;
+}) {
+  const canApprove = canApproveBase && !dirty;
+  const toggle = useMutation({
+    mutationFn: async (next: boolean) => {
+      const { data: u } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from("order_item_phases")
+        .update({
+          ready_for_advance_payment: next,
+          ready_for_advance_payment_at: next ? new Date().toISOString() : null,
+          ready_for_advance_payment_by: next ? (u.user?.id ?? null) : null,
+        })
+        .eq("id", phaseId);
+      if (error) throw error;
+    },
+    onSuccess: (_r, next) => {
+      toast.success(next ? "Fase aprobada — enviada a pagos" : "Aprobación de fase revertida");
+      onChanged();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
+  return (
+    <div className={`rounded-md border p-2.5 space-y-1.5 ${
+      isReady ? "border-emerald-500/40 bg-emerald-500/5" : "border-amber-500/40 bg-amber-500/5"
+    }`}>
+      <div className="flex items-start gap-2">
+        <ShieldCheck className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${isReady ? "text-emerald-600" : "text-amber-600"}`} />
+        <div className="min-w-0 flex-1">
+          <p className={`text-[11px] font-semibold uppercase tracking-wide ${isReady ? "text-emerald-800 dark:text-emerald-200" : "text-amber-800 dark:text-amber-200"}`}>
+            {isReady ? "Fase aprobada — enviada a pagos" : "Pendiente de aprobación (esta fase)"}
+          </p>
+          <p className="text-[10.5px] text-muted-foreground mt-0.5">
+            {isReady
+              ? "Esta fase está en la cola de pagos. Si cambias proveedor, costo o fecha de cotización, la aprobación se revierte."
+              : "Verifica proveedor, costo y fecha de cotización de esta fase, y marca la casilla para enviar el anticipo a Finanzas."}
+          </p>
+        </div>
+      </div>
+      <label className={`flex items-center gap-2 cursor-pointer select-none ${!canApprove && !isReady ? "opacity-60" : ""}`}>
+        <input
+          type="checkbox"
+          checked={isReady}
+          disabled={toggle.isPending || dirty || (!isReady && !canApprove)}
+          onChange={(e) => toggle.mutate(e.target.checked)}
+          className="h-4 w-4 accent-emerald-600"
+        />
+        <span className="text-[11.5px] font-medium">
+          {isReady ? "Aprobada — desmarcar para revertir" : "Aprobar y enviar esta fase a pagos"}
+        </span>
+        {toggle.isPending && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
+      </label>
+      {!isReady && dirty && (
+        <p className="text-[10px] text-amber-700 dark:text-amber-300">Guarda los cambios de la fase antes de aprobar.</p>
+      )}
+      {!isReady && !dirty && !canApprove && (
+        <p className="text-[10px] text-muted-foreground">Requiere proveedor, costo &gt; 0 y fecha de cotización en esta fase.</p>
+      )}
     </div>
   );
 }
