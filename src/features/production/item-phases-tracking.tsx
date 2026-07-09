@@ -251,29 +251,6 @@ function PhaseRow({
           onChange={(v) => { setActual(v); savePatch.mutate({ supplier_actual_date: v || null }); }} />
       </div>
 
-      <div className="flex items-center justify-end gap-1.5 pt-1">
-        {phase.status === "pendiente" && (
-          <button
-            type="button"
-            onClick={() => startM.mutate()}
-            disabled={startM.isPending || !supplierId}
-            title={!supplierId ? "Asigna un proveedor primero" : ""}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-background hover:border-primary/50 px-2 py-1 text-[11px] disabled:opacity-50"
-          >
-            <Play className="h-3 w-3" /> Iniciar
-          </button>
-        )}
-        {phase.status !== "terminado" && (
-          <button
-            type="button"
-            onClick={() => finishM.mutate()}
-            disabled={finishM.isPending}
-            className="inline-flex items-center gap-1 rounded-md bg-primary hover:bg-primary/90 text-white text-[11px] font-semibold px-2 py-1 disabled:opacity-50"
-          >
-            <CheckCircle2 className="h-3 w-3" /> Terminar
-          </button>
-        )}
-      </div>
     </li>
   );
 }
