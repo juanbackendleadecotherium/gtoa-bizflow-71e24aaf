@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Layers, Plus, Trash2 } from "lucide-react";
+import { Loader2, Layers, Plus, Trash2, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -250,6 +250,24 @@ function PhaseRow({
         <DateInline label="Real prov." value={actual}
           onChange={(v) => { setActual(v); savePatch.mutate({ supplier_actual_date: v || null }); }} />
       </div>
+
+      {!actual && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              const today = new Date().toISOString().slice(0, 10);
+              setActual(today);
+              savePatch.mutate({ supplier_actual_date: today });
+            }}
+            disabled={savePatch.isPending}
+            className="inline-flex items-center gap-1 rounded-md bg-foreground hover:bg-foreground/90 text-background text-[11px] font-semibold px-2 py-1 disabled:opacity-50"
+            title="Marcar hoy como inicio real de esta fase"
+          >
+            <Rocket className="h-3 w-3" /> Inicio hoy
+          </button>
+        </div>
+      )}
 
     </li>
   );
