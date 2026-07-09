@@ -803,12 +803,49 @@ function ProductItemBody({
       </div>
 
       {!isSellerRestricted && it.has_phases && (
-        <ItemPhasesTracking
-          orderItemId={it.id}
-          orderId={it.order_id ?? row.order_id}
-          brandId={row.brand_id}
-          suppliers={suppliers}
-        />
+        <>
+          <ItemPhasesTracking
+            orderItemId={it.id}
+            orderId={it.order_id ?? row.order_id}
+            brandId={row.brand_id}
+            suppliers={suppliers}
+          />
+          <div className="grid grid-cols-[1fr_auto] gap-2 items-end pt-1">
+            {it.production_started_at ? (
+              <DateField
+                label="Inicio prod. (real)"
+                value={it.production_started_at ? String(it.production_started_at).slice(0, 10) : null}
+                onSave={(v) =>
+                  patchItem.mutate({
+                    id: it.id,
+                    patch: { production_started_at: v ? new Date(v + "T12:00:00").toISOString() : null },
+                  })
+                }
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => startProd.mutate(it.id)}
+                disabled={startProd.isPending && startProd.variables === it.id}
+                className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50 self-end justify-self-start"
+                title="Marcar inicio real de producción hoy (notifica al vendedor)"
+              >
+                {startProd.isPending && startProd.variables === it.id
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : "🚀"} Inicio hoy
+              </button>
+            )}
+            {it.production_started_at && (
+              <FinishItemButton
+                itemId={it.id}
+                finishedAt={it.production_finished_at ?? null}
+                finishedByEmail={it.production_finished_by_email ?? null}
+                canFinish={canFinish}
+                isAdmin={isAdmin}
+              />
+            )}
+          </div>
+        </>
       )}
 
       {!isSellerRestricted && !it.has_phases && (<>
