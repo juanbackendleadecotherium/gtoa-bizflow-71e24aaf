@@ -228,7 +228,8 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
         "id, order_id, production_order_id, description, supplier_id, negotiated_cost, manufacturing_cost, quotation_date"
       )
       .not("supplier_id", "is", null)
-      .not("quotation_date", "is", null);
+      .not("quotation_date", "is", null)
+      .eq("ready_for_advance_payment", true);
     if (error) throw error;
 
     const raw = (items ?? []).filter((it: any) => {
