@@ -205,30 +205,6 @@ function PhaseRow({
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
-  const startPhase = useMutation({
-    mutationFn: async () => {
-      const { error } = await (supabase as any).rpc("start_item_phase", { _phase_id: phase.id, _started_at: new Date().toISOString() });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Fase iniciada");
-      onChanged();
-    },
-    onError: (e: any) => toast.error(e.message ?? "Error"),
-  });
-
-  const finishPhase = useMutation({
-    mutationFn: async () => {
-      const { error } = await (supabase as any).rpc("finish_item_phase", { _phase_id: phase.id, _finished_at: new Date().toISOString() });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Fase terminada");
-      onChanged();
-    },
-    onError: (e: any) => toast.error(e.message ?? "Error"),
-  });
-
   const effective = hasNegotiated && negotiatedCost > 0 ? negotiatedCost : cost;
 
   return (
@@ -243,9 +219,6 @@ function PhaseRow({
           className="h-8 flex-1 min-w-[160px] font-medium"
           placeholder="Nombre de la fase"
         />
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${statusBadge(phase.status)}`}>
-          {statusLabel(phase.status)}
-        </span>
         <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
           onClick={() => { if (confirm(`¿Eliminar fase "${phase.name}"?`)) remove.mutate(); }}>
           <Trash2 className="h-3.5 w-3.5" />
