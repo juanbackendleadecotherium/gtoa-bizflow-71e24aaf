@@ -454,10 +454,10 @@ function ItemCard({
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("order_item_phases")
-        .select("id, manufacturing_cost, negotiated_cost")
+        .select("id, manufacturing_cost, negotiated_cost, supplier_id, quotation_date")
         .eq("order_item_id", item.id);
       if (error) throw error;
-      return (data ?? []) as { id: string; manufacturing_cost: number | null; negotiated_cost: number | null }[];
+      return (data ?? []) as { id: string; manufacturing_cost: number | null; negotiated_cost: number | null; supplier_id: string | null; quotation_date: string | null }[];
     },
   });
 
@@ -472,6 +472,16 @@ function ItemCard({
       total += Number(eff);
     }
     return any ? total : null;
+  }, [hasPhases, itemPhases.data]);
+
+  const phasesReady = useMemo(() => {
+    if (!hasPhases) return false;
+    const phs = itemPhases.data ?? [];
+    if (phs.length === 0) return false;
+    return phs.every((p) => {
+      const eff = p.negotiated_cost ?? p.manufacturing_cost;
+      return !!p.supplier_id && !!p.quotation_date && eff != null && Number(eff) > 0;
+    });
   }, [hasPhases, itemPhases.data]);
 
   // Costo efectivo del ítem (para mostrar como "aporta al grupo" en un child)
@@ -538,11 +548,12 @@ function ItemCard({
   const isReady = !!item.ready_for_advance_payment;
   const canApprove =
     !isChild &&
-    !hasPhases &&
-    !!supplierId &&
-    !!quotationDate &&
-    ((hasNegotiated && negotiatedCost > 0) || (hasCost && cost > 0)) &&
-    !dirty;
+    !dirty &&
+    (hasPhases
+      ? phasesReady
+      : (!!supplierId &&
+         !!quotationDate &&
+         ((hasNegotiated && negotiatedCost > 0) || (hasCost && cost > 0))));
 
   const toggleApproval = useMutation({
     mutationFn: async (next: boolean) => {
@@ -764,50 +775,6 @@ function ItemCard({
               />
             </div>
 
-            {!isChild && (
-              <div className={`rounded-lg border p-3 space-y-2 ${
-                isReady
-                  ? "border-emerald-500/40 bg-emerald-500/5"
-                  : "border-amber-500/40 bg-amber-500/5"
-              }`}>
-                <div className="flex items-start gap-2">
-                  <ShieldCheck className={`h-4 w-4 shrink-0 mt-0.5 ${isReady ? "text-emerald-600" : "text-amber-600"}`} />
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-[11px] font-semibold uppercase tracking-wide ${isReady ? "text-emerald-800 dark:text-emerald-200" : "text-amber-800 dark:text-amber-200"}`}>
-                      {isReady ? "Cotización aprobada — enviada a pagos" : "Pendiente de aprobación para enviar a pagos"}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {isReady
-                        ? "Este producto ya está en la cola de pagos a proveedores. Si modificas proveedor, costo o fecha de cotización, la aprobación se revierte automáticamente."
-                        : "Verifica proveedor, costo y fecha de cotización. Cuando esté todo listo, marca la casilla para enviar el pago del anticipo a Finanzas."}
-                    </p>
-                  </div>
-                </div>
-                <label className={`flex items-center gap-2 cursor-pointer select-none ${!canApprove && !isReady ? "opacity-60" : ""}`}>
-                  <input
-                    type="checkbox"
-                    checked={isReady}
-                    disabled={toggleApproval.isPending || dirty || (!isReady && !canApprove)}
-                    onChange={(e) => toggleApproval.mutate(e.target.checked)}
-                    className="h-4 w-4 accent-emerald-600"
-                  />
-                  <span className="text-[12px] font-medium">
-                    {isReady ? "Aprobado — desmarcar para revertir" : "Aprobar y enviar a pagos a proveedores"}
-                  </span>
-                  {toggleApproval.isPending && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
-                </label>
-                {!isReady && dirty && (
-                  <p className="text-[10px] text-amber-700 dark:text-amber-300">
-                    Guarda los cambios antes de aprobar.
-                  </p>
-                )}
-                {!isReady && !dirty && !canApprove && (
-                  <p className="text-[10px] text-muted-foreground">
-                    Requiere proveedor, costo &gt; 0 y fecha de cotización.
-                  </p>
-                )}
-              </div>
-            )}
           </>
         )}
 
@@ -821,6 +788,58 @@ function ItemCard({
             onChanged={onSaved}
           />
         )}
+
+        {!isChild && (
+          <div className={`rounded-lg border p-3 space-y-2 ${
+            isReady
+              ? "border-emerald-500/40 bg-emerald-500/5"
+              : "border-amber-500/40 bg-amber-500/5"
+          }`}>
+            <div className="flex items-start gap-2">
+              <ShieldCheck className={`h-4 w-4 shrink-0 mt-0.5 ${isReady ? "text-emerald-600" : "text-amber-600"}`} />
+              <div className="min-w-0 flex-1">
+                <p className={`text-[11px] font-semibold uppercase tracking-wide ${isReady ? "text-emerald-800 dark:text-emerald-200" : "text-amber-800 dark:text-amber-200"}`}>
+                  {isReady ? "Cotización aprobada — enviada a pagos" : "Pendiente de aprobación para enviar a pagos"}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {isReady
+                    ? (hasPhases
+                        ? "Este producto (con fases) ya está en la cola de pagos a proveedores. Si modificas proveedor, costo o fecha de cotización de alguna fase, la aprobación se revierte automáticamente."
+                        : "Este producto ya está en la cola de pagos a proveedores. Si modificas proveedor, costo o fecha de cotización, la aprobación se revierte automáticamente.")
+                    : (hasPhases
+                        ? "Verifica que cada fase tenga proveedor, costo y fecha de cotización. Cuando todas estén listas, marca la casilla para enviar los pagos de anticipo a Finanzas."
+                        : "Verifica proveedor, costo y fecha de cotización. Cuando esté todo listo, marca la casilla para enviar el pago del anticipo a Finanzas.")}
+                </p>
+              </div>
+            </div>
+            <label className={`flex items-center gap-2 cursor-pointer select-none ${!canApprove && !isReady ? "opacity-60" : ""}`}>
+              <input
+                type="checkbox"
+                checked={isReady}
+                disabled={toggleApproval.isPending || dirty || (!isReady && !canApprove)}
+                onChange={(e) => toggleApproval.mutate(e.target.checked)}
+                className="h-4 w-4 accent-emerald-600"
+              />
+              <span className="text-[12px] font-medium">
+                {isReady ? "Aprobado — desmarcar para revertir" : "Aprobar y enviar a pagos a proveedores"}
+              </span>
+              {toggleApproval.isPending && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
+            </label>
+            {!isReady && dirty && (
+              <p className="text-[10px] text-amber-700 dark:text-amber-300">
+                Guarda los cambios antes de aprobar.
+              </p>
+            )}
+            {!isReady && !dirty && !canApprove && (
+              <p className="text-[10px] text-muted-foreground">
+                {hasPhases
+                  ? "Cada fase requiere proveedor, costo > 0 y fecha de cotización."
+                  : "Requiere proveedor, costo > 0 y fecha de cotización."}
+              </p>
+            )}
+          </div>
+        )}
+
 
         {dirty && (
           <div className="flex justify-end pt-1">
