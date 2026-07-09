@@ -538,7 +538,6 @@ function ItemCard({
 
   const isReady = !!item.ready_for_advance_payment;
   const canApprove =
-    !isChild &&
     !hasPhases &&
     !dirty &&
     !!supplierId &&
