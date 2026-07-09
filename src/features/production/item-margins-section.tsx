@@ -474,15 +474,6 @@ function ItemCard({
     return any ? total : null;
   }, [hasPhases, itemPhases.data]);
 
-  const phasesReady = useMemo(() => {
-    if (!hasPhases) return false;
-    const phs = itemPhases.data ?? [];
-    if (phs.length === 0) return false;
-    return phs.every((p) => {
-      const eff = p.negotiated_cost ?? p.manufacturing_cost;
-      return !!p.supplier_id && !!p.quotation_date && eff != null && Number(eff) > 0;
-    });
-  }, [hasPhases, itemPhases.data]);
 
   // Costo efectivo del ítem (para mostrar como "aporta al grupo" en un child)
   const effectiveForDisplay = hasPhases ? phasesCost : ownEffective;
