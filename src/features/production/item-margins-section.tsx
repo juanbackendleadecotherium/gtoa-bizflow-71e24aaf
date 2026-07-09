@@ -454,10 +454,10 @@ function ItemCard({
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("order_item_phases")
-        .select("id, manufacturing_cost, negotiated_cost")
+        .select("id, manufacturing_cost, negotiated_cost, supplier_id, quotation_date")
         .eq("order_item_id", item.id);
       if (error) throw error;
-      return (data ?? []) as { id: string; manufacturing_cost: number | null; negotiated_cost: number | null }[];
+      return (data ?? []) as { id: string; manufacturing_cost: number | null; negotiated_cost: number | null; supplier_id: string | null; quotation_date: string | null }[];
     },
   });
 
@@ -472,6 +472,16 @@ function ItemCard({
       total += Number(eff);
     }
     return any ? total : null;
+  }, [hasPhases, itemPhases.data]);
+
+  const phasesReady = useMemo(() => {
+    if (!hasPhases) return false;
+    const phs = itemPhases.data ?? [];
+    if (phs.length === 0) return false;
+    return phs.every((p) => {
+      const eff = p.negotiated_cost ?? p.manufacturing_cost;
+      return !!p.supplier_id && !!p.quotation_date && eff != null && Number(eff) > 0;
+    });
   }, [hasPhases, itemPhases.data]);
 
   // Costo efectivo del ítem (para mostrar como "aporta al grupo" en un child)
