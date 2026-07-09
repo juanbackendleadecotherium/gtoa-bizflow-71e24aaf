@@ -474,15 +474,6 @@ function ItemCard({
     return any ? total : null;
   }, [hasPhases, itemPhases.data]);
 
-  const phasesReady = useMemo(() => {
-    if (!hasPhases) return false;
-    const phs = itemPhases.data ?? [];
-    if (phs.length === 0) return false;
-    return phs.every((p) => {
-      const eff = p.negotiated_cost ?? p.manufacturing_cost;
-      return !!p.supplier_id && !!p.quotation_date && eff != null && Number(eff) > 0;
-    });
-  }, [hasPhases, itemPhases.data]);
 
   // Costo efectivo del ítem (para mostrar como "aporta al grupo" en un child)
   const effectiveForDisplay = hasPhases ? phasesCost : ownEffective;
@@ -548,12 +539,11 @@ function ItemCard({
   const isReady = !!item.ready_for_advance_payment;
   const canApprove =
     !isChild &&
+    !hasPhases &&
     !dirty &&
-    (hasPhases
-      ? phasesReady
-      : (!!supplierId &&
-         !!quotationDate &&
-         ((hasNegotiated && negotiatedCost > 0) || (hasCost && cost > 0))));
+    !!supplierId &&
+    !!quotationDate &&
+    ((hasNegotiated && negotiatedCost > 0) || (hasCost && cost > 0));
 
   const toggleApproval = useMutation({
     mutationFn: async (next: boolean) => {
@@ -789,7 +779,7 @@ function ItemCard({
           />
         )}
 
-        {!isChild && (
+        {!isChild && !hasPhases && (
           <div className={`rounded-lg border p-3 space-y-2 ${
             isReady
               ? "border-emerald-500/40 bg-emerald-500/5"
@@ -803,12 +793,8 @@ function ItemCard({
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {isReady
-                    ? (hasPhases
-                        ? "Este producto (con fases) ya está en la cola de pagos a proveedores. Si modificas proveedor, costo o fecha de cotización de alguna fase, la aprobación se revierte automáticamente."
-                        : "Este producto ya está en la cola de pagos a proveedores. Si modificas proveedor, costo o fecha de cotización, la aprobación se revierte automáticamente.")
-                    : (hasPhases
-                        ? "Verifica que cada fase tenga proveedor, costo y fecha de cotización. Cuando todas estén listas, marca la casilla para enviar los pagos de anticipo a Finanzas."
-                        : "Verifica proveedor, costo y fecha de cotización. Cuando esté todo listo, marca la casilla para enviar el pago del anticipo a Finanzas.")}
+                    ? "Este producto ya está en la cola de pagos a proveedores. Si modificas proveedor, costo o fecha de cotización, la aprobación se revierte automáticamente."
+                    : "Verifica proveedor, costo y fecha de cotización. Cuando esté todo listo, marca la casilla para enviar el pago del anticipo a Finanzas."}
                 </p>
               </div>
             </div>
@@ -832,13 +818,12 @@ function ItemCard({
             )}
             {!isReady && !dirty && !canApprove && (
               <p className="text-[10px] text-muted-foreground">
-                {hasPhases
-                  ? "Cada fase requiere proveedor, costo > 0 y fecha de cotización."
-                  : "Requiere proveedor, costo > 0 y fecha de cotización."}
+                Requiere proveedor, costo &gt; 0 y fecha de cotización.
               </p>
             )}
           </div>
         )}
+
 
 
         {dirty && (
