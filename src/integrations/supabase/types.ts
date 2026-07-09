@@ -1028,6 +1028,9 @@ export type Database = {
           phase_index: number
           production_order_id: string | null
           quotation_date: string | null
+          ready_for_advance_payment: boolean
+          ready_for_advance_payment_at: string | null
+          ready_for_advance_payment_by: string | null
           real_production_order_id: string | null
           started_at: string | null
           status: string
@@ -1053,6 +1056,9 @@ export type Database = {
           phase_index?: number
           production_order_id?: string | null
           quotation_date?: string | null
+          ready_for_advance_payment?: boolean
+          ready_for_advance_payment_at?: string | null
+          ready_for_advance_payment_by?: string | null
           real_production_order_id?: string | null
           started_at?: string | null
           status?: string
@@ -1078,6 +1084,9 @@ export type Database = {
           phase_index?: number
           production_order_id?: string | null
           quotation_date?: string | null
+          ready_for_advance_payment?: boolean
+          ready_for_advance_payment_at?: string | null
+          ready_for_advance_payment_by?: string | null
           real_production_order_id?: string | null
           started_at?: string | null
           status?: string
@@ -2931,6 +2940,10 @@ export type Database = {
       }
       create_supplier_payment_tasks: {
         Args: { _item_id: string }
+        Returns: undefined
+      }
+      create_supplier_phase_payment_tasks: {
+        Args: { _phase_id: string }
         Returns: undefined
       }
       defer_order_delivery: {
