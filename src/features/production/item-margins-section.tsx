@@ -548,11 +548,12 @@ function ItemCard({
   const isReady = !!item.ready_for_advance_payment;
   const canApprove =
     !isChild &&
-    !hasPhases &&
-    !!supplierId &&
-    !!quotationDate &&
-    ((hasNegotiated && negotiatedCost > 0) || (hasCost && cost > 0)) &&
-    !dirty;
+    !dirty &&
+    (hasPhases
+      ? phasesReady
+      : (!!supplierId &&
+         !!quotationDate &&
+         ((hasNegotiated && negotiatedCost > 0) || (hasCost && cost > 0))));
 
   const toggleApproval = useMutation({
     mutationFn: async (next: boolean) => {
