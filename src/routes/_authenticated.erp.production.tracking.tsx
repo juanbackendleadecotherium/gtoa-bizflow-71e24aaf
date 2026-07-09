@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import {
   Loader2, Factory, Search, ArrowLeft, ClipboardList, ExternalLink,
-  Package, CalendarDays, AlertTriangle, ChevronRight,
+  Package, CalendarDays, AlertTriangle, ChevronRight, Unlink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -663,10 +663,29 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
                           </p>
                           {kids.map((child: any) => (
                             <div key={child.id} className="rounded-md border border-border/60 bg-muted/20 p-2.5 space-y-2 ml-2">
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center justify-between gap-1.5">
                                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold uppercase tracking-wide">
                                   Vinculado
                                 </span>
+                                {(isAdmin || !isSellerRestricted) && (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (!confirm(`¿Desvincular "${firstLine(child.description) || "este producto"}" del padre?`)) return;
+                                      const { error } = await (supabase as any)
+                                        .from("order_items")
+                                        .update({ parent_item_id: null })
+                                        .eq("id", child.id);
+                                      if (error) { toast.error(error.message); return; }
+                                      toast.success("Producto desvinculado");
+                                      qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
+                                    }}
+                                    className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive"
+                                    title="Desvincular del padre"
+                                  >
+                                    <Unlink className="h-3 w-3" /> Desvincular
+                                  </button>
+                                )}
                               </div>
                               <ProductItemBody
                                 it={child}
