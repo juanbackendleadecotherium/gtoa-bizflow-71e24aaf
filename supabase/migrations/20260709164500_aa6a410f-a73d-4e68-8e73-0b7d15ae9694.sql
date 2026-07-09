@@ -1,0 +1,1 @@
+UPDATE public.order_items SET production_started_at = NULL WHERE id = '51915cb4-abc4-4cb0-8fe5-2bd008ae89a9';
