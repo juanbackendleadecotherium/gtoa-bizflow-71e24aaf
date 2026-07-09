@@ -68,7 +68,7 @@ export function SupplierAdvancePaymentForm({
       });
     },
     onSuccess: () => {
-      toast.success("Pago confirmado. Producción iniciada.");
+      toast.success("Pago registrado. Se notificó al encargado de producción.");
       qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
       qc.invalidateQueries({ queryKey: ["supplier-advance-payment", orderItemId] });
       qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
