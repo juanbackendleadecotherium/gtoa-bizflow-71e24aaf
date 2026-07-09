@@ -538,7 +538,6 @@ function ItemCard({
 
   const isReady = !!item.ready_for_advance_payment;
   const canApprove =
-    !isChild &&
     !hasPhases &&
     !dirty &&
     !!supplierId &&
@@ -779,7 +778,7 @@ function ItemCard({
           />
         )}
 
-        {!isChild && !hasPhases && (
+        {!hasPhases && (
           <div className={`rounded-lg border p-3 space-y-2 ${
             isReady
               ? "border-emerald-500/40 bg-emerald-500/5"
