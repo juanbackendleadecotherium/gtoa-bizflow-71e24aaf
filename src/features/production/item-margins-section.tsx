@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays, Handshake, Layers, Link2, Unlink } from "lucide-react";
+import { Loader2, Save, Package, TrendingUp, Building2, CalendarDays, Handshake, Layers, Link2, Unlink, CheckCircle2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ type Item = {
   quotation_date: string | null;
   has_phases?: boolean | null;
   parent_item_id?: string | null;
+  ready_for_advance_payment?: boolean | null;
   order_id: string;
 };
 
@@ -87,7 +88,7 @@ export function ItemMarginsSection({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_items")
-        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, negotiated_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date, production_order_id, order_id, has_phases, parent_item_id")
+        .select("id, description, quantity, unit_price, line_total, manufacturing_cost, negotiated_cost, margin_pct, supplier_id, cost_notes, sort_order, quotation_date, production_order_id, order_id, has_phases, parent_item_id, ready_for_advance_payment")
         .or(`production_order_id.eq.${productionOrderId},and(order_id.eq.${orderId},production_order_id.is.null)`)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -534,6 +535,35 @@ function ItemCard({
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const isReady = !!item.ready_for_advance_payment;
+  const canApprove =
+    !isChild &&
+    !hasPhases &&
+    !!supplierId &&
+    !!quotationDate &&
+    ((hasNegotiated && negotiatedCost > 0) || (hasCost && cost > 0)) &&
+    !dirty;
+
+  const toggleApproval = useMutation({
+    mutationFn: async (next: boolean) => {
+      const { data: u } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("order_items")
+        .update({
+          ready_for_advance_payment: next,
+          ready_for_advance_payment_at: next ? new Date().toISOString() : null,
+          ready_for_advance_payment_by: next ? (u.user?.id ?? null) : null,
+        } as any)
+        .eq("id", item.id);
+      if (error) throw error;
+    },
+    onSuccess: (_r, next) => {
+      toast.success(next ? "Cotización aprobada — enviada a pagos" : "Aprobación revertida");
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
   const title = firstLine(item.description) || "Producto";
   const details = restLines(item.description);
 
@@ -733,6 +763,51 @@ function ItemCard({
                 className="h-9 max-w-[220px]"
               />
             </div>
+
+            {!isChild && (
+              <div className={`rounded-lg border p-3 space-y-2 ${
+                isReady
+                  ? "border-emerald-500/40 bg-emerald-500/5"
+                  : "border-amber-500/40 bg-amber-500/5"
+              }`}>
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className={`h-4 w-4 shrink-0 mt-0.5 ${isReady ? "text-emerald-600" : "text-amber-600"}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[11px] font-semibold uppercase tracking-wide ${isReady ? "text-emerald-800 dark:text-emerald-200" : "text-amber-800 dark:text-amber-200"}`}>
+                      {isReady ? "Cotización aprobada — enviada a pagos" : "Pendiente de aprobación para enviar a pagos"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {isReady
+                        ? "Este producto ya está en la cola de pagos a proveedores. Si modificas proveedor, costo o fecha de cotización, la aprobación se revierte automáticamente."
+                        : "Verifica proveedor, costo y fecha de cotización. Cuando esté todo listo, marca la casilla para enviar el pago del anticipo a Finanzas."}
+                    </p>
+                  </div>
+                </div>
+                <label className={`flex items-center gap-2 cursor-pointer select-none ${!canApprove && !isReady ? "opacity-60" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={isReady}
+                    disabled={toggleApproval.isPending || dirty || (!isReady && !canApprove)}
+                    onChange={(e) => toggleApproval.mutate(e.target.checked)}
+                    className="h-4 w-4 accent-emerald-600"
+                  />
+                  <span className="text-[12px] font-medium">
+                    {isReady ? "Aprobado — desmarcar para revertir" : "Aprobar y enviar a pagos a proveedores"}
+                  </span>
+                  {toggleApproval.isPending && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
+                </label>
+                {!isReady && dirty && (
+                  <p className="text-[10px] text-amber-700 dark:text-amber-300">
+                    Guarda los cambios antes de aprobar.
+                  </p>
+                )}
+                {!isReady && !dirty && !canApprove && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Requiere proveedor, costo &gt; 0 y fecha de cotización.
+                  </p>
+                )}
+              </div>
+            )}
           </>
         )}
 

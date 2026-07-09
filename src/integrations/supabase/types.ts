@@ -1285,6 +1285,9 @@ export type Database = {
           production_started_at: string | null
           quantity: number
           quotation_date: string | null
+          ready_for_advance_payment: boolean
+          ready_for_advance_payment_at: string | null
+          ready_for_advance_payment_by: string | null
           sort_order: number
           supplier_actual_date: string | null
           supplier_id: string | null
@@ -1325,6 +1328,9 @@ export type Database = {
           production_started_at?: string | null
           quantity?: number
           quotation_date?: string | null
+          ready_for_advance_payment?: boolean
+          ready_for_advance_payment_at?: string | null
+          ready_for_advance_payment_by?: string | null
           sort_order?: number
           supplier_actual_date?: string | null
           supplier_id?: string | null
@@ -1365,6 +1371,9 @@ export type Database = {
           production_started_at?: string | null
           quantity?: number
           quotation_date?: string | null
+          ready_for_advance_payment?: boolean
+          ready_for_advance_payment_at?: string | null
+          ready_for_advance_payment_by?: string | null
           sort_order?: number
           supplier_actual_date?: string | null
           supplier_id?: string | null

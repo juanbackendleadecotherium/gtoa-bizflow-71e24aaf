@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Play, CheckCircle2, Layers, Plus, Trash2 } from "lucide-react";
+import { Loader2, Layers, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -172,30 +172,6 @@ function PhaseRow({
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
-  const startM = useMutation({
-    mutationFn: async () => {
-      const { error } = await (supabase as any).rpc("start_item_phase", {
-        _phase_id: phase.id,
-        _started_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Fase iniciada"); onChanged(); },
-    onError: (e: any) => toast.error(e.message ?? "Error"),
-  });
-
-  const finishM = useMutation({
-    mutationFn: async () => {
-      const { error } = await (supabase as any).rpc("finish_item_phase", {
-        _phase_id: phase.id,
-        _finished_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Fase terminada"); onChanged(); },
-    onError: (e: any) => toast.error(e.message ?? "Error"),
-  });
-
   const removeM = useMutation({
     mutationFn: async () => {
       const { error } = await (supabase as any).from("order_item_phases").delete().eq("id", phase.id);
@@ -224,9 +200,6 @@ function PhaseRow({
           onBlur={() => name !== phase.name && savePatch.mutate({ name: name.trim() || `Fase ${phase.phase_index}` })}
           className="flex-1 min-w-[120px] bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary text-xs font-medium outline-none px-1"
         />
-        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${statusStyle(phase.status)}`}>
-          {statusLabel(phase.status)}
-        </span>
         <button
           type="button"
           onClick={() => { if (confirm(`¿Eliminar "${phase.name}"?`)) removeM.mutate(); }}
@@ -278,29 +251,6 @@ function PhaseRow({
           onChange={(v) => { setActual(v); savePatch.mutate({ supplier_actual_date: v || null }); }} />
       </div>
 
-      <div className="flex items-center justify-end gap-1.5 pt-1">
-        {phase.status === "pendiente" && (
-          <button
-            type="button"
-            onClick={() => startM.mutate()}
-            disabled={startM.isPending || !supplierId}
-            title={!supplierId ? "Asigna un proveedor primero" : ""}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-background hover:border-primary/50 px-2 py-1 text-[11px] disabled:opacity-50"
-          >
-            <Play className="h-3 w-3" /> Iniciar
-          </button>
-        )}
-        {phase.status !== "terminado" && (
-          <button
-            type="button"
-            onClick={() => finishM.mutate()}
-            disabled={finishM.isPending}
-            className="inline-flex items-center gap-1 rounded-md bg-primary hover:bg-primary/90 text-white text-[11px] font-semibold px-2 py-1 disabled:opacity-50"
-          >
-            <CheckCircle2 className="h-3 w-3" /> Terminar
-          </button>
-        )}
-      </div>
     </li>
   );
 }
