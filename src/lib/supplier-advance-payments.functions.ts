@@ -30,15 +30,32 @@ export const confirmSupplierAdvancePayment = createServerFn({ method: "POST" })
       throw new Error("Solo el gerente financiero (rol Finanzas) puede registrar este pago.");
     }
 
-    // 1. Load item + supplier
+    // 1. Load item + supplier (or phase-scoped equivalents)
     const { data: item, error: itemErr } = await supabase
       .from("order_items")
-      .select("id, order_id, production_order_id, supplier_id, description, negotiated_cost, manufacturing_cost")
+      .select("id, order_id, production_order_id, supplier_id, description, negotiated_cost, manufacturing_cost, has_phases")
       .eq("id", data.orderItemId)
       .maybeSingle();
     if (itemErr) throw itemErr;
     if (!item) throw new Error("Producto no encontrado");
-    if (!item.supplier_id) throw new Error("El ítem no tiene proveedor asignado");
+
+    let phase: any = null;
+    if (data.phaseId) {
+      const { data: ph, error: phErr } = await supabase
+        .from("order_item_phases")
+        .select("id, order_item_id, order_id, brand_id, production_order_id, supplier_id, name, negotiated_cost, manufacturing_cost")
+        .eq("id", data.phaseId)
+        .maybeSingle();
+      if (phErr) throw phErr;
+      if (!ph) throw new Error("Fase no encontrada");
+      if (ph.order_item_id !== item.id) throw new Error("La fase no pertenece al ítem");
+      if (!ph.supplier_id) throw new Error("La fase no tiene proveedor asignado");
+      phase = ph;
+    } else {
+      if (!item.supplier_id) throw new Error("El ítem no tiene proveedor asignado");
+    }
+
+    const effectiveSupplierId = phase ? phase.supplier_id : item.supplier_id;
 
     const { data: order, error: orderErr } = await supabase
       .from("orders")
@@ -51,7 +68,7 @@ export const confirmSupplierAdvancePayment = createServerFn({ method: "POST" })
     const { data: supplier, error: supErr } = await supabase
       .from("suppliers")
       .select("id, name, brand_id, requires_advance_payment")
-      .eq("id", item.supplier_id)
+      .eq("id", effectiveSupplierId)
       .maybeSingle();
     if (supErr) throw supErr;
     if (!supplier) throw new Error("Proveedor no encontrado");
@@ -64,14 +81,19 @@ export const confirmSupplierAdvancePayment = createServerFn({ method: "POST" })
       }
     }
 
-    // 3. No existing payment
-    const { data: existing, error: existErr } = await supabase
+    // 3. No existing payment (scoped by phase if phase-mode; by item otherwise)
+    let existQ = supabase
       .from("order_item_supplier_payments")
       .select("id")
-      .eq("order_item_id", item.id)
-      .maybeSingle();
+      .eq("payment_type", "advance");
+    if (phase) {
+      existQ = existQ.eq("phase_id", phase.id);
+    } else {
+      existQ = existQ.eq("order_item_id", item.id).is("phase_id", null);
+    }
+    const { data: existing, error: existErr } = await existQ.maybeSingle();
     if (existErr) throw existErr;
-    if (existing) throw new Error("Este ítem ya tiene un pago anticipado registrado");
+    if (existing) throw new Error(phase ? "Esta fase ya tiene un pago anticipado registrado" : "Este ítem ya tiene un pago anticipado registrado");
 
     // 4. Insert payment (RLS validates can_write_brand + supplier flag)
     const userEmail = (claims as { email?: string } | null)?.email ?? null;
@@ -79,6 +101,7 @@ export const confirmSupplierAdvancePayment = createServerFn({ method: "POST" })
       .from("order_item_supplier_payments")
       .insert({
         order_item_id: item.id,
+        phase_id: phase ? phase.id : null,
         production_order_id: item.production_order_id,
         order_id: item.order_id,
         brand_id: order.brand_id,
@@ -97,9 +120,10 @@ export const confirmSupplierAdvancePayment = createServerFn({ method: "POST" })
     if (insErr) throw insErr;
 
     // 5. Notificar al encargado de producción (operativo) para que comparta al proveedor.
-    //    Ya NO se inicia producción automáticamente: Alejandra la marca manualmente.
-    const cost = Number((item as any).negotiated_cost ?? (item as any).manufacturing_cost ?? 0);
-    const pct = cost > 0 ? (data.amount / cost) * 100 : undefined;
+    const costBase = phase
+      ? Number(phase.negotiated_cost ?? phase.manufacturing_cost ?? 0)
+      : Number((item as any).negotiated_cost ?? (item as any).manufacturing_cost ?? 0);
+    const pct = costBase > 0 ? (data.amount / costBase) * 100 : undefined;
     const { error: rpcErr } = await supabase.rpc("notify_operativo_supplier_paid", {
       p_item_id: item.id,
       p_amount: data.amount,
