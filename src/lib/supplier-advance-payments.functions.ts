@@ -5,6 +5,7 @@ import { supplierPaymentPathPrefix } from "./supplier-payment-upload";
 
 const ConfirmInput = z.object({
   orderItemId: z.string().uuid(),
+  phaseId: z.string().uuid().optional().nullable(),
   amount: z.number().positive(),
   paidAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida"),
   receiptPath: z.string().min(1).optional().nullable(),
