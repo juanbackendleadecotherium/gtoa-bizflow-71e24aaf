@@ -61,6 +61,7 @@ export function SupplierAdvancePaymentForm({
       await confirmFn({
         data: {
           orderItemId,
+          phaseId: phaseId ?? null,
           amount,
           paidAt,
           receiptPath: uploaded?.path ?? null,
