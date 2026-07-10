@@ -277,6 +277,7 @@ function SupplierPaymentsInner() {
               </div>
               <SupplierAdvancePaymentForm
                 orderItemId={active.order_item_id}
+                phaseId={active.phase_id}
                 brandId={active.brand_id}
                 orderId={active.order_id}
                 suggestedAmount={active.cost}
