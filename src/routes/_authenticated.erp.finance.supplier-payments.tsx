@@ -209,9 +209,14 @@ function SupplierPaymentsInner() {
               </thead>
               <tbody>
                 {filtered.map((r) => (
-                  <tr key={r.order_item_id} className="border-t border-border hover:bg-muted/20">
+                  <tr key={r.phase_id ?? r.order_item_id} className="border-t border-border hover:bg-muted/20">
                     <td className="px-4 py-2.5 max-w-[260px]">
                       <p className="font-medium truncate">{r.product}</p>
+                      {r.phase_name && (
+                        <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold uppercase tracking-wide">
+                          Fase · {r.phase_name}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5">
                       <Link
