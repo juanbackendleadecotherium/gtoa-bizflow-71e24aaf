@@ -449,7 +449,7 @@ function ItemCard({
 
   // Fases del item (para mostrar costo y margen cuando has_phases=true, sin depender del padre externo)
   const itemPhases = useQuery({
-    queryKey: ["item-phases", item.id],
+    queryKey: ["item-phases-cost", item.id],
     enabled: hasPhases,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
