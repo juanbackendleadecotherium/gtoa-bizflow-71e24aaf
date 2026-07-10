@@ -226,6 +226,8 @@ async function assertFinanceRole(supabase: any, userId: string) {
 
 export type PendingSupplierPayment = {
   order_item_id: string;
+  phase_id: string | null;
+  phase_name: string | null;
   order_id: string;
   production_order_id: string | null;
   brand_id: string;
@@ -248,46 +250,97 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     await assertFinanceRole(supabase, userId);
 
-    // 1. Items with a supplier + quotation_date + cost, and no advance payment yet.
+    // 1a. Item-level: items without phases, with supplier + quotation + cost, approved and unpaid.
     const { data: items, error } = await supabase
       .from("order_items")
       .select(
-        "id, order_id, production_order_id, description, supplier_id, negotiated_cost, manufacturing_cost, quotation_date"
+        "id, order_id, production_order_id, description, supplier_id, negotiated_cost, manufacturing_cost, quotation_date, has_phases"
       )
       .not("supplier_id", "is", null)
       .not("quotation_date", "is", null)
       .eq("ready_for_advance_payment", true);
     if (error) throw error;
 
-    const raw = (items ?? []).filter((it: any) => {
+    const rawItems = (items ?? []).filter((it: any) => {
+      if (it.has_phases) return false;
       const cost = it.negotiated_cost ?? it.manufacturing_cost;
       return cost != null && Number(cost) > 0;
     });
-    if (raw.length === 0) return [] as PendingSupplierPayment[];
 
-    const ids = raw.map((r: any) => r.id);
+    // 1b. Phase-level: phases with supplier + quotation + cost, approved.
+    const { data: phases, error: phErr } = await supabase
+      .from("order_item_phases")
+      .select(
+        "id, order_item_id, order_id, production_order_id, name, supplier_id, negotiated_cost, manufacturing_cost, quotation_date"
+      )
+      .not("supplier_id", "is", null)
+      .not("quotation_date", "is", null)
+      .eq("ready_for_advance_payment", true);
+    if (phErr) throw phErr;
+
+    const rawPhases = (phases ?? []).filter((p: any) => {
+      const cost = p.negotiated_cost ?? p.manufacturing_cost;
+      return cost != null && Number(cost) > 0;
+    });
+
+    if (rawItems.length === 0 && rawPhases.length === 0) return [] as PendingSupplierPayment[];
+
+    // 2. Exclude those with existing advance payments.
+    const allItemIds = Array.from(new Set([
+      ...rawItems.map((r: any) => r.id),
+      ...rawPhases.map((p: any) => p.order_item_id),
+    ]));
+    const phaseIds = rawPhases.map((p: any) => p.id);
+
     const { data: paid, error: paidErr } = await supabase
       .from("order_item_supplier_payments")
-      .select("order_item_id, payment_type")
-      .in("order_item_id", ids);
+      .select("order_item_id, phase_id, payment_type")
+      .in("order_item_id", allItemIds.length > 0 ? allItemIds : ["00000000-0000-0000-0000-000000000000"]);
     if (paidErr) throw paidErr;
-    const paidSet = new Set(
+
+    const paidItemSet = new Set(
       (paid ?? [])
-        .filter((p: any) => (p.payment_type ?? "advance") === "advance")
+        .filter((p: any) => (p.payment_type ?? "advance") === "advance" && !p.phase_id)
         .map((p: any) => p.order_item_id)
     );
-    const pendingItems = raw.filter((r: any) => !paidSet.has(r.id));
-    if (pendingItems.length === 0) return [] as PendingSupplierPayment[];
+    const paidPhaseSet = new Set(
+      (paid ?? [])
+        .filter((p: any) => (p.payment_type ?? "advance") === "advance" && p.phase_id)
+        .map((p: any) => p.phase_id)
+    );
 
-    const orderIds = Array.from(new Set(pendingItems.map((r: any) => r.order_id)));
-    const supplierIds = Array.from(new Set(pendingItems.map((r: any) => r.supplier_id)));
+    const pendingItems = rawItems.filter((r: any) => !paidItemSet.has(r.id));
+    const pendingPhases = rawPhases.filter((p: any) => !paidPhaseSet.has(p.id));
 
-    const [{ data: orders, error: oErr }, { data: suppliers, error: sErr }] = await Promise.all([
+    if (pendingItems.length === 0 && pendingPhases.length === 0) return [] as PendingSupplierPayment[];
+
+    // 3. Enrich with orders / suppliers / brands.
+    const orderIds = Array.from(new Set([
+      ...pendingItems.map((r: any) => r.order_id),
+      ...pendingPhases.map((p: any) => p.order_id),
+    ]));
+    const supplierIds = Array.from(new Set([
+      ...pendingItems.map((r: any) => r.supplier_id),
+      ...pendingPhases.map((p: any) => p.supplier_id),
+    ]));
+
+    // Phase rows also need the parent item's description for a nicer label.
+    const phaseParentIds = Array.from(new Set(pendingPhases.map((p: any) => p.order_item_id)));
+
+    const [
+      { data: orders, error: oErr },
+      { data: suppliers, error: sErr },
+      { data: parentItems, error: piErr },
+    ] = await Promise.all([
       supabase.from("orders").select("id, invoice_number, order_number, brand_id").in("id", orderIds),
       supabase.from("suppliers").select("id, name, advance_payment_pct, brand_id").in("id", supplierIds),
+      phaseParentIds.length > 0
+        ? supabase.from("order_items").select("id, description").in("id", phaseParentIds)
+        : Promise.resolve({ data: [], error: null } as any),
     ]);
     if (oErr) throw oErr;
     if (sErr) throw sErr;
+    if (piErr) throw piErr;
 
     const brandIds = Array.from(new Set((orders ?? []).map((o: any) => o.brand_id)));
     const { data: brands, error: bErr } = await supabase
@@ -297,8 +350,9 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
     const oMap = new Map((orders ?? []).map((o: any) => [o.id, o]));
     const sMap = new Map((suppliers ?? []).map((s: any) => [s.id, s]));
     const bMap = new Map((brands ?? []).map((b: any) => [b.id, b]));
+    const piMap = new Map((parentItems ?? []).map((p: any) => [p.id, p]));
 
-    const rows: PendingSupplierPayment[] = pendingItems.map((it: any) => {
+    const itemRows: PendingSupplierPayment[] = pendingItems.map((it: any) => {
       const o = oMap.get(it.order_id) ?? {};
       const s = sMap.get(it.supplier_id) ?? {};
       const b = bMap.get(o.brand_id) ?? {};
@@ -306,6 +360,8 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
       const pct = Number(s.advance_payment_pct ?? 50);
       return {
         order_item_id: it.id,
+        phase_id: null,
+        phase_name: null,
         order_id: it.order_id,
         production_order_id: it.production_order_id,
         brand_id: o.brand_id,
@@ -323,6 +379,36 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
       };
     });
 
+    const phaseRows: PendingSupplierPayment[] = pendingPhases.map((ph: any) => {
+      const o = oMap.get(ph.order_id) ?? {};
+      const s = sMap.get(ph.supplier_id) ?? {};
+      const b = bMap.get(o.brand_id) ?? {};
+      const parent = piMap.get(ph.order_item_id) ?? {};
+      const cost = Number(ph.negotiated_cost ?? ph.manufacturing_cost ?? 0);
+      const pct = Number(s.advance_payment_pct ?? 50);
+      const parentDesc = ((parent as any).description ?? "Producto").split("\n")[0] || "Producto";
+      return {
+        order_item_id: ph.order_item_id,
+        phase_id: ph.id,
+        phase_name: ph.name,
+        order_id: ph.order_id,
+        production_order_id: ph.production_order_id,
+        brand_id: o.brand_id,
+        brand_name: b.name ?? null,
+        brand_color: b.primary_color ?? null,
+        invoice_number: o.invoice_number ?? null,
+        order_number: o.order_number ?? null,
+        product: `${parentDesc} · ${ph.name}`,
+        supplier_id: ph.supplier_id,
+        supplier_name: s.name ?? "—",
+        cost,
+        advance_pct: pct,
+        suggested_amount: Math.round(cost * (pct / 100)),
+        quotation_date: ph.quotation_date,
+      };
+    });
+
+    const rows = [...itemRows, ...phaseRows];
     rows.sort((a, b) => {
       const da = a.quotation_date ?? "";
       const db = b.quotation_date ?? "";
