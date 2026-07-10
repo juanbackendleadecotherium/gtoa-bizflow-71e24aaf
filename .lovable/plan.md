@@ -1,72 +1,57 @@
+## Problemas detectados
 
-## Objetivo
+### 1. Colisión de `queryKey` que "desmarca" la fase aprobada (bug UI)
 
-1. Cuando finanzas registra un pago al proveedor, **NO** iniciar producción automáticamente.
-2. En vez de eso, enviar una **notificación al encargado de producción** (rol `operativo` con acceso a la marca — Alejandra) indicando el monto/porcentaje pagado y pidiéndole que se lo comparta al proveedor.
-3. El botón **"Inicio hoy"** (marcar `production_started_at`) queda 100% manual — solo Alejandra desde Seguimiento.
-4. En productos con **fases** (multi-proveedor), agregar un botón **"Inicio hoy"** en **cada fase** para marcar el inicio real de esa fase individualmente.
+Dos `useQuery` distintos comparten la misma clave `["item-phases", <itemId>]` pero seleccionan **columnas distintas**:
 
----
+- `src/features/production/item-phases-editor.tsx` (línea 66) → `select("*")` — incluye `ready_for_advance_payment`.
+- `src/features/production/item-margins-section.tsx` (línea 452) → `select("id, manufacturing_cost, negotiated_cost, supplier_id, quotation_date")` — **NO** incluye `ready_for_advance_payment`.
 
-## Cambios
+Cuando el usuario marca la casilla, el mutation invalida `["item-phases", itemId]`. Ambos observers refetchean con su propio `queryFn`; el último en resolver sobreescribe la caché. Si gana el de `item-margins-section`, `phase.ready_for_advance_payment` queda `undefined` → `isReady=false` → check se ve desmarcado. Cambiar de pestaña dispara re-renders o re-observadores y termina de "ganar" la versión sin el campo.
 
-### 1) Migración SQL
+**Verificado en DB**: ambas fases (`Piedra Sinterizada` y `Base de comedor`) tienen `ready_for_advance_payment=true` correctamente guardado. El problema es puramente frontend.
 
-**a) Modificar `public.start_real_production(uuid, timestamptz)`**
-- Quitar el guard que exige pago anticipado registrado (`RAISE EXCEPTION 'requiere pago anticipado...'`). Ahora Alejandra puede iniciar cuando quiera, sin importar si el pago se registró primero.
-- El resto de la lógica (task `production_started` al vendedor, actualizar `production_due_date`, `production_start_date`) se mantiene.
+**Fix**: usar clave distinta para el query de margins (`["item-phases-cost", itemId]`) para que no colisione con la del editor.
 
-**b) Modificar `confirm_supplier_advance_payment` (server function) — ver §2:**
-- Eliminar la llamada a `supabase.rpc("start_real_production", …)`.
-- En su lugar, insertar un `seller_task` nuevo tipo `supplier_paid_notify` dirigido al encargado.
+### 2. Los pagos por fase no aparecen en la bandeja de Finanzas
 
-**c) Nuevo tipo de tarea `supplier_paid_notify`**
-- No requiere cambio de esquema (la columna `type` es `text`).
-- Un helper SQL `public.notify_operativo_supplier_paid(p_item_id uuid, p_amount numeric, p_pct numeric)` que:
-  - Resuelve marca, producto, proveedor, y cantidades.
-  - Inserta un `seller_task` por cada usuario con rol `operativo` que tenga acceso a la marca (via `has_brand_access`). Fallback: si no hay operativo, inserta uno para cada admin de la marca.
-  - Título: *"Pago a proveedor realizado — comparte al proveedor"*.
-  - Reason incluye: producto, proveedor, monto pagado, % del costo, factura/orden.
-  - `severity = 'info'`, `status = 'pendiente'`.
+`src/lib/supplier-advance-payments.functions.ts` → `listPendingSupplierPayments` solo consulta `order_items` con `ready_for_advance_payment=true`. Nunca lee `order_item_phases`, así que las fases aprobadas nunca aparecen en `/erp/finance/supplier-payments`.
 
-**d) Fases: agregar columna `started_at_manual` no aplica** — la tabla `order_item_phases` ya tiene `started_at` y `supplier_actual_date`. Reutilizamos `supplier_actual_date` como "fecha real de esa fase" (que ya existe en la UI). El botón "Inicio hoy" seteará `supplier_actual_date = today()` si está vacía. No requiere migración.
+Además, cuando el ítem padre tiene `has_phases=true`, no debería aparecer a nivel ítem (aunque igual estaría en `false`). Cada fase debe aparecer como su propia fila.
 
-### 2) Server function `src/lib/supplier-advance-payments.functions.ts`
+**Fix del backend (`listPendingSupplierPayments`)**:
+- Consultar `order_item_phases` con `ready_for_advance_payment=true`, `supplier_id NOT NULL`, `quotation_date NOT NULL`, costo > 0, y sin un `order_item_supplier_payments` de tipo `advance` para ese `phase_id`.
+- Devolver una fila por fase, con `phase_id`, `phase_name`, y `product` como `"<producto> · <fase>"` para que el usuario distinga.
+- Añadir `phase_id: string | null` al tipo `PendingSupplierPayment`.
 
-- Reemplazar el bloque final de `confirmSupplierAdvancePayment` (líneas 98-105):
-  - Quitar el `rpc("start_real_production", …)`.
-  - Llamar en su lugar a `rpc("notify_operativo_supplier_paid", { p_item_id, p_amount, p_pct })`.
-- Devolver `payment` como hoy.
+**Fix del frontend Finance page (`_authenticated.erp.finance.supplier-payments.tsx`)**:
+- Mostrar el nombre de la fase cuando `phase_id` existe (badge o sufijo en la columna Producto).
+- Pasar `phaseId` al diálogo de pago.
 
-### 3) UI de Seguimiento — `src/routes/_authenticated.erp.production.tracking.tsx`
+**Fix del formulario de pago (`supplier-advance-payment-form.tsx` + `confirmSupplierAdvancePayment`)**:
+- Aceptar `phaseId` opcional en el input Zod.
+- En el handler:
+  - Si viene `phaseId`, cargar la fase (`order_item_phases`) en vez del ítem, tomar `supplier_id`, `brand_id`, `order_id`, `production_order_id`, `negotiated_cost/manufacturing_cost` de ahí.
+  - Validar que no exista un `order_item_supplier_payments` con ese `phase_id` y `payment_type='advance'`.
+  - Insertar con `phase_id` seteado.
+  - La notificación al operativo (`notify_operativo_supplier_paid`) se llama con el `item_id` como hoy (contexto del producto padre).
 
-- El botón "Inicio hoy" a nivel de producto ya existe (líneas 810-836 y 907-937) — se mantiene igual.
-- Toast en `SupplierAdvancePaymentForm` (línea 71): cambiar *"Pago confirmado. Producción iniciada."* → *"Pago registrado. Se notificó al encargado de producción."*
+## Cambios de código
 
-### 4) Fases — `src/features/production/item-phases-tracking.tsx`
+1. **`src/features/production/item-margins-section.tsx`**
+   - Cambiar `queryKey: ["item-phases", item.id]` → `["item-phases-cost", item.id]` (línea 452) e invalidar `["item-phases-cost", productionOrderId]` donde corresponda.
 
-En cada `<PhaseRow>` agregar un botón compacto **"Inicio hoy"** que:
-- Aparece solo si `phase.supplier_actual_date` está vacía.
-- Al hacer clic: `savePatch.mutate({ supplier_actual_date: today })` (formato `YYYY-MM-DD`).
-- Ícono cohete + texto, alineado a la derecha del bloque de fechas.
-- Cuando ya existe fecha real, se oculta el botón (la fecha misma queda editable).
+2. **`src/lib/supplier-advance-payments.functions.ts`**
+   - Extender `PendingSupplierPayment` con `phase_id: string | null` y `phase_name: string | null`.
+   - En `listPendingSupplierPayments`, hacer dos consultas (ítems y fases) y concatenar. Filtrar del ítem-level los que tienen `has_phases=true` (para no duplicar).
+   - Extender `ConfirmInput` con `phaseId: z.string().uuid().optional().nullable()`.
+   - En `confirmSupplierAdvancePayment.handler`, ramificar según `phaseId`.
 
-### 5) Panel de tareas — `src/features/seller-tasks/seller-tasks-panel.tsx` (verificación)
+3. **`src/features/production/supplier-advance-payment-form.tsx`**
+   - Aceptar prop `phaseId?: string | null` y reenviarlo en `confirmFn`.
 
-- El panel ya renderiza cualquier `seller_task`. El nuevo tipo `supplier_paid_notify` se mostrará automáticamente. Si hay un mapa de íconos/colores por `type`, agregar entrada `supplier_paid_notify` (💰, azul).
+4. **`src/routes/_authenticated.erp.finance.supplier-payments.tsx`**
+   - Mostrar `phase_name` en la columna Producto cuando exista.
+   - Pasar `phaseId={active.phase_id}` al `SupplierAdvancePaymentForm`.
 
----
-
-## Notas técnicas
-
-- **"Encargado del producto" = rol `operativo` con acceso a la marca.** Hoy el archivo `brand-owners.ts` es solo texto UI. La notificación real se resuelve por rol + `has_brand_access(user_id, brand_id)`, así funciona tanto para Alejandra como para Jonathan sin cambiar código cuando entren usuarios nuevos.
-- La migración es **reversible en criterio**: si Alejandra prefiere volver al auto-start, basta con re-agregar la llamada `rpc("start_real_production")` en la server function.
-- No se toca el flujo de aprobación de cotizaciones (`ready_for_advance_payment`) ni la bandeja de finanzas.
-
-## Archivos afectados
-
-- `supabase/migrations/<nueva>.sql` (redefinir `start_real_production`, crear `notify_operativo_supplier_paid`)
-- `src/lib/supplier-advance-payments.functions.ts`
-- `src/features/production/supplier-advance-payment-form.tsx` (solo el toast)
-- `src/features/production/item-phases-tracking.tsx` (botón por fase)
-- `src/features/seller-tasks/seller-tasks-panel.tsx` (icono opcional para el nuevo tipo)
+Sin cambios de DB (los triggers y `create_supplier_phase_payment_tasks` ya funcionan; solo faltaba exponer las fases en la bandeja).

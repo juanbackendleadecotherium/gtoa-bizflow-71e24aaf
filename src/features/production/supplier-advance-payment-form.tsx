@@ -14,6 +14,7 @@ function isPdf(mime: string) { return /pdf/i.test(mime); }
 
 export function SupplierAdvancePaymentForm({
   orderItemId,
+  phaseId,
   brandId,
   orderId,
   suggestedAmount,
@@ -21,6 +22,7 @@ export function SupplierAdvancePaymentForm({
   onConfirmed,
 }: {
   orderItemId: string;
+  phaseId?: string | null;
   brandId: string;
   orderId: string;
   suggestedAmount?: number | null;
@@ -59,6 +61,7 @@ export function SupplierAdvancePaymentForm({
       await confirmFn({
         data: {
           orderItemId,
+          phaseId: phaseId ?? null,
           amount,
           paidAt,
           receiptPath: uploaded?.path ?? null,

@@ -177,7 +177,10 @@ export function ItemMarginsSection({
     qc.invalidateQueries({ queryKey: ["production-order-items", productionOrderId, orderId] });
     qc.invalidateQueries({ queryKey: ["production-audit", productionOrderId] });
     qc.invalidateQueries({ queryKey: ["item-phases-costs", productionOrderId] });
-    if (itemId) qc.invalidateQueries({ queryKey: ["item-phases", itemId] });
+    if (itemId) {
+      qc.invalidateQueries({ queryKey: ["item-phases", itemId] });
+      qc.invalidateQueries({ queryKey: ["item-phases-cost", itemId] });
+    }
   };
 
   return (
@@ -449,7 +452,7 @@ function ItemCard({
 
   // Fases del item (para mostrar costo y margen cuando has_phases=true, sin depender del padre externo)
   const itemPhases = useQuery({
-    queryKey: ["item-phases", item.id],
+    queryKey: ["item-phases-cost", item.id],
     enabled: hasPhases,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
