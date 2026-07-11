@@ -24,6 +24,7 @@ import { uploadOrderImages } from "@/lib/image-upload";
 import { uploadPlanimetryFiles, type PlanimetryFile } from "@/lib/planimetry-upload";
 import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 import { InvoicePanel } from "@/features/invoices/invoice-panel";
+import { EditInvoiceNumberButton } from "@/features/invoices/edit-invoice-number-dialog";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
 import { PaymentsPanel } from "@/features/finance/payments-panel";
 import { PartialShipmentToggle } from "@/features/orders/partial-shipment-toggle";
@@ -357,8 +358,9 @@ function OrderDetail() {
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1 truncate">
-            {o.order_number}{o.invoice_number ? ` · Fact. ${o.invoice_number}` : ""}
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1 truncate flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>{o.order_number}{o.invoice_number ? ` · Fact. ${o.invoice_number}` : ""}</span>
+            <EditInvoiceNumberButton orderId={o.id} currentInvoiceNumber={o.invoice_number} />
           </p>
           <h1 className="font-display text-2xl font-semibold break-words">{o.customer_name ?? "Sin cliente"}</h1>
           {(() => {
