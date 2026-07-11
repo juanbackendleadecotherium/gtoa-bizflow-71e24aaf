@@ -130,3 +130,28 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
 
     return { status: "sent" as const, message_id: result.id, to: data.to, sent_by: userId };
   });
+
+/**
+ * Cambia el número de cuenta de cobro (invoice_number) de una venta ya creada.
+ * - Valida formato con el prefijo de la marca (PREFIX-####).
+ * - Garantiza unicidad por marca (advisory lock en la RPC).
+ * - Propaga el cambio a `invoices` e `invoice_versions` de la misma orden.
+ * - El número anterior queda liberado para reutilización.
+ */
+export const changeOrderInvoiceNumber = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      order_id: z.string().uuid(),
+      invoice_number: z.string().trim().min(1).max(60),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: result, error } = await supabase.rpc("change_invoice_number", {
+      p_order_id: data.order_id,
+      p_new_invoice_number: data.invoice_number,
+    });
+    if (error) throw new Error(error.message);
+    return { invoice_number: result as string };
+  });
