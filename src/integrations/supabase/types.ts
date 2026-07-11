@@ -2905,6 +2905,10 @@ export type Database = {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
+      change_invoice_number: {
+        Args: { p_new_invoice_number: string; p_order_id: string }
+        Returns: string
+      }
       change_order_brand: {
         Args: { p_new_brand_id: string; p_order_id: string; p_reason: string }
         Returns: Json
