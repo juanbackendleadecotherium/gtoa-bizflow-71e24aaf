@@ -582,30 +582,35 @@ export function NewCustomerDialog({
         .select("id, sort_order");
       if (itemsErr) throw itemsErr;
 
-      // Sube imágenes de cada producto y actualiza el registro
-      if (insertedItems && itemImages.length > 0) {
+      // Sube imágenes de cada producto (pendientes + ya subidas al borrador) y actualiza el registro
+      if (insertedItems) {
         await Promise.all(
           insertedItems.map(async (row) => {
-            const pending = itemImages[row.sort_order ?? 0];
-            if (!pending || pending.length === 0) return;
-            const urls = await uploadOrderImages(
-              pending.map((p) => p.file),
-              `items/${row.id}`,
-            );
+            const sortIdx = row.sort_order ?? 0;
+            const pending = itemImages[sortIdx] ?? [];
+            const previous = itemImageUrls[sortIdx] ?? [];
+            const uploaded = pending.length > 0
+              ? await uploadOrderImages(pending.map((p) => p.file), `items/${row.id}`)
+              : [];
+            const finalUrls = [...previous, ...uploaded];
+            if (finalUrls.length === 0) return;
             await supabase
               .from("order_items")
-              .update({ images: urls as never })
+              .update({ images: finalUrls as never })
               .eq("id", row.id);
           }),
         );
       }
 
-      // Sube comprobante de pago y actualiza el pedido
+      // Sube comprobante de pago (nuevo o el ya subido al borrador)
+      let finalProofUrl: string | null = paymentProofUrls[0] ?? null;
       if (paymentProof[0]) {
-        const url = await uploadOrderImage(paymentProof[0].file, `payments/${order.id}`);
+        finalProofUrl = await uploadOrderImage(paymentProof[0].file, `payments/${order.id}`);
+      }
+      if (finalProofUrl) {
         await supabase
           .from("orders")
-          .update({ payment_proof_url: url } as never)
+          .update({ payment_proof_url: finalProofUrl } as never)
           .eq("id", order.id);
       }
 
@@ -623,17 +628,25 @@ export function NewCustomerDialog({
         }
       }
 
+      // Si venía de un borrador, lo eliminamos ahora que la venta se creó.
+      if (draftId) {
+        draftConsumedRef.current = true;
+        await supabase.from("order_drafts").delete().eq("id", draftId);
+      }
+
       return order;
     },
 
     onSuccess: (order) => {
       toast.success(`Pedido ${order.order_number} creado`);
       qc.invalidateQueries({ queryKey: ["orders"] });
+      qc.invalidateQueries({ queryKey: ["order-drafts"] });
       handleOpenChange(false);
       navigate({ to: "/erp/orders/$id", params: { id: order.id } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const setC = <K extends keyof CustomerDraft>(field: K, value: CustomerDraft[K]) =>
     setDraft((d) => ({ ...d, customer: { ...d.customer, [field]: value } }));
