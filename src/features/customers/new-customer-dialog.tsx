@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
@@ -16,6 +16,8 @@ import {
   Receipt,
   CreditCard,
   MapPin,
+  Save,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +29,7 @@ import { MoneyInput } from "@/features/orders/money-input";
 import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
 import { uploadOrderImage, uploadOrderImages } from "@/lib/image-upload";
 import { DEPOSIT_ACCOUNTS } from "@/features/finance/deposit-accounts";
+import type { Draft, CustomerDraft, OrderDraft, DraftPayload } from "@/features/customers/draft-types";
 
 import {
   Dialog,
@@ -72,42 +75,8 @@ const PAYMENT_METHODS = [
   { value: "otro", label: "Otro" },
 ] as const;
 
-// ---------- Tipos ----------
-type CustomerDraft = {
-  display_name: string;
-  company: string;
-  person_type: "" | "natural" | "juridica";
-  contact_type: "cliente" | "proveedor";
-  doc_type: string;
-  doc_number: string;
-  phone: string;
-  email: string;
-  department: string;
-  city: string;
-  address: string;
-  needs_summary: string;
-  references: string;
-};
+// Tipos movidos a src/features/customers/draft-types.ts
 
-type OrderDraft = {
-  invoice_number: string;
-  sale_date: string;
-  estimated_delivery_date: string;
-  payment_method: string;
-  advance_amount: number;
-  advance_deposit_account: string;
-  sale_type: "normal" | "plan_separe" | "pago_paulatino";
-  request_approval: boolean;
-  approval_note: string;
-};
-
-type Draft = {
-  customer: CustomerDraft;
-  order: OrderDraft;
-  items: { description: string; quantity: number; unit_price: number }[];
-  notes: string;
-  urgency: string;
-};
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -202,9 +171,18 @@ async function fetchNextInvoiceNumber(brandId: string): Promise<string> {
 export function NewCustomerDialog({
   open,
   onOpenChange,
+  draftId: draftIdProp,
+  initialDraft,
+  onDraftConsumed,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Id del borrador que se está retomando (si aplica). */
+  draftId?: string;
+  /** Contenido del borrador para hidratar el formulario. */
+  initialDraft?: DraftPayload;
+  /** Notifica cuando el borrador se creó/actualizó (para refrescar el listado). */
+  onDraftConsumed?: () => void;
 }) {
   const { selectedBrandId, selectedBrand } = useBrand();
   const navigate = useNavigate();
@@ -216,6 +194,16 @@ export function NewCustomerDialog({
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [paymentProof, setPaymentProof] = useState<PendingImage[]>([]);
   const [itemImages, setItemImages] = useState<PendingImage[][]>([]);
+  // URLs ya subidas a Storage (persisten entre sesiones del borrador).
+  const [paymentProofUrls, setPaymentProofUrls] = useState<string[]>([]);
+  const [itemImageUrls, setItemImageUrls] = useState<string[][]>([]);
+  // Id del borrador actual. Se genera en el primer autoguardado si no viene por props.
+  const [draftId, setDraftId] = useState<string | null>(draftIdProp ?? null);
+  // Estado del autoguardado para el indicador visual.
+  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const skipNextAutosaveRef = useRef(true);
+  const draftConsumedRef = useRef(false);
 
   const reset = () => {
     setRawText("");
@@ -225,17 +213,50 @@ export function NewCustomerDialog({
     itemImages.flat().forEach((p) => URL.revokeObjectURL(p.previewUrl));
     setPaymentProof([]);
     setItemImages([]);
+    setPaymentProofUrls([]);
+    setItemImageUrls([]);
+    setDraftId(null);
+    setAutosaveStatus("idle");
+    setLastSavedAt(null);
+    skipNextAutosaveRef.current = true;
+    draftConsumedRef.current = false;
   };
 
+  // Al cerrar hacemos flush del borrador si hay contenido significativo,
+  // así el vendedor no pierde nada por cerrar sin querer.
   const handleOpenChange = (v: boolean) => {
-    if (!v) reset();
+    if (!v) {
+      if (!draftConsumedRef.current && hasMeaningfulContent()) {
+        // fire-and-forget: no queremos bloquear el cierre del diálogo
+        void flushDraft({ silent: true });
+      }
+      reset();
+    }
     onOpenChange(v);
   };
 
 
-  // Prefilled defaults: empresa = marca activa, nro cuenta de cobro = consecutivo por marca
+  // Hidratar desde borrador existente cuando el diálogo se abre con initialDraft.
+  useEffect(() => {
+    if (!open) return;
+    if (initialDraft) {
+      setDraft(initialDraft.draft);
+      setRawText(initialDraft.rawText || "");
+      setPaymentProofUrls(initialDraft.paymentProofUrls || []);
+      setItemImageUrls(initialDraft.itemImageUrls || []);
+      setDraftId(draftIdProp ?? null);
+      setAiOpen(!!initialDraft.rawText);
+      // El primer render tras hidratar no debe disparar autoguardado
+      skipNextAutosaveRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialDraft, draftIdProp]);
+
+  // Prefilled defaults SOLO cuando NO estamos retomando un borrador:
+  // empresa = marca activa, nro cuenta de cobro = consecutivo por marca (preview)
   useEffect(() => {
     if (!open || !selectedBrand || !selectedBrandId) return;
+    if (initialDraft) return;
     setDraft((d) => ({
       ...d,
       customer: {
@@ -255,7 +276,144 @@ export function NewCustomerDialog({
         /* silencioso: el vendedor puede escribirlo manual */
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, selectedBrandId]);
+  }, [open, selectedBrandId, initialDraft]);
+
+  // ---------- Borrador: contenido significativo ----------
+  const hasMeaningfulContent = () => {
+    if (draft.customer.display_name.trim()) return true;
+    if (rawText.trim().length > 3) return true;
+    if (draft.items.some((it) => (it.description || "").trim())) return true;
+    if (paymentProof.length > 0 || paymentProofUrls.length > 0) return true;
+    if (itemImages.some((arr) => arr.length > 0)) return true;
+    if (itemImageUrls.some((arr) => arr.length > 0)) return true;
+    return false;
+  };
+
+  // ---------- Guardar borrador (autosave + manual) ----------
+  const flushDraft = async ({ silent }: { silent: boolean }) => {
+    if (!selectedBrandId) return;
+    if (!hasMeaningfulContent()) return;
+    if (draftConsumedRef.current) return;
+    try {
+      if (!silent) setAutosaveStatus("saving");
+      else setAutosaveStatus("saving");
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Aseguramos el id del borrador ANTES de subir imágenes, para agruparlas.
+      let id = draftId;
+      if (!id) {
+        id = crypto.randomUUID();
+        setDraftId(id);
+      }
+
+      // Subimos imágenes pendientes al prefijo del borrador y las movemos a URLs.
+      let newPaymentUrls = paymentProofUrls;
+      if (paymentProof.length > 0) {
+        const uploaded = await uploadOrderImages(
+          paymentProof.map((p) => p.file),
+          `drafts/${id}/payments`,
+        );
+        newPaymentUrls = [...paymentProofUrls, ...uploaded];
+        paymentProof.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+        setPaymentProofUrls(newPaymentUrls);
+        setPaymentProof([]);
+      }
+
+      const newItemImageUrls: string[][] = [];
+      for (let i = 0; i < draft.items.length; i++) {
+        const existing = itemImageUrls[i] ?? [];
+        const pending = itemImages[i] ?? [];
+        if (pending.length > 0) {
+          const uploaded = await uploadOrderImages(
+            pending.map((p) => p.file),
+            `drafts/${id}/items/${i}`,
+          );
+          newItemImageUrls[i] = [...existing, ...uploaded];
+          pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+        } else {
+          newItemImageUrls[i] = existing;
+        }
+      }
+      if (draft.items.some((_, i) => (itemImages[i] ?? []).length > 0)) {
+        setItemImageUrls(newItemImageUrls);
+        setItemImages(draft.items.map(() => []));
+      }
+
+      const payload: DraftPayload = {
+        draft,
+        rawText,
+        paymentProofUrls: newPaymentUrls,
+        itemImageUrls: newItemImageUrls,
+      };
+
+      const itemsSummary = draft.items
+        .map((it) => (it.description || "").split("\n")[0].slice(0, 60))
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(" · ");
+
+      const { error } = await supabase
+        .from("order_drafts")
+        .upsert({
+          id,
+          brand_id: selectedBrandId,
+          seller_id: user.id,
+          payload: payload as never,
+          customer_name: draft.customer.display_name.trim() || null,
+          items_summary: itemsSummary || null,
+          updated_at: new Date().toISOString(),
+        } as never);
+      if (error) throw error;
+
+      setAutosaveStatus("saved");
+      setLastSavedAt(Date.now());
+      onDraftConsumed?.();
+      if (!silent) toast.success("Borrador guardado");
+    } catch (e) {
+      setAutosaveStatus("error");
+      if (!silent) toast.error(e instanceof Error ? e.message : "No se pudo guardar el borrador");
+    }
+  };
+
+  // Autoguardado con debounce sobre cambios en el formulario.
+  useEffect(() => {
+    if (!open) return;
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
+    if (!hasMeaningfulContent()) return;
+    const t = window.setTimeout(() => {
+      void flushDraft({ silent: true });
+    }, 1500);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, rawText, open, selectedBrandId]);
+
+  // Guardar antes de que el navegador se cierre / cambie de pestaña (best-effort)
+  useEffect(() => {
+    if (!open) return;
+    const onHide = () => {
+      if (!draftConsumedRef.current && hasMeaningfulContent()) {
+        // No podemos await aquí, pero el request suele salir por keepalive de Supabase
+        void flushDraft({ silent: true });
+      }
+    };
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("beforeunload", onHide);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("beforeunload", onHide);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, draft, rawText, selectedBrandId]);
+
+
+
 
 
 
@@ -423,30 +581,35 @@ export function NewCustomerDialog({
         .select("id, sort_order");
       if (itemsErr) throw itemsErr;
 
-      // Sube imágenes de cada producto y actualiza el registro
-      if (insertedItems && itemImages.length > 0) {
+      // Sube imágenes de cada producto (pendientes + ya subidas al borrador) y actualiza el registro
+      if (insertedItems) {
         await Promise.all(
           insertedItems.map(async (row) => {
-            const pending = itemImages[row.sort_order ?? 0];
-            if (!pending || pending.length === 0) return;
-            const urls = await uploadOrderImages(
-              pending.map((p) => p.file),
-              `items/${row.id}`,
-            );
+            const sortIdx = row.sort_order ?? 0;
+            const pending = itemImages[sortIdx] ?? [];
+            const previous = itemImageUrls[sortIdx] ?? [];
+            const uploaded = pending.length > 0
+              ? await uploadOrderImages(pending.map((p) => p.file), `items/${row.id}`)
+              : [];
+            const finalUrls = [...previous, ...uploaded];
+            if (finalUrls.length === 0) return;
             await supabase
               .from("order_items")
-              .update({ images: urls as never })
+              .update({ images: finalUrls as never })
               .eq("id", row.id);
           }),
         );
       }
 
-      // Sube comprobante de pago y actualiza el pedido
+      // Sube comprobante de pago (nuevo o el ya subido al borrador)
+      let finalProofUrl: string | null = paymentProofUrls[0] ?? null;
       if (paymentProof[0]) {
-        const url = await uploadOrderImage(paymentProof[0].file, `payments/${order.id}`);
+        finalProofUrl = await uploadOrderImage(paymentProof[0].file, `payments/${order.id}`);
+      }
+      if (finalProofUrl) {
         await supabase
           .from("orders")
-          .update({ payment_proof_url: url } as never)
+          .update({ payment_proof_url: finalProofUrl } as never)
           .eq("id", order.id);
       }
 
@@ -464,17 +627,25 @@ export function NewCustomerDialog({
         }
       }
 
+      // Si venía de un borrador, lo eliminamos ahora que la venta se creó.
+      if (draftId) {
+        draftConsumedRef.current = true;
+        await supabase.from("order_drafts").delete().eq("id", draftId);
+      }
+
       return order;
     },
 
     onSuccess: (order) => {
       toast.success(`Pedido ${order.order_number} creado`);
       qc.invalidateQueries({ queryKey: ["orders"] });
+      qc.invalidateQueries({ queryKey: ["order-drafts"] });
       handleOpenChange(false);
       navigate({ to: "/erp/orders/$id", params: { id: order.id } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const setC = <K extends keyof CustomerDraft>(field: K, value: CustomerDraft[K]) =>
     setDraft((d) => ({ ...d, customer: { ...d.customer, [field]: value } }));
@@ -501,6 +672,7 @@ export function NewCustomerDialog({
       items: [...d.items, { description: "", quantity: 1, unit_price: 0 }],
     }));
     setItemImages((arr) => [...arr, []]);
+    setItemImageUrls((arr) => [...arr, []]);
   };
 
   const removeItem = (idx: number) => {
@@ -510,6 +682,7 @@ export function NewCustomerDialog({
       removed.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       return arr.filter((_, i) => i !== idx);
     });
+    setItemImageUrls((arr) => arr.filter((_, i) => i !== idx));
   };
 
   const setImagesForItem = (idx: number, next: PendingImage[]) =>
@@ -519,6 +692,17 @@ export function NewCustomerDialog({
       copy[idx] = next;
       return copy;
     });
+
+  const removeExistingItemImage = (idx: number, url: string) =>
+    setItemImageUrls((arr) => {
+      const copy = [...arr];
+      copy[idx] = (copy[idx] ?? []).filter((u) => u !== url);
+      return copy;
+    });
+
+  const removeExistingPaymentProof = (url: string) =>
+    setPaymentProofUrls((arr) => arr.filter((u) => u !== url));
+
 
 
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
@@ -906,6 +1090,8 @@ export function NewCustomerDialog({
                         multiple
                         pending={itemImages[idx] ?? []}
                         onChangePending={(next) => setImagesForItem(idx, next)}
+                        existingUrls={itemImageUrls[idx] ?? []}
+                        onRemoveExisting={(url) => removeExistingItemImage(idx, url)}
                         label="Agregar referencias"
                         hint="Se comprimen automáticamente antes de subir."
                       />
@@ -1114,6 +1300,8 @@ export function NewCustomerDialog({
               <ImageUploader
                 pending={paymentProof}
                 onChangePending={setPaymentProof}
+                existingUrls={paymentProofUrls}
+                onRemoveExisting={removeExistingPaymentProof}
                 label="Subir comprobante"
                 hint="Foto del recibo, transferencia o consignación. Se comprime antes de subir."
               />
@@ -1149,12 +1337,36 @@ export function NewCustomerDialog({
 
         {/* Footer */}
         <div className="sticky bottom-0 px-6 py-4 border-t border-border bg-background/95 backdrop-blur flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-[11px] text-muted-foreground">
-            Se creará el cliente y el pedido inicial en estado activo.
-          </p>
+          <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">
+            <span>Se creará el cliente y el pedido inicial en estado activo.</span>
+            {autosaveStatus === "saving" && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Guardando borrador…
+              </span>
+            )}
+            {autosaveStatus === "saved" && lastSavedAt && (
+              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-3 w-3" /> Borrador guardado
+              </span>
+            )}
+            {autosaveStatus === "error" && (
+              <span className="text-destructive">No se pudo guardar el borrador</span>
+            )}
+          </div>
           <div className="flex gap-2 ml-auto">
             <Button variant="ghost" onClick={() => handleOpenChange(false)}>
               Cancelar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void flushDraft({ silent: false }).then(() => handleOpenChange(false));
+              }}
+              disabled={autosaveStatus === "saving" || !hasMeaningfulContent()}
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Guardar borrador
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}

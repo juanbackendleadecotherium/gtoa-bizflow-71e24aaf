@@ -12,6 +12,8 @@ import {
 import { StatusBadge } from "@/features/orders/status-badge";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { NewCustomerDialog } from "@/features/customers/new-customer-dialog";
+import { DraftsPanel } from "@/features/orders/drafts-panel";
+import type { DraftPayload } from "@/features/customers/draft-types";
 import { PaymentBadge, InvoicedBadge } from "@/features/invoices/invoice-badges";
 import { SaleTypeBadge, ApprovalStatusBadge } from "@/features/orders/sale-type-badge";
 import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/features/orders/delivery-urgency";
@@ -29,6 +31,7 @@ function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [newOpen, setNewOpen] = useState(false);
+  const [openDraft, setOpenDraft] = useState<{ id: string; payload: DraftPayload } | null>(null);
 
   const statusesQuery = useQuery({
     queryKey: ["statuses", selectedBrandId],
@@ -125,6 +128,13 @@ function OrdersPage() {
           ))}
         </div>
       )}
+
+      <DraftsPanel
+        onOpen={(d) => {
+          setOpenDraft(d);
+          setNewOpen(true);
+        }}
+      />
 
       <div className="mb-4 flex gap-2 flex-wrap">
         <Input
@@ -244,7 +254,15 @@ function OrdersPage() {
         )}
       </div>
 
-      <NewCustomerDialog open={newOpen} onOpenChange={setNewOpen} />
+      <NewCustomerDialog
+        open={newOpen}
+        onOpenChange={(v) => {
+          setNewOpen(v);
+          if (!v) setOpenDraft(null);
+        }}
+        draftId={openDraft?.id}
+        initialDraft={openDraft?.payload}
+      />
     </>
   );
 }
