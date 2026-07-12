@@ -505,16 +505,32 @@ export function NewCustomerDialog({
       } = await supabase.auth.getUser();
       const userId = user?.id;
 
-      // Estado inicial de la marca
-      const { data: status } = await supabase
+      // Estado inicial según tipo de venta.
+      // Las ventas NUNCA deben entrar en "Borrador": para entrega inmediata
+      // arrancan en "Pendiente de pago (Entrega inmediata)", y para el resto
+      // (normal, plan_separe, pago_paulatino) en "Pendiente de planimetría".
+      const initialSlug = isEntregaInmediata ? "ei-pendiente-pago" : "pendiente-planimetria";
+      let { data: status } = await supabase
         .from("order_statuses")
         .select("id")
         .eq("brand_id", selectedBrandId)
         .eq("is_active", true)
-        .order("sort_order")
-        .limit(1)
+        .eq("slug", initialSlug)
         .maybeSingle();
-      if (!status) throw new Error("No hay estados configurados para esta marca");
+      if (!status) {
+        // Fallback: primer estado marcado como inicial de la marca.
+        const { data: fallback } = await supabase
+          .from("order_statuses")
+          .select("id")
+          .eq("brand_id", selectedBrandId)
+          .eq("is_active", true)
+          .eq("is_initial", true)
+          .order("sort_order")
+          .limit(1)
+          .maybeSingle();
+        status = fallback ?? null;
+      }
+      if (!status) throw new Error("No hay estado inicial configurado para esta marca");
 
       const notesParts: string[] = [];
       if (c.needs_summary) notesParts.push(`Necesidad: ${c.needs_summary}`);
