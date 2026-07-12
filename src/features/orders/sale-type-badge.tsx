@@ -1,4 +1,4 @@
-import { Bookmark, ShoppingCart, Clock3, CheckCircle2, XCircle, HandCoins } from "lucide-react";
+import { Bookmark, ShoppingCart, Clock3, CheckCircle2, XCircle, HandCoins, Truck } from "lucide-react";
 
 export function SaleTypeBadge({
   saleType,
