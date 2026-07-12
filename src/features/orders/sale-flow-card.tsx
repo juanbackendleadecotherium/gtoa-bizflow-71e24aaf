@@ -1,4 +1,4 @@
-import { Bookmark, Clock3, CheckCircle2, XCircle, HandCoins } from "lucide-react";
+import { Bookmark, Clock3, CheckCircle2, XCircle, HandCoins, Truck } from "lucide-react";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { SaleTypeBadge, ApprovalStatusBadge } from "@/features/orders/sale-type-badge";
 
