@@ -31,6 +31,7 @@ function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [newOpen, setNewOpen] = useState(false);
+  const [openDraft, setOpenDraft] = useState<{ id: string; payload: DraftPayload } | null>(null);
 
   const statusesQuery = useQuery({
     queryKey: ["statuses", selectedBrandId],
