@@ -33,6 +33,10 @@ function FinanceLayout() {
 
   useEffect(() => {
     if (loading) return;
+    // Si la navegación ya salió de /erp/finance, no interferir:
+    // el layout está a punto de desmontarse y cualquier navigate() aquí
+    // devolvería al usuario a finanzas ("bloqueando" el sidebar).
+    if (!currentPath.startsWith("/erp/finance")) return;
     if (!canAccess) {
       navigate({ to: "/erp", replace: true });
       return;
