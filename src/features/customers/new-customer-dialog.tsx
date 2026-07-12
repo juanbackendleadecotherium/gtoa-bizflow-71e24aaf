@@ -1120,11 +1120,11 @@ export function NewCustomerDialog({
           >
             {/* Tipo de venta */}
             <FieldBlock label="Tipo de venta">
-              <div className="grid sm:grid-cols-3 gap-2">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
                 <button type="button"
                   onClick={() => { setO("sale_type", "normal"); setO("request_approval", false); }}
                   className={`rounded-lg border p-3 text-left transition-colors ${
-                    !isPlanSepare && !isPagoPaulatino
+                    !isPlanSepare && !isPagoPaulatino && !isEntregaInmediata
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   }`}>
@@ -1157,10 +1157,27 @@ export function NewCustomerDialog({
                     Arranca producción con cualquier anticipo. Tú quedas registrado como responsable.
                   </div>
                 </button>
+                <button type="button"
+                  onClick={() => { setO("sale_type", "entrega_inmediata"); setO("request_approval", false); }}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    isEntregaInmediata
+                      ? "border-cyan-500 bg-cyan-500/5"
+                      : "border-border hover:border-primary/50"
+                  }`}>
+                  <div className="text-sm font-medium">Entrega inmediata</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Producto ya listo. No pasa por producción. Al 50% se habilita la entrega.
+                  </div>
+                </button>
               </div>
               {isPagoPaulatino && (
                 <p className="mt-2 text-[11px] text-orange-700 dark:text-orange-400">
                   Al elegir Pago Paulatino, tú autorizas la excepción al 50% y quedas registrado en la auditoría de la venta.
+                </p>
+              )}
+              {isEntregaInmediata && (
+                <p className="mt-2 text-[11px] text-cyan-700 dark:text-cyan-400">
+                  Entrega inmediata: la venta arranca en "Pendiente de pago" y pasa a "Lista para entrega" cuando se alcanza el 50% del anticipo.
                 </p>
               )}
             </FieldBlock>
