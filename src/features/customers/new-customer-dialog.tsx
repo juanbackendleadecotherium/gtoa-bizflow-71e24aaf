@@ -673,6 +673,7 @@ export function NewCustomerDialog({
       items: [...d.items, { description: "", quantity: 1, unit_price: 0 }],
     }));
     setItemImages((arr) => [...arr, []]);
+    setItemImageUrls((arr) => [...arr, []]);
   };
 
   const removeItem = (idx: number) => {
@@ -682,6 +683,7 @@ export function NewCustomerDialog({
       removed.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       return arr.filter((_, i) => i !== idx);
     });
+    setItemImageUrls((arr) => arr.filter((_, i) => i !== idx));
   };
 
   const setImagesForItem = (idx: number, next: PendingImage[]) =>
@@ -691,6 +693,17 @@ export function NewCustomerDialog({
       copy[idx] = next;
       return copy;
     });
+
+  const removeExistingItemImage = (idx: number, url: string) =>
+    setItemImageUrls((arr) => {
+      const copy = [...arr];
+      copy[idx] = (copy[idx] ?? []).filter((u) => u !== url);
+      return copy;
+    });
+
+  const removeExistingPaymentProof = (url: string) =>
+    setPaymentProofUrls((arr) => arr.filter((u) => u !== url));
+
 
 
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
