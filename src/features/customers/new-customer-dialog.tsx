@@ -1204,6 +1204,8 @@ export function NewCustomerDialog({
                 ? "Abono inicial (opcional en Plan Separe)"
                 : isPagoPaulatino
                 ? "Abono inicial (opcional en Pago Paulatino)"
+                : isEntregaInmediata
+                ? "Abono inicial (al 50% se habilita la entrega)"
                 : `Abono * (mín. ${subtotal > 0 ? formatMoney(minAdvance) : "50% del total"})`}>
                 <MoneyInput
                   value={draft.order.advance_amount}
