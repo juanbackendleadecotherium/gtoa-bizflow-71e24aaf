@@ -94,7 +94,7 @@ export const scheduleInvoiceLogistics = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     // Autorización: vendedor de la orden, admin o logística
     const { data: order, error: oErr } = await context.supabase
-      .from("orders").select("id, seller_id, brand_id").eq("id", data.orderId).single();
+      .from("orders").select("id, seller_id, brand_id, sale_type").eq("id", data.orderId).single();
     if (oErr || !order) throw new Error("Cuenta de cobro no encontrada");
 
     const isMine = order.seller_id === context.userId;
@@ -117,13 +117,27 @@ export const scheduleInvoiceLogistics = createServerFn({ method: "POST" })
       throw new Error("El día seleccionado no está disponible");
     }
 
+    const patch: any = {
+      scheduled_logistics_date: data.date,
+      scheduled_logistics_by: context.userId,
+      scheduled_logistics_at: new Date().toISOString(),
+    };
+
+    // Entrega inmediata: al agendar, mover a "En entrega / En ruta"
+    if ((order as any).sale_type === "entrega_inmediata") {
+      const { data: enRuta } = await context.supabase
+        .from("order_statuses")
+        .select("id")
+        .eq("brand_id", (order as any).brand_id)
+        .eq("slug", "ei-en-ruta")
+        .eq("is_active", true)
+        .maybeSingle();
+      if (enRuta?.id) patch.status_id = enRuta.id;
+    }
+
     const { error: uErr } = await context.supabase
       .from("orders")
-      .update({
-        scheduled_logistics_date: data.date,
-        scheduled_logistics_by: context.userId,
-        scheduled_logistics_at: new Date().toISOString(),
-      })
+      .update(patch)
       .eq("id", data.orderId);
     if (uErr) throw uErr;
     return { ok: true };
