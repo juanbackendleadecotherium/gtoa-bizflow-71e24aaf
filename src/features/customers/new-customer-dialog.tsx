@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
@@ -16,6 +16,9 @@ import {
   Receipt,
   CreditCard,
   MapPin,
+  Save,
+  CloudUpload,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +30,7 @@ import { MoneyInput } from "@/features/orders/money-input";
 import { ImageUploader, type PendingImage } from "@/features/orders/image-uploader";
 import { uploadOrderImage, uploadOrderImages } from "@/lib/image-upload";
 import { DEPOSIT_ACCOUNTS } from "@/features/finance/deposit-accounts";
+import type { Draft, CustomerDraft, OrderDraft, DraftPayload } from "@/features/customers/draft-types";
 
 import {
   Dialog,
