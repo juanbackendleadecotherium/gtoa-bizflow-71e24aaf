@@ -1338,12 +1338,36 @@ export function NewCustomerDialog({
 
         {/* Footer */}
         <div className="sticky bottom-0 px-6 py-4 border-t border-border bg-background/95 backdrop-blur flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-[11px] text-muted-foreground">
-            Se creará el cliente y el pedido inicial en estado activo.
-          </p>
+          <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">
+            <span>Se creará el cliente y el pedido inicial en estado activo.</span>
+            {autosaveStatus === "saving" && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Guardando borrador…
+              </span>
+            )}
+            {autosaveStatus === "saved" && lastSavedAt && (
+              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-3 w-3" /> Borrador guardado
+              </span>
+            )}
+            {autosaveStatus === "error" && (
+              <span className="text-destructive">No se pudo guardar el borrador</span>
+            )}
+          </div>
           <div className="flex gap-2 ml-auto">
             <Button variant="ghost" onClick={() => handleOpenChange(false)}>
               Cancelar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void flushDraft({ silent: false }).then(() => handleOpenChange(false));
+              }}
+              disabled={autosaveStatus === "saving" || !hasMeaningfulContent()}
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Guardar borrador
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
