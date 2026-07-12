@@ -1091,6 +1091,8 @@ export function NewCustomerDialog({
                         multiple
                         pending={itemImages[idx] ?? []}
                         onChangePending={(next) => setImagesForItem(idx, next)}
+                        existingUrls={itemImageUrls[idx] ?? []}
+                        onRemoveExisting={(url) => removeExistingItemImage(idx, url)}
                         label="Agregar referencias"
                         hint="Se comprimen automáticamente antes de subir."
                       />
