@@ -73,7 +73,7 @@ function OrderDetail() {
           payment_method, advance_amount, advance_deposit_account, payment_proof_url,
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
-          status:order_statuses(id, name, color),
+          status:order_statuses(id, name, color, slug, is_draft),
           items:order_items(id, description, quantity, unit_price, line_total, sort_order, images, planimetry_files, production_order_id, partial_shipment_enabled, partial_delivered_at, production_finished_at, is_standard_product, is_gift, gifted_by_email, gifted_at, production_order:production_orders!production_order_id(status))
         `)
         .eq("id", id).maybeSingle();
@@ -87,8 +87,14 @@ function OrderDetail() {
     enabled: !!selectedBrandId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("order_statuses").select("id, name, color, sort_order")
-        .eq("brand_id", selectedBrandId!).eq("is_active", true).order("sort_order");
+        .from("order_statuses")
+        .select("id, name, color, sort_order, slug, is_draft")
+        .eq("brand_id", selectedBrandId!)
+        .eq("is_active", true)
+        .eq("is_draft", false)
+        .neq("slug", "borrador")
+        .neq("name", "Borrador")
+        .order("sort_order");
       if (error) throw error;
       return data ?? [];
     },
@@ -339,6 +345,7 @@ function OrderDetail() {
 
   const items = ((o.items as any[] | null) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
   const status = o.status as any;
+  const shouldShowStatus = status && !status.is_draft && status.slug !== "borrador" && status.name !== "Borrador";
   // Aprobación gerencial pendiente/rechazada: el vendedor queda en stand-by
   // total — no puede editar productos, subir planimetría ni enviar a producción.
   const approvalBlocksSeller =
@@ -393,7 +400,7 @@ function OrderDetail() {
               Aprobación rechazada
             </span>
           )}
-          {status && <StatusBadge name={status.name} color={status.color} />}
+          {shouldShowStatus && <StatusBadge name={status.name} color={status.color} />}
           {!editing ? (
             <>
               {!approvalBlocksSeller && (
@@ -624,9 +631,9 @@ function OrderDetail() {
                 {historyQuery.data!.map((h: any) => (
                   <li key={h.id} className="text-sm">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      {h.from && <StatusBadge name={h.from.name} color={h.from.color} />}
+                        {h.from && h.from.name !== "Borrador" && <StatusBadge name={h.from.name} color={h.from.color} />}
                       {h.from && <span className="text-muted-foreground">→</span>}
-                      {h.to && <StatusBadge name={h.to.name} color={h.to.color} />}
+                        {h.to && h.to.name !== "Borrador" && <StatusBadge name={h.to.name} color={h.to.color} />}
                       <span className="text-xs text-muted-foreground ml-1">
                         {new Date(h.created_at).toLocaleString("es-CO")}
                       </span>
