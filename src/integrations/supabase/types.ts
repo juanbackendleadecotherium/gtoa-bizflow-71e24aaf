@@ -2540,10 +2540,31 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "seller_tasks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_financials"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "seller_tasks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "seller_tasks_order_item_id_fkey"
             columns: ["order_item_id"]
             isOneToOne: false
             referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_tasks_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
             referencedColumns: ["id"]
           },
         ]
