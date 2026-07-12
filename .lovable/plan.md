@@ -1,57 +1,64 @@
-## Contexto
+## Objetivo
 
-En Montenegro Design (prefijo `MD-`) las cuentas de cobro se están solapando con Alegra. Estado actual en el ERP (por fecha):
+1. Ventas con solicitud de aprobación gerencial deben nacer con un estado **"Pendiente aprobación gerencia"** (no "Borrador"), y al aprobarse deben moverse automáticamente al siguiente estado operativo. Al rechazarse siguen anulándose como hoy.
+2. Reiniciar los consecutivos de factura de **Casa Diseño, Espacio Inmobiliario y Getova** para que la próxima factura sea `-0001`.
 
-| # | Actual  | Acción            |
-|---|---------|-------------------|
-| 1 | MD-1931 | **Mantener**      |
-| 2 | MD-1934 | → **MD-0001**     |
-| 3 | MD-0001 | → MD-0002         |
-| 4 | MD-0002 | → MD-0003         |
-| 5 | MD-0003 | → MD-0004         |
-| 6 | MD-0004 | → MD-0005         |
-| 7 | MD-0005 | → MD-0006         |
+---
 
-Además, hay un número `MD-1935` en la bolsa de "liberados" que el sistema entregaría en la próxima venta — hay que eliminarlo para que la siguiente venta sea **MD-0007**.
+## Cambios de base de datos (una sola migración)
 
-Hoy el asignador calcula el siguiente número como `MAX(número) + 1`. Si dejamos MD-1931 como está sin más cambios, el próximo saldría `MD-1932`. Por eso también hay que enseñarle al asignador a **ignorar los números heredados de Alegra**.
+### A. Nuevo estado por marca
 
-## Plan
+- Insertar (si no existe) el estado **"Pendiente aprobación gerencia"** en `order_statuses` para todas las marcas activas, con `sort_order = -5` (queda entre Borrador `-10` y Pendiente de planimetría `1`) y un color distintivo (ámbar).
+- Se hace por `slug` para no depender de IDs; no se toca ningún estado existente.
 
-### 1) Migración de base de datos (una sola)
+### B. Trigger que sincroniza `status_id` con `approval_status`
 
-1. Añadir a `orders` la columna `invoice_legacy boolean not null default false` (marca "heredado de Alegra, no cuenta para el consecutivo").
-2. Marcar `invoice_legacy = true` en la orden **MD-1931**.
-3. Borrar de `released_invoice_numbers` todos los registros de Montenegro Design (elimina `MD-1935`).
-4. Renumerar en Montenegro Design, dentro de una transacción, en orden descendente para no colisionar:
+Función `tg_orders_sync_status_on_approval()` que se dispara en `BEFORE INSERT OR UPDATE OF approval_status ON orders`:
 
-   ```text
-   MD-0005 → MD-0006
-   MD-0004 → MD-0005
-   MD-0003 → MD-0004
-   MD-0002 → MD-0003
-   MD-0001 → MD-0002
-   MD-1934 → MD-0001
-   ```
+- Cuando `approval_status` pasa a **`pendiente`** (o al insertar la orden con ese valor): setear `status_id` al estado "Pendiente aprobación gerencia" de la marca.
+- Cuando `approval_status` pasa a **`aprobada`**: si el `status_id` actual sigue siendo "Pendiente aprobación gerencia" o "Borrador", moverlo automáticamente al primer estado operativo disponible según prioridad:
+  1. "Pendiente de planimetría" si existe para la marca (default),
+  2. si no, "Pendiente Aprob. Produc.".
+  Si el usuario ya lo movió manualmente a otro estado (raro), no se sobreescribe.
+- Cuando `approval_status` pasa a **`rechazada`**: no hace nada (la función `resolve_management_approval` ya anula la venta).
 
-   El update se propaga a las tres tablas donde vive el número: `orders`, `invoices` y `invoice_versions`. No se usa `change_invoice_number` para no meter los números viejos en la bolsa de liberados (queremos que desaparezcan, no que se reutilicen).
+Esto garantiza que tanto el flujo por creación (`request_approval=true` en el diálogo → trigger `tg_orders_auto_require_approval`) como el manual (`request_management_approval` RPC) queden coordinados con el estado visible en la lista.
 
-5. Registrar un evento por orden en `order_audit_log` con `action='invoice_number_renumbered'` y `{from, to, reason: 'reset_consecutivo_alegra'}`, para dejar traza auditable de cada cambio.
-6. Reescribir `public.allocate_invoice_number(brand_id)` para que el `MAX(+1)` **excluya** las órdenes con `invoice_legacy = true`. La bolsa de liberados sigue funcionando igual.
+### C. Renumerar consecutivo de Casa Diseño
 
-### 2) Frontend
+- Renombrar `CD-0002` → `CD-0001` en `orders`, `invoices` e `invoice_versions` (misma técnica de `TMP-*` que ya usamos en la última renumeración de Montenegro), y dejar rastro en `order_audit_log`.
+- Limpiar `released_invoice_numbers` para la marca por si quedara algo.
+- Con orders volviendo a arrancar en `CD-0001`, la función `allocate_invoice_number` calculará la próxima como `CD-0002` (comportamiento esperado).
 
-Sin cambios en esta iteración. El botón "Editar número de cuenta de cobro" existente sigue disponible por si hay que ajustar algo puntual después.
+### D. Espacio Inmobiliario y Getova
 
-### 3) Verificación
+- Verificado: no hay órdenes con `invoice_number` para EM ni GT, y `released_invoice_numbers` está vacío para ambos. La próxima factura ya arrancará en `EM-0001` / `GT-0001` sin cambios adicionales.
+- La migración incluye un `DELETE ... WHERE brand_id IN (EM, GT)` de `released_invoice_numbers` como salvaguarda idempotente.
 
-Después de correr la migración:
-- Consultar Montenegro Design y confirmar que las órdenes quedan como MD-1931, MD-0001…MD-0006.
-- Verificar que `invoices` e `invoice_versions` reflejan los mismos números.
-- Confirmar que `released_invoice_numbers` de la marca queda vacío.
-- Simular `SELECT allocate_invoice_number('880ed95d-…')` — debe devolver `MD-0007`.
+---
 
-## Fuera de alcance
+## Cambios de código (frontend)
 
-- No se tocan otras marcas: el usuario solo pidió el reset en Montenegro Design. Otras marcas siguen con su prefijo y su MAX+1 actual (si más adelante piden lo mismo, se marca la orden "legacy" equivalente y listo).
-- No se integra ni se sincroniza con Alegra: es un reset local del ERP hasta que se termine el asentamiento de vendedores.
+### `src/features/customers/new-customer-dialog.tsx`
+
+En la mutación de creación de venta (líneas 502-568):
+
+- Si `draft.order.sale_type === "normal" && draft.order.request_approval === true`, seleccionar el estado "Pendiente aprobación gerencia" de la marca en lugar del primer `is_active` por `sort_order` (que hoy resuelve a "Borrador").
+- Todo lo demás se mantiene igual (payload, trigger de invoice number, llamada posterior a `request_management_approval`).
+
+El trigger nuevo del punto B es redundante en este camino pero necesario para el otro camino (RPC manual desde el detalle de la orden) y para blindar cualquier cambio futuro.
+
+### Resto de UI
+
+- No hay cambios en las badges: `ApprovalStatusBadge` sigue mostrando "Aprobación pendiente" como chip aparte del estado principal, y ahora el estado principal reforzará el mensaje ("Pendiente aprobación gerencia" en vez de "Borrador").
+- No se toca la pantalla de aprobaciones (`/erp/finance/approvals`): sigue leyendo `approval_status = 'pendiente'`.
+
+---
+
+## Validación posterior
+
+1. Crear una venta normal con anticipo < 50% y marcar "Solicitar aprobación gerencia" → verificar en el listado de Ventas que aparece como "Pendiente aprobación gerencia" + chip "Aprobación pendiente".
+2. Aprobar desde gerencia → verificar que el estado principal cambia solo a "Pendiente de planimetría".
+3. Crear una nueva factura en Casa Diseño → debe salir `CD-0002` (después de la renumeración de la existente a `CD-0001`).
+4. Crear la primera factura de Espacio Inmobiliario y Getova → deben salir `EM-0001` y `GT-0001`.
