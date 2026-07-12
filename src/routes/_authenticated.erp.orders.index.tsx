@@ -254,7 +254,15 @@ function OrdersPage() {
         )}
       </div>
 
-      <NewCustomerDialog open={newOpen} onOpenChange={setNewOpen} />
+      <NewCustomerDialog
+        open={newOpen}
+        onOpenChange={(v) => {
+          setNewOpen(v);
+          if (!v) setOpenDraft(null);
+        }}
+        draftId={openDraft?.id}
+        initialDraft={openDraft?.payload}
+      />
     </>
   );
 }
