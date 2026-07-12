@@ -774,6 +774,24 @@ function OrderDetail() {
                     <SelectContent>
                       {(statusesQuery.data ?? [])
                         .filter((s) => s.id !== o.status_id)
+                        .filter((s) => s.name !== "Borrador")
+                        .filter((s) => {
+                          const isImmediate = (o as any).sale_type === "entrega_inmediata";
+                          const immediateOnly = [
+                            "Pendiente de pago (Entrega inmediata)",
+                            "Lista para entrega",
+                            "En entrega / En ruta",
+                            "Entregada (Entrega inmediata)",
+                            "Cancelado",
+                          ];
+                          if (isImmediate) return immediateOnly.includes(s.name);
+                          // Para el resto de ventas, ocultar los estados exclusivos de entrega inmediata
+                          const immediateExclusive = [
+                            "Pendiente de pago (Entrega inmediata)",
+                            "Entregada (Entrega inmediata)",
+                          ];
+                          return !immediateExclusive.includes(s.name);
+                        })
                         .map((s) => (
                           <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                         ))}
