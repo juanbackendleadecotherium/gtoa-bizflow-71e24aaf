@@ -29,6 +29,9 @@ export const statusSchema = z.object({
   is_initial: z.boolean().default(false),
   is_final: z.boolean().default(false),
   is_active: z.boolean().default(true),
+}).refine((value) => value.slug !== "borrador" && value.name.trim().toLowerCase() !== "borrador", {
+  message: "Borrador ya no es un estado de venta válido",
+  path: ["name"],
 });
 
 export type StatusInput = z.infer<typeof statusSchema>;

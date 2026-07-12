@@ -628,24 +628,28 @@ function OrderDetail() {
               <p className="text-xs text-muted-foreground">Sin movimientos.</p>
             ) : (
               <ol className="space-y-4">
-                {historyQuery.data!.map((h: any) => (
-                  <li key={h.id} className="text-sm">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                        {h.from && h.from.name !== "Borrador" && <StatusBadge name={h.from.name} color={h.from.color} />}
-                      {h.from && <span className="text-muted-foreground">→</span>}
-                        {h.to && h.to.name !== "Borrador" && <StatusBadge name={h.to.name} color={h.to.color} />}
-                      <span className="text-xs text-muted-foreground ml-1">
-                        {new Date(h.created_at).toLocaleString("es-CO")}
-                      </span>
-                    </div>
-                    {h.note && (
-                      <div className="flex gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm text-foreground/90">
-                        <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
-                        <span className="whitespace-pre-wrap">{h.note}</span>
+                {historyQuery.data!.map((h: any) => {
+                  const showFrom = h.from && h.from.name !== "Borrador";
+                  const showTo = h.to && h.to.name !== "Borrador";
+                  return (
+                    <li key={h.id} className="text-sm">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        {showFrom && <StatusBadge name={h.from.name} color={h.from.color} />}
+                        {showFrom && showTo && <span className="text-muted-foreground">→</span>}
+                        {showTo && <StatusBadge name={h.to.name} color={h.to.color} />}
+                        <span className="text-xs text-muted-foreground ml-1">
+                          {new Date(h.created_at).toLocaleString("es-CO")}
+                        </span>
                       </div>
-                    )}
-                  </li>
-                ))}
+                      {h.note && (
+                        <div className="flex gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm text-foreground/90">
+                          <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                          <span className="whitespace-pre-wrap">{h.note}</span>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ol>
             )}
           </div>
