@@ -26,7 +26,11 @@ function StatusesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_statuses").select("*")
-        .eq("brand_id", selectedBrandId!).order("sort_order");
+        .eq("brand_id", selectedBrandId!)
+        .eq("is_draft", false)
+        .neq("slug", "borrador")
+        .neq("name", "Borrador")
+        .order("sort_order");
       if (error) throw error;
       return data ?? [];
     },
@@ -48,6 +52,9 @@ function StatusesPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: any }) => {
+      if (patch?.slug === "borrador" || patch?.name === "Borrador" || patch?.is_draft === true) {
+        throw new Error("Borrador ya no es un estado de venta válido");
+      }
       const { error } = await supabase.from("order_statuses").update(patch).eq("id", id);
       if (error) throw error;
     },
