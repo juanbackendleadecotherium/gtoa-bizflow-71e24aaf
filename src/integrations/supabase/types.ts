@@ -977,6 +977,47 @@ export type Database = {
           },
         ]
       }
+      order_drafts: {
+        Row: {
+          brand_id: string
+          created_at: string
+          customer_name: string | null
+          id: string
+          items_summary: string | null
+          payload: Json
+          seller_id: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          items_summary?: string | null
+          payload: Json
+          seller_id: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          items_summary?: string | null
+          payload?: Json
+          seller_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_drafts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_item_partial_log: {
         Row: {
           action: string
