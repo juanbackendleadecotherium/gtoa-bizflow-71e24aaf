@@ -1232,7 +1232,7 @@ export function NewCustomerDialog({
             )}
 
             {/* Aprobación gerencial — solo si es Venta normal con anticipo < 50% */}
-            {!isPlanSepare && !isPagoPaulatino && subtotal > 0 && (draft.order.advance_amount || 0) < minAdvance - 0.01 && (
+            {!isPlanSepare && !isPagoPaulatino && !isEntregaInmediata && subtotal > 0 && (draft.order.advance_amount || 0) < minAdvance - 0.01 && (
               <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input
