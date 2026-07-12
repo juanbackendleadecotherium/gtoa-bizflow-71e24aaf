@@ -33,7 +33,9 @@ export function SaleFlowCard({
   const pct = total > 0 ? Math.min(100, (paidTotal / total) * 100) : 0;
   const isSepare = order.sale_type === "plan_separe";
   const isPaulatino = order.sale_type === "pago_paulatino";
+  const isEntregaInmediata = order.sale_type === "entrega_inmediata";
   const separeDone = !!order.separe_completed_at;
+  const eiReady = total > 0 && paidTotal >= total * 0.5 - 0.01;
 
   return (
     <section className="rounded-xl border border-border bg-surface p-5 space-y-3">
