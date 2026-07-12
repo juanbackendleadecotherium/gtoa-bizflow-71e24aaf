@@ -82,6 +82,12 @@ export function canSendToProduction(order: {
   const total = Number(order.total ?? 0);
   const advance = Number(order.advance_amount ?? 0);
 
+  // Entrega inmediata: producto ya listo, no pasa por producción.
+  if (order.sale_type === "entrega_inmediata") {
+    return { ok: false, reason: "Venta de entrega inmediata: no requiere producción." };
+  }
+
+
   // Pago Paulatino: excepción autorizada por el vendedor. No exige 50% ni
   // aprobación gerencial. Cualquier anticipo (incluido 0) habilita producción.
   if (order.sale_type === "pago_paulatino") {
