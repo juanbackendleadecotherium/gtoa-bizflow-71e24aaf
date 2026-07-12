@@ -38,8 +38,14 @@ function OrdersPage() {
     enabled: !!selectedBrandId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("order_statuses").select("id, name, color, sort_order")
-        .eq("brand_id", selectedBrandId!).order("sort_order");
+        .from("order_statuses")
+        .select("id, name, color, sort_order, slug, is_active, is_draft")
+        .eq("brand_id", selectedBrandId!)
+        .eq("is_active", true)
+        .eq("is_draft", false)
+        .neq("slug", "borrador")
+        .neq("name", "Borrador")
+        .order("sort_order");
       if (error) throw error;
       return data ?? [];
     },
@@ -51,7 +57,7 @@ function OrdersPage() {
     queryFn: async () => {
       let q = supabase
         .from("orders")
-        .select("id, order_number, invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, brand_id, customer_name, customer_phone, customer_doc_number, sale_type, separe_completed_at, approval_status, brand:brands(name, invoice_prefix), status:order_statuses(name,color), invoices(id), items:order_items(description, quantity, sort_order)")
+        .select("id, order_number, invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, brand_id, customer_name, customer_phone, customer_doc_number, sale_type, separe_completed_at, approval_status, brand:brands(name, invoice_prefix), status:order_statuses(name,color,slug,is_draft), invoices(id), items:order_items(description, quantity, sort_order)")
         .order("created_at", { ascending: false });
       if (effectiveBrandFilter !== "all") q = q.eq("brand_id", effectiveBrandFilter);
       if (statusFilter !== "all") q = q.eq("status_id", statusFilter);
@@ -190,7 +196,7 @@ function OrdersPage() {
                     <td className="px-4 py-3 text-foreground">{summarizeItems(o.items)}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {o.status ? <StatusBadge name={o.status.name} color={o.status.color} /> : "—"}
+                        {o.status && !o.status.is_draft && o.status.slug !== "borrador" ? <StatusBadge name={o.status.name} color={o.status.color} /> : "—"}
                         <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
                         {o.sale_type === "plan_separe" && <SaleTypeBadge saleType={o.sale_type} separeCompletedAt={o.separe_completed_at} />}
                         <ApprovalStatusBadge status={o.approval_status} />
@@ -227,7 +233,7 @@ function OrdersPage() {
                     <span className="font-medium">
                       {o.invoice_number ? `Fact. ${o.invoice_number}` : o.order_number}
                     </span>
-                    {o.status && <StatusBadge name={o.status.name} color={o.status.color} />}
+                    {o.status && !o.status.is_draft && o.status.slug !== "borrador" && <StatusBadge name={o.status.name} color={o.status.color} />}
                   </div>
                   <p className="text-sm">{summarizeItems(o.items)}</p>
                   <div className="flex items-center gap-1.5 flex-wrap">
