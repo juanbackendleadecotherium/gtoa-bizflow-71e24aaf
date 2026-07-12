@@ -24,7 +24,7 @@ export type OrderDraft = {
   payment_method: string;
   advance_amount: number;
   advance_deposit_account: string;
-  sale_type: "normal" | "plan_separe" | "pago_paulatino";
+  sale_type: "normal" | "plan_separe" | "pago_paulatino" | "entrega_inmediata";
   request_approval: boolean;
   approval_note: string;
 };

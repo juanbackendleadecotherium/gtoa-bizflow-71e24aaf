@@ -94,7 +94,7 @@ export const scheduleInvoiceLogistics = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     // Autorización: vendedor de la orden, admin o logística
     const { data: order, error: oErr } = await context.supabase
-      .from("orders").select("id, seller_id, brand_id").eq("id", data.orderId).single();
+      .from("orders").select("id, seller_id, brand_id, sale_type").eq("id", data.orderId).single();
     if (oErr || !order) throw new Error("Cuenta de cobro no encontrada");
 
     const isMine = order.seller_id === context.userId;
@@ -117,13 +117,27 @@ export const scheduleInvoiceLogistics = createServerFn({ method: "POST" })
       throw new Error("El día seleccionado no está disponible");
     }
 
+    const patch: any = {
+      scheduled_logistics_date: data.date,
+      scheduled_logistics_by: context.userId,
+      scheduled_logistics_at: new Date().toISOString(),
+    };
+
+    // Entrega inmediata: al agendar, mover a "En entrega / En ruta"
+    if ((order as any).sale_type === "entrega_inmediata") {
+      const { data: enRuta } = await context.supabase
+        .from("order_statuses")
+        .select("id")
+        .eq("brand_id", (order as any).brand_id)
+        .eq("slug", "ei-en-ruta")
+        .eq("is_active", true)
+        .maybeSingle();
+      if (enRuta?.id) patch.status_id = enRuta.id;
+    }
+
     const { error: uErr } = await context.supabase
       .from("orders")
-      .update({
-        scheduled_logistics_date: data.date,
-        scheduled_logistics_by: context.userId,
-        scheduled_logistics_at: new Date().toISOString(),
-      })
+      .update(patch)
       .eq("id", data.orderId);
     if (uErr) throw uErr;
     return { ok: true };
@@ -158,18 +172,21 @@ export const getInvoiceSchedulingStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: order, error } = await context.supabase
       .from("orders")
-      .select("id, total, advance_amount, status_id, scheduled_logistics_date, scheduled_logistics_by, scheduled_logistics_at, order_statuses(slug, name)")
+      .select("id, total, advance_amount, status_id, sale_type, scheduled_logistics_date, scheduled_logistics_by, scheduled_logistics_at, order_statuses(slug, name)")
       .eq("id", data.orderId)
       .single();
     if (error) throw error;
     const status = order.order_statuses as any;
     const statusSlug: string = status?.slug ?? "";
-    const statusOk = ["pendiente-por-logistica", "pendiente_por_logistica", "terminado"].includes(statusSlug);
-    // Saldo: usar la view financiera para coincidir con cartera
+    const isEntregaInmediata = (order as any).sale_type === "entrega_inmediata";
+    const statusOk = isEntregaInmediata
+      ? ["ei-lista-entrega", "ei-en-ruta"].includes(statusSlug)
+      : ["pendiente-por-logistica", "pendiente_por_logistica", "terminado"].includes(statusSlug);
+    // Saldo: entrega inmediata no exige 100% de saldo (basta con el 50% que ya movió al estado listo).
     const { data: fin } = await context.supabase
       .from("order_financials").select("balance").eq("order_id", data.orderId).maybeSingle();
     const balance = Number(fin?.balance ?? 0);
-    const balanceOk = balance <= 0;
+    const balanceOk = isEntregaInmediata ? true : balance <= 0;
     // QA: no construido aún
     const qaOk = true;
     const canSchedule = statusOk && balanceOk && qaOk;

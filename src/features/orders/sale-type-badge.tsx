@@ -1,4 +1,4 @@
-import { Bookmark, ShoppingCart, Clock3, CheckCircle2, XCircle, HandCoins } from "lucide-react";
+import { Bookmark, ShoppingCart, Clock3, CheckCircle2, XCircle, HandCoins, Truck } from "lucide-react";
 
 export function SaleTypeBadge({
   saleType,
@@ -25,6 +25,13 @@ export function SaleTypeBadge({
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/30 px-2 py-0.5 text-[11px] font-medium">
         <HandCoins className="h-3 w-3" /> Pago Paulatino
+      </span>
+    );
+  }
+  if (saleType === "entrega_inmediata") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 px-2 py-0.5 text-[11px] font-medium">
+        <Truck className="h-3 w-3" /> Entrega inmediata
       </span>
     );
   }
@@ -74,6 +81,12 @@ export function canSendToProduction(order: {
 }): { ok: boolean; reason?: string } {
   const total = Number(order.total ?? 0);
   const advance = Number(order.advance_amount ?? 0);
+
+  // Entrega inmediata: producto ya listo, no pasa por producción.
+  if (order.sale_type === "entrega_inmediata") {
+    return { ok: false, reason: "Venta de entrega inmediata: no requiere producción." };
+  }
+
 
   // Pago Paulatino: excepción autorizada por el vendedor. No exige 50% ni
   // aprobación gerencial. Cualquier anticipo (incluido 0) habilita producción.

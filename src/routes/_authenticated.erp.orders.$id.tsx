@@ -738,15 +738,17 @@ function OrderDetail() {
             paidTotal={(Number(o.advance_amount) || 0) + (paymentsSumQuery.data ?? 0)}
           />
 
-          <ProductionSection
-            orderId={o.id}
-            brandId={o.brand_id}
-            saleType={(o as any).sale_type ?? null}
-            separeCompletedAt={(o as any).separe_completed_at ?? null}
-            approvalStatus={(o as any).approval_status ?? null}
-            total={Number(o.total) || 0}
-            paidTotal={(Number(o.advance_amount) || 0) + (paymentsSumQuery.data ?? 0)}
-          />
+          {(o as any).sale_type !== "entrega_inmediata" && (
+            <ProductionSection
+              orderId={o.id}
+              brandId={o.brand_id}
+              saleType={(o as any).sale_type ?? null}
+              separeCompletedAt={(o as any).separe_completed_at ?? null}
+              approvalStatus={(o as any).approval_status ?? null}
+              total={Number(o.total) || 0}
+              paidTotal={(Number(o.advance_amount) || 0) + (paymentsSumQuery.data ?? 0)}
+            />
+          )}
 
 
           <ScheduleLogisticsCard orderId={o.id} />
