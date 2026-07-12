@@ -112,6 +112,38 @@ export function SaleFlowCard({
         </div>
       )}
 
+      {isEntregaInmediata && (
+        <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-2">
+          <p className="text-xs font-medium text-cyan-700 dark:text-cyan-400 flex items-center gap-1">
+            <Truck className="h-3.5 w-3.5" /> Entrega inmediata — no pasa por producción
+          </p>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              Progreso para habilitar entrega ({formatMoney(paidTotal)} de {formatMoney(total * 0.5)})
+            </span>
+            <span className={`font-semibold tabular-nums ${eiReady ? "text-emerald-600" : "text-cyan-600"}`}>
+              {pct.toFixed(1)}%
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full transition-all ${eiReady ? "bg-emerald-500" : "bg-cyan-500"}`}
+              style={{ width: `${Math.min(100, (paidTotal / (total * 0.5 || 1)) * 100)}%` }}
+            />
+          </div>
+          {eiReady ? (
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" /> Lista para agendar entrega con logística.
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              Al alcanzar el 50% del anticipo, la venta pasa automáticamente a "Lista para entrega".
+            </p>
+          )}
+        </div>
+      )}
+
+
       {order.approval_status === "pendiente" && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-1">
           <p className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1">
