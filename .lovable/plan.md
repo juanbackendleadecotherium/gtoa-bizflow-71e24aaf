@@ -1,57 +1,107 @@
-## Problemas detectados
+## Borradores de venta
 
-### 1. Colisión de `queryKey` que "desmarca" la fase aprobada (bug UI)
+Hoy al abrir "Nueva venta" y llenar el formulario, al dar **Crear cliente + venta** se inserta la orden y el trigger del backend asigna un `invoice_number` real. Si el vendedor cierra el diálogo, cambia de pestaña o pierde el navegador, todo lo diligenciado se pierde. No existe manera de retomar la venta después.
 
-Dos `useQuery` distintos comparten la misma clave `["item-phases", <itemId>]` pero seleccionan **columnas distintas**:
+Vamos a agregar un flujo de **borradores** con dos vías de guardado:
 
-- `src/features/production/item-phases-editor.tsx` (línea 66) → `select("*")` — incluye `ready_for_advance_payment`.
-- `src/features/production/item-margins-section.tsx` (línea 452) → `select("id, manufacturing_cost, negotiated_cost, supplier_id, quotation_date")` — **NO** incluye `ready_for_advance_payment`.
+- **Manual**: botón "Guardar borrador" en el footer del diálogo.
+- **Automático**: mientras el vendedor escribe, el borrador se guarda solo cada pocos segundos (debounce), de modo que si cierra el diálogo, la pestaña o el navegador sin querer, la venta queda persistida y puede retomarse.
 
-Cuando el usuario marca la casilla, el mutation invalida `["item-phases", itemId]`. Ambos observers refetchean con su propio `queryFn`; el último en resolver sobreescribe la caché. Si gana el de `item-margins-section`, `phase.ready_for_advance_payment` queda `undefined` → `isReady=false` → check se ve desmarcado. Cambiar de pestaña dispara re-renders o re-observadores y termina de "ganar" la versión sin el campo.
+El borrador **nunca consume número de factura**: el `invoice_number` se asigna solo cuando el vendedor confirma "Crear cliente + venta".
 
-**Verificado en DB**: ambas fases (`Piedra Sinterizada` y `Base de comedor`) tienen `ready_for_advance_payment=true` correctamente guardado. El problema es puramente frontend.
+### Alcance funcional
 
-**Fix**: usar clave distinta para el query de margins (`["item-phases-cost", itemId]`) para que no colisione con la del editor.
+1. **Autoguardado como borrador** dentro del diálogo "Nueva venta":
+   - Un `useEffect` con debounce (~1.5s) observa `draft`, `paymentProof` e `itemImages`.
+   - Si hay contenido significativo (al menos nombre del cliente **o** un ítem con descripción **o** texto pegado de WhatsApp), se hace `upsert` silencioso en `order_drafts`.
+   - Al primer autoguardado se genera el `draftId` y se mantiene en estado local; los siguientes reutilizan ese id.
+   - Indicador discreto en el header del diálogo: "Borrador guardado hace unos segundos" / "Guardando…".
+   - Al cerrar el diálogo con contenido no confirmado, se dispara un último flush inmediato (no debounced) para no perder los últimos cambios.
 
-### 2. Los pagos por fase no aparecen en la bandeja de Finanzas
+2. **Guardar borrador manual** en el footer del diálogo:
+   - Botón "Guardar borrador" junto a *Cancelar* y *Crear cliente + venta*.
+   - Fuerza un flush inmediato del autoguardado, muestra toast de confirmación y cierra el diálogo.
 
-`src/lib/supplier-advance-payments.functions.ts` → `listPendingSupplierPayments` solo consulta `order_items` con `ready_for_advance_payment=true`. Nunca lee `order_item_phases`, así que las fases aprobadas nunca aparecen en `/erp/finance/supplier-payments`.
+3. **Persistencia de imágenes**:
+   - Los comprobantes de pago e imágenes de productos se suben a Storage bajo `drafts/{draftId}/…` para que sobrevivan al cierre del navegador.
+   - Se guardan como URLs dentro del payload del borrador.
+   - Subida bajo demanda: cada archivo nuevo se sube al Storage cuando pasa por el autoguardado, para no dejar solo `File` objects en memoria.
 
-Además, cuando el ítem padre tiene `has_phases=true`, no debería aparecer a nivel ítem (aunque igual estaría en `false`). Cada fase debe aparecer como su propia fila.
+4. **Listado de borradores** en `/erp/orders`:
+   - Nueva sección **"Borradores"** encima de la tabla actual (con contador).
+   - Cada fila muestra: nombre del cliente (o "Sin nombre"), resumen de ítems, marca, fecha de última edición, vendedor.
+   - Acciones por fila: **Abrir** (reabre el diálogo precargado) y **Eliminar** (con confirm).
+   - El vendedor solo ve sus propios borradores. Admin / finanzas ven todos los de la marca activa.
 
-**Fix del backend (`listPendingSupplierPayments`)**:
-- Consultar `order_item_phases` con `ready_for_advance_payment=true`, `supplier_id NOT NULL`, `quotation_date NOT NULL`, costo > 0, y sin un `order_item_supplier_payments` de tipo `advance` para ese `phase_id`.
-- Devolver una fila por fase, con `phase_id`, `phase_name`, y `product` como `"<producto> · <fase>"` para que el usuario distinga.
-- Añadir `phase_id: string | null` al tipo `PendingSupplierPayment`.
+5. **Reabrir un borrador**:
+   - `NewCustomerDialog` acepta props opcionales `draftId` y `initialDraft`.
+   - Al montarse con `initialDraft`, hidrata el `useState<Draft>` con esos valores, omite la precarga del `invoice_number` y muestra las imágenes remotas ya cargadas en el `ImageUploader`.
+   - El autoguardado continúa actualizando **ese mismo** borrador (no crea uno nuevo).
 
-**Fix del frontend Finance page (`_authenticated.erp.finance.supplier-payments.tsx`)**:
-- Mostrar el nombre de la fase cuando `phase_id` existe (badge o sufijo en la columna Producto).
-- Pasar `phaseId` al diálogo de pago.
+6. **Confirmar "Crear cliente + venta" desde un borrador**:
+   - Ejecuta el flujo actual (insert en `orders` con `invoice_number: null` para que el trigger asigne).
+   - Tras el éxito, elimina el borrador y su carpeta en Storage.
 
-**Fix del formulario de pago (`supplier-advance-payment-form.tsx` + `confirmSupplierAdvancePayment`)**:
-- Aceptar `phaseId` opcional en el input Zod.
-- En el handler:
-  - Si viene `phaseId`, cargar la fase (`order_item_phases`) en vez del ítem, tomar `supplier_id`, `brand_id`, `order_id`, `production_order_id`, `negotiated_cost/manufacturing_cost` de ahí.
-  - Validar que no exista un `order_item_supplier_payments` con ese `phase_id` y `payment_type='advance'`.
-  - Insertar con `phase_id` seteado.
-  - La notificación al operativo (`notify_operativo_supplier_paid`) se llama con el `item_id` como hoy (contexto del producto padre).
+7. **Número de factura**: se mantiene la conducta actual — solo se asigna cuando el registro entra a `orders` vía el trigger `orders_assign_invoice_number`. Los borradores nunca reservan consecutivo.
 
-## Cambios de código
+### Detalles técnicos
 
-1. **`src/features/production/item-margins-section.tsx`**
-   - Cambiar `queryKey: ["item-phases", item.id]` → `["item-phases-cost", item.id]` (línea 452) e invalidar `["item-phases-cost", productionOrderId]` donde corresponda.
+**Base de datos (migración):**
+```sql
+CREATE TABLE public.order_drafts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id uuid NOT NULL REFERENCES public.brands(id) ON DELETE CASCADE,
+  seller_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  payload jsonb NOT NULL,
+  customer_name text,
+  items_summary text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-2. **`src/lib/supplier-advance-payments.functions.ts`**
-   - Extender `PendingSupplierPayment` con `phase_id: string | null` y `phase_name: string | null`.
-   - En `listPendingSupplierPayments`, hacer dos consultas (ítems y fases) y concatenar. Filtrar del ítem-level los que tienen `has_phases=true` (para no duplicar).
-   - Extender `ConfirmInput` con `phaseId: z.string().uuid().optional().nullable()`.
-   - En `confirmSupplierAdvancePayment.handler`, ramificar según `phaseId`.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_drafts TO authenticated;
+GRANT ALL ON public.order_drafts TO service_role;
+ALTER TABLE public.order_drafts ENABLE ROW LEVEL SECURITY;
 
-3. **`src/features/production/supplier-advance-payment-form.tsx`**
-   - Aceptar prop `phaseId?: string | null` y reenviarlo en `confirmFn`.
+CREATE POLICY "seller manages own drafts"
+  ON public.order_drafts FOR ALL TO authenticated
+  USING (seller_id = auth.uid())
+  WITH CHECK (seller_id = auth.uid());
 
-4. **`src/routes/_authenticated.erp.finance.supplier-payments.tsx`**
-   - Mostrar `phase_name` en la columna Producto cuando exista.
-   - Pasar `phaseId={active.phase_id}` al `SupplierAdvancePaymentForm`.
+CREATE POLICY "admin/finance read drafts"
+  ON public.order_drafts FOR SELECT TO authenticated
+  USING (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'finanzas'));
 
-Sin cambios de DB (los triggers y `create_supplier_phase_payment_tasks` ya funcionan; solo faltaba exponer las fases en la bandeja).
+CREATE POLICY "admin deletes any draft"
+  ON public.order_drafts FOR DELETE TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
+```
+Se agrega también el trigger de `updated_at`.
+
+**Storage:** los archivos de borrador se suben al bucket existente `order-images` bajo `drafts/{draftId}/…`. Al confirmar la venta las URLs se copian tal cual al `order_items.images` / `orders.payment_proof_url` (funcionan igual, quedan en el prefijo `drafts/…`; una tarea posterior puede reubicarlas si se vuelve un problema).
+
+**Frontend:**
+- `src/features/customers/new-customer-dialog.tsx`:
+  - Nuevos props: `draftId?: string`, `initialDraft?: Draft & { paymentProofUrls?: string[]; itemImageUrls?: string[][] }`.
+  - Hidratar `useState` desde `initialDraft` cuando existe.
+  - Nuevo hook `useDraftAutosave({ draft, paymentProof, itemImages, brandId, draftId, setDraftId })`:
+    - `useEffect` con `setTimeout` de 1500ms sobre cambios en las dependencias.
+    - Comprueba "contenido significativo" antes de guardar.
+    - Sube archivos nuevos a `drafts/{draftId}` y sustituye `PendingImage` por URLs en el payload.
+    - Hace `upsert` en `order_drafts` con `{ id: draftId, brand_id, seller_id, payload, customer_name, items_summary }`.
+    - Expone `status: "idle" | "saving" | "saved" | "error"` y `lastSavedAt` para el indicador visual.
+  - Flush final en `handleOpenChange(false)` antes de cerrar (con contenido significativo).
+  - Nuevo botón "Guardar borrador" en el footer que llama a `flush()` + `handleOpenChange(false)`.
+  - En `saveMutation.onSuccess`, si `draftId` estaba definido → `DELETE from order_drafts where id = draftId` + limpiar prefijo Storage.
+- Nuevo componente `src/features/orders/drafts-panel.tsx`:
+  - Lista de borradores del vendedor / marca con acciones *Abrir* y *Eliminar*.
+- `src/routes/_authenticated.erp.orders.index.tsx`:
+  - Estado local `openDraft: { id: string; data: Draft } | null`.
+  - Renderiza `<DraftsPanel onOpen={setOpenDraft} />` antes de la tabla.
+  - Pasa `draftId` / `initialDraft` a `<NewCustomerDialog>` cuando `openDraft` está presente.
+
+### No incluido
+
+- No se guardan borradores mientras el usuario está totalmente offline (el autoguardado depende de la red; si falla, se reintenta en el siguiente cambio).
+- No se comparten borradores entre vendedores.
+- Los archivos de Storage no se reubican físicamente al confirmar la venta.
