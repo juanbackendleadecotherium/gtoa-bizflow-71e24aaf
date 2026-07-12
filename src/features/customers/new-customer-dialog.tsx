@@ -1301,6 +1301,8 @@ export function NewCustomerDialog({
               <ImageUploader
                 pending={paymentProof}
                 onChangePending={setPaymentProof}
+                existingUrls={paymentProofUrls}
+                onRemoveExisting={removeExistingPaymentProof}
                 label="Subir comprobante"
                 hint="Foto del recibo, transferencia o consignación. Se comprime antes de subir."
               />
