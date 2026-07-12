@@ -172,9 +172,18 @@ async function fetchNextInvoiceNumber(brandId: string): Promise<string> {
 export function NewCustomerDialog({
   open,
   onOpenChange,
+  draftId: draftIdProp,
+  initialDraft,
+  onDraftConsumed,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Id del borrador que se está retomando (si aplica). */
+  draftId?: string;
+  /** Contenido del borrador para hidratar el formulario. */
+  initialDraft?: DraftPayload;
+  /** Notifica cuando el borrador se creó/actualizó (para refrescar el listado). */
+  onDraftConsumed?: () => void;
 }) {
   const { selectedBrandId, selectedBrand } = useBrand();
   const navigate = useNavigate();
@@ -186,6 +195,16 @@ export function NewCustomerDialog({
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [paymentProof, setPaymentProof] = useState<PendingImage[]>([]);
   const [itemImages, setItemImages] = useState<PendingImage[][]>([]);
+  // URLs ya subidas a Storage (persisten entre sesiones del borrador).
+  const [paymentProofUrls, setPaymentProofUrls] = useState<string[]>([]);
+  const [itemImageUrls, setItemImageUrls] = useState<string[][]>([]);
+  // Id del borrador actual. Se genera en el primer autoguardado si no viene por props.
+  const [draftId, setDraftId] = useState<string | null>(draftIdProp ?? null);
+  // Estado del autoguardado para el indicador visual.
+  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const skipNextAutosaveRef = useRef(true);
+  const draftConsumedRef = useRef(false);
 
   const reset = () => {
     setRawText("");
@@ -195,17 +214,50 @@ export function NewCustomerDialog({
     itemImages.flat().forEach((p) => URL.revokeObjectURL(p.previewUrl));
     setPaymentProof([]);
     setItemImages([]);
+    setPaymentProofUrls([]);
+    setItemImageUrls([]);
+    setDraftId(null);
+    setAutosaveStatus("idle");
+    setLastSavedAt(null);
+    skipNextAutosaveRef.current = true;
+    draftConsumedRef.current = false;
   };
 
+  // Al cerrar hacemos flush del borrador si hay contenido significativo,
+  // así el vendedor no pierde nada por cerrar sin querer.
   const handleOpenChange = (v: boolean) => {
-    if (!v) reset();
+    if (!v) {
+      if (!draftConsumedRef.current && hasMeaningfulContent()) {
+        // fire-and-forget: no queremos bloquear el cierre del diálogo
+        void flushDraft({ silent: true });
+      }
+      reset();
+    }
     onOpenChange(v);
   };
 
 
-  // Prefilled defaults: empresa = marca activa, nro cuenta de cobro = consecutivo por marca
+  // Hidratar desde borrador existente cuando el diálogo se abre con initialDraft.
+  useEffect(() => {
+    if (!open) return;
+    if (initialDraft) {
+      setDraft(initialDraft.draft);
+      setRawText(initialDraft.rawText || "");
+      setPaymentProofUrls(initialDraft.paymentProofUrls || []);
+      setItemImageUrls(initialDraft.itemImageUrls || []);
+      setDraftId(draftIdProp ?? null);
+      setAiOpen(!!initialDraft.rawText);
+      // El primer render tras hidratar no debe disparar autoguardado
+      skipNextAutosaveRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialDraft, draftIdProp]);
+
+  // Prefilled defaults SOLO cuando NO estamos retomando un borrador:
+  // empresa = marca activa, nro cuenta de cobro = consecutivo por marca (preview)
   useEffect(() => {
     if (!open || !selectedBrand || !selectedBrandId) return;
+    if (initialDraft) return;
     setDraft((d) => ({
       ...d,
       customer: {
@@ -225,7 +277,144 @@ export function NewCustomerDialog({
         /* silencioso: el vendedor puede escribirlo manual */
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, selectedBrandId]);
+  }, [open, selectedBrandId, initialDraft]);
+
+  // ---------- Borrador: contenido significativo ----------
+  const hasMeaningfulContent = () => {
+    if (draft.customer.display_name.trim()) return true;
+    if (rawText.trim().length > 3) return true;
+    if (draft.items.some((it) => (it.description || "").trim())) return true;
+    if (paymentProof.length > 0 || paymentProofUrls.length > 0) return true;
+    if (itemImages.some((arr) => arr.length > 0)) return true;
+    if (itemImageUrls.some((arr) => arr.length > 0)) return true;
+    return false;
+  };
+
+  // ---------- Guardar borrador (autosave + manual) ----------
+  const flushDraft = async ({ silent }: { silent: boolean }) => {
+    if (!selectedBrandId) return;
+    if (!hasMeaningfulContent()) return;
+    if (draftConsumedRef.current) return;
+    try {
+      if (!silent) setAutosaveStatus("saving");
+      else setAutosaveStatus("saving");
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Aseguramos el id del borrador ANTES de subir imágenes, para agruparlas.
+      let id = draftId;
+      if (!id) {
+        id = crypto.randomUUID();
+        setDraftId(id);
+      }
+
+      // Subimos imágenes pendientes al prefijo del borrador y las movemos a URLs.
+      let newPaymentUrls = paymentProofUrls;
+      if (paymentProof.length > 0) {
+        const uploaded = await uploadOrderImages(
+          paymentProof.map((p) => p.file),
+          `drafts/${id}/payments`,
+        );
+        newPaymentUrls = [...paymentProofUrls, ...uploaded];
+        paymentProof.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+        setPaymentProofUrls(newPaymentUrls);
+        setPaymentProof([]);
+      }
+
+      const newItemImageUrls: string[][] = [];
+      for (let i = 0; i < draft.items.length; i++) {
+        const existing = itemImageUrls[i] ?? [];
+        const pending = itemImages[i] ?? [];
+        if (pending.length > 0) {
+          const uploaded = await uploadOrderImages(
+            pending.map((p) => p.file),
+            `drafts/${id}/items/${i}`,
+          );
+          newItemImageUrls[i] = [...existing, ...uploaded];
+          pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+        } else {
+          newItemImageUrls[i] = existing;
+        }
+      }
+      if (draft.items.some((_, i) => (itemImages[i] ?? []).length > 0)) {
+        setItemImageUrls(newItemImageUrls);
+        setItemImages(draft.items.map(() => []));
+      }
+
+      const payload: DraftPayload = {
+        draft,
+        rawText,
+        paymentProofUrls: newPaymentUrls,
+        itemImageUrls: newItemImageUrls,
+      };
+
+      const itemsSummary = draft.items
+        .map((it) => (it.description || "").split("\n")[0].slice(0, 60))
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(" · ");
+
+      const { error } = await supabase
+        .from("order_drafts")
+        .upsert({
+          id,
+          brand_id: selectedBrandId,
+          seller_id: user.id,
+          payload: payload as never,
+          customer_name: draft.customer.display_name.trim() || null,
+          items_summary: itemsSummary || null,
+          updated_at: new Date().toISOString(),
+        } as never);
+      if (error) throw error;
+
+      setAutosaveStatus("saved");
+      setLastSavedAt(Date.now());
+      onDraftConsumed?.();
+      if (!silent) toast.success("Borrador guardado");
+    } catch (e) {
+      setAutosaveStatus("error");
+      if (!silent) toast.error(e instanceof Error ? e.message : "No se pudo guardar el borrador");
+    }
+  };
+
+  // Autoguardado con debounce sobre cambios en el formulario.
+  useEffect(() => {
+    if (!open) return;
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
+    if (!hasMeaningfulContent()) return;
+    const t = window.setTimeout(() => {
+      void flushDraft({ silent: true });
+    }, 1500);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, rawText, open, selectedBrandId]);
+
+  // Guardar antes de que el navegador se cierre / cambie de pestaña (best-effort)
+  useEffect(() => {
+    if (!open) return;
+    const onHide = () => {
+      if (!draftConsumedRef.current && hasMeaningfulContent()) {
+        // No podemos await aquí, pero el request suele salir por keepalive de Supabase
+        void flushDraft({ silent: true });
+      }
+    };
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("beforeunload", onHide);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("beforeunload", onHide);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, draft, rawText, selectedBrandId]);
+
+
+
 
 
 
