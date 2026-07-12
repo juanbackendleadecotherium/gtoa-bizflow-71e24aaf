@@ -76,42 +76,8 @@ const PAYMENT_METHODS = [
   { value: "otro", label: "Otro" },
 ] as const;
 
-// ---------- Tipos ----------
-type CustomerDraft = {
-  display_name: string;
-  company: string;
-  person_type: "" | "natural" | "juridica";
-  contact_type: "cliente" | "proveedor";
-  doc_type: string;
-  doc_number: string;
-  phone: string;
-  email: string;
-  department: string;
-  city: string;
-  address: string;
-  needs_summary: string;
-  references: string;
-};
+// Tipos movidos a src/features/customers/draft-types.ts
 
-type OrderDraft = {
-  invoice_number: string;
-  sale_date: string;
-  estimated_delivery_date: string;
-  payment_method: string;
-  advance_amount: number;
-  advance_deposit_account: string;
-  sale_type: "normal" | "plan_separe" | "pago_paulatino";
-  request_approval: boolean;
-  approval_note: string;
-};
-
-type Draft = {
-  customer: CustomerDraft;
-  order: OrderDraft;
-  items: { description: string; quantity: number; unit_price: number }[];
-  notes: string;
-  urgency: string;
-};
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
