@@ -17,7 +17,6 @@ import {
   CreditCard,
   MapPin,
   Save,
-  CloudUpload,
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
