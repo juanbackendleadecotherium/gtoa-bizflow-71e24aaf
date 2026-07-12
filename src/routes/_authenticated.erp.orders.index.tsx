@@ -129,6 +129,13 @@ function OrdersPage() {
         </div>
       )}
 
+      <DraftsPanel
+        onOpen={(d) => {
+          setOpenDraft(d);
+          setNewOpen(true);
+        }}
+      />
+
       <div className="mb-4 flex gap-2 flex-wrap">
         <Input
           className="max-w-xs"
