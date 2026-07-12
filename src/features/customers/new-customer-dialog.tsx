@@ -480,11 +480,12 @@ export function NewCustomerDialog({
 
       const isPlanSepare = draft.order.sale_type === "plan_separe";
       const isPagoPaulatino = draft.order.sale_type === "pago_paulatino";
+      const isEntregaInmediata = draft.order.sale_type === "entrega_inmediata";
       const wantsApproval = draft.order.request_approval;
 
-      // Plan Separe y Pago Paulatino permiten arrancar con cualquier abono.
+      // Plan Separe, Pago Paulatino y Entrega Inmediata permiten arrancar con cualquier abono.
       // Venta normal exige 50% salvo excepción gerencial.
-      if (!isPlanSepare && !isPagoPaulatino && !wantsApproval && _advance < _subtotal * 0.5 - 0.01) {
+      if (!isPlanSepare && !isPagoPaulatino && !isEntregaInmediata && !wantsApproval && _advance < _subtotal * 0.5 - 0.01) {
         throw new Error(
           `El abono debe ser mínimo el 50% del total (${formatMoney(_subtotal * 0.5)}). ` +
           `Marca "Plan Separe", "Pago Paulatino" o solicita aprobación gerencial para excepción.`,
