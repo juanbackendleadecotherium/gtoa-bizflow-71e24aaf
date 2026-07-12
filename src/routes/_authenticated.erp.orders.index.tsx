@@ -12,6 +12,8 @@ import {
 import { StatusBadge } from "@/features/orders/status-badge";
 import { formatMoney } from "@/features/orders/order-items-editor";
 import { NewCustomerDialog } from "@/features/customers/new-customer-dialog";
+import { DraftsPanel } from "@/features/orders/drafts-panel";
+import type { DraftPayload } from "@/features/customers/draft-types";
 import { PaymentBadge, InvoicedBadge } from "@/features/invoices/invoice-badges";
 import { SaleTypeBadge, ApprovalStatusBadge } from "@/features/orders/sale-type-badge";
 import { getDeliveryUrgency, urgencyChipClasses, formatDeliveryDate } from "@/features/orders/delivery-urgency";
