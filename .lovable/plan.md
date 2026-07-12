@@ -1,107 +1,57 @@
-## Borradores de venta
+## Contexto
 
-Hoy al abrir "Nueva venta" y llenar el formulario, al dar **Crear cliente + venta** se inserta la orden y el trigger del backend asigna un `invoice_number` real. Si el vendedor cierra el diálogo, cambia de pestaña o pierde el navegador, todo lo diligenciado se pierde. No existe manera de retomar la venta después.
+En Montenegro Design (prefijo `MD-`) las cuentas de cobro se están solapando con Alegra. Estado actual en el ERP (por fecha):
 
-Vamos a agregar un flujo de **borradores** con dos vías de guardado:
+| # | Actual  | Acción            |
+|---|---------|-------------------|
+| 1 | MD-1931 | **Mantener**      |
+| 2 | MD-1934 | → **MD-0001**     |
+| 3 | MD-0001 | → MD-0002         |
+| 4 | MD-0002 | → MD-0003         |
+| 5 | MD-0003 | → MD-0004         |
+| 6 | MD-0004 | → MD-0005         |
+| 7 | MD-0005 | → MD-0006         |
 
-- **Manual**: botón "Guardar borrador" en el footer del diálogo.
-- **Automático**: mientras el vendedor escribe, el borrador se guarda solo cada pocos segundos (debounce), de modo que si cierra el diálogo, la pestaña o el navegador sin querer, la venta queda persistida y puede retomarse.
+Además, hay un número `MD-1935` en la bolsa de "liberados" que el sistema entregaría en la próxima venta — hay que eliminarlo para que la siguiente venta sea **MD-0007**.
 
-El borrador **nunca consume número de factura**: el `invoice_number` se asigna solo cuando el vendedor confirma "Crear cliente + venta".
+Hoy el asignador calcula el siguiente número como `MAX(número) + 1`. Si dejamos MD-1931 como está sin más cambios, el próximo saldría `MD-1932`. Por eso también hay que enseñarle al asignador a **ignorar los números heredados de Alegra**.
 
-### Alcance funcional
+## Plan
 
-1. **Autoguardado como borrador** dentro del diálogo "Nueva venta":
-   - Un `useEffect` con debounce (~1.5s) observa `draft`, `paymentProof` e `itemImages`.
-   - Si hay contenido significativo (al menos nombre del cliente **o** un ítem con descripción **o** texto pegado de WhatsApp), se hace `upsert` silencioso en `order_drafts`.
-   - Al primer autoguardado se genera el `draftId` y se mantiene en estado local; los siguientes reutilizan ese id.
-   - Indicador discreto en el header del diálogo: "Borrador guardado hace unos segundos" / "Guardando…".
-   - Al cerrar el diálogo con contenido no confirmado, se dispara un último flush inmediato (no debounced) para no perder los últimos cambios.
+### 1) Migración de base de datos (una sola)
 
-2. **Guardar borrador manual** en el footer del diálogo:
-   - Botón "Guardar borrador" junto a *Cancelar* y *Crear cliente + venta*.
-   - Fuerza un flush inmediato del autoguardado, muestra toast de confirmación y cierra el diálogo.
+1. Añadir a `orders` la columna `invoice_legacy boolean not null default false` (marca "heredado de Alegra, no cuenta para el consecutivo").
+2. Marcar `invoice_legacy = true` en la orden **MD-1931**.
+3. Borrar de `released_invoice_numbers` todos los registros de Montenegro Design (elimina `MD-1935`).
+4. Renumerar en Montenegro Design, dentro de una transacción, en orden descendente para no colisionar:
 
-3. **Persistencia de imágenes**:
-   - Los comprobantes de pago e imágenes de productos se suben a Storage bajo `drafts/{draftId}/…` para que sobrevivan al cierre del navegador.
-   - Se guardan como URLs dentro del payload del borrador.
-   - Subida bajo demanda: cada archivo nuevo se sube al Storage cuando pasa por el autoguardado, para no dejar solo `File` objects en memoria.
+   ```text
+   MD-0005 → MD-0006
+   MD-0004 → MD-0005
+   MD-0003 → MD-0004
+   MD-0002 → MD-0003
+   MD-0001 → MD-0002
+   MD-1934 → MD-0001
+   ```
 
-4. **Listado de borradores** en `/erp/orders`:
-   - Nueva sección **"Borradores"** encima de la tabla actual (con contador).
-   - Cada fila muestra: nombre del cliente (o "Sin nombre"), resumen de ítems, marca, fecha de última edición, vendedor.
-   - Acciones por fila: **Abrir** (reabre el diálogo precargado) y **Eliminar** (con confirm).
-   - El vendedor solo ve sus propios borradores. Admin / finanzas ven todos los de la marca activa.
+   El update se propaga a las tres tablas donde vive el número: `orders`, `invoices` y `invoice_versions`. No se usa `change_invoice_number` para no meter los números viejos en la bolsa de liberados (queremos que desaparezcan, no que se reutilicen).
 
-5. **Reabrir un borrador**:
-   - `NewCustomerDialog` acepta props opcionales `draftId` y `initialDraft`.
-   - Al montarse con `initialDraft`, hidrata el `useState<Draft>` con esos valores, omite la precarga del `invoice_number` y muestra las imágenes remotas ya cargadas en el `ImageUploader`.
-   - El autoguardado continúa actualizando **ese mismo** borrador (no crea uno nuevo).
+5. Registrar un evento por orden en `order_audit_log` con `action='invoice_number_renumbered'` y `{from, to, reason: 'reset_consecutivo_alegra'}`, para dejar traza auditable de cada cambio.
+6. Reescribir `public.allocate_invoice_number(brand_id)` para que el `MAX(+1)` **excluya** las órdenes con `invoice_legacy = true`. La bolsa de liberados sigue funcionando igual.
 
-6. **Confirmar "Crear cliente + venta" desde un borrador**:
-   - Ejecuta el flujo actual (insert en `orders` con `invoice_number: null` para que el trigger asigne).
-   - Tras el éxito, elimina el borrador y su carpeta en Storage.
+### 2) Frontend
 
-7. **Número de factura**: se mantiene la conducta actual — solo se asigna cuando el registro entra a `orders` vía el trigger `orders_assign_invoice_number`. Los borradores nunca reservan consecutivo.
+Sin cambios en esta iteración. El botón "Editar número de cuenta de cobro" existente sigue disponible por si hay que ajustar algo puntual después.
 
-### Detalles técnicos
+### 3) Verificación
 
-**Base de datos (migración):**
-```sql
-CREATE TABLE public.order_drafts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  brand_id uuid NOT NULL REFERENCES public.brands(id) ON DELETE CASCADE,
-  seller_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  payload jsonb NOT NULL,
-  customer_name text,
-  items_summary text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+Después de correr la migración:
+- Consultar Montenegro Design y confirmar que las órdenes quedan como MD-1931, MD-0001…MD-0006.
+- Verificar que `invoices` e `invoice_versions` reflejan los mismos números.
+- Confirmar que `released_invoice_numbers` de la marca queda vacío.
+- Simular `SELECT allocate_invoice_number('880ed95d-…')` — debe devolver `MD-0007`.
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_drafts TO authenticated;
-GRANT ALL ON public.order_drafts TO service_role;
-ALTER TABLE public.order_drafts ENABLE ROW LEVEL SECURITY;
+## Fuera de alcance
 
-CREATE POLICY "seller manages own drafts"
-  ON public.order_drafts FOR ALL TO authenticated
-  USING (seller_id = auth.uid())
-  WITH CHECK (seller_id = auth.uid());
-
-CREATE POLICY "admin/finance read drafts"
-  ON public.order_drafts FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'finanzas'));
-
-CREATE POLICY "admin deletes any draft"
-  ON public.order_drafts FOR DELETE TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-```
-Se agrega también el trigger de `updated_at`.
-
-**Storage:** los archivos de borrador se suben al bucket existente `order-images` bajo `drafts/{draftId}/…`. Al confirmar la venta las URLs se copian tal cual al `order_items.images` / `orders.payment_proof_url` (funcionan igual, quedan en el prefijo `drafts/…`; una tarea posterior puede reubicarlas si se vuelve un problema).
-
-**Frontend:**
-- `src/features/customers/new-customer-dialog.tsx`:
-  - Nuevos props: `draftId?: string`, `initialDraft?: Draft & { paymentProofUrls?: string[]; itemImageUrls?: string[][] }`.
-  - Hidratar `useState` desde `initialDraft` cuando existe.
-  - Nuevo hook `useDraftAutosave({ draft, paymentProof, itemImages, brandId, draftId, setDraftId })`:
-    - `useEffect` con `setTimeout` de 1500ms sobre cambios en las dependencias.
-    - Comprueba "contenido significativo" antes de guardar.
-    - Sube archivos nuevos a `drafts/{draftId}` y sustituye `PendingImage` por URLs en el payload.
-    - Hace `upsert` en `order_drafts` con `{ id: draftId, brand_id, seller_id, payload, customer_name, items_summary }`.
-    - Expone `status: "idle" | "saving" | "saved" | "error"` y `lastSavedAt` para el indicador visual.
-  - Flush final en `handleOpenChange(false)` antes de cerrar (con contenido significativo).
-  - Nuevo botón "Guardar borrador" en el footer que llama a `flush()` + `handleOpenChange(false)`.
-  - En `saveMutation.onSuccess`, si `draftId` estaba definido → `DELETE from order_drafts where id = draftId` + limpiar prefijo Storage.
-- Nuevo componente `src/features/orders/drafts-panel.tsx`:
-  - Lista de borradores del vendedor / marca con acciones *Abrir* y *Eliminar*.
-- `src/routes/_authenticated.erp.orders.index.tsx`:
-  - Estado local `openDraft: { id: string; data: Draft } | null`.
-  - Renderiza `<DraftsPanel onOpen={setOpenDraft} />` antes de la tabla.
-  - Pasa `draftId` / `initialDraft` a `<NewCustomerDialog>` cuando `openDraft` está presente.
-
-### No incluido
-
-- No se guardan borradores mientras el usuario está totalmente offline (el autoguardado depende de la red; si falla, se reintenta en el siguiente cambio).
-- No se comparten borradores entre vendedores.
-- Los archivos de Storage no se reubican físicamente al confirmar la venta.
+- No se tocan otras marcas: el usuario solo pidió el reset en Montenegro Design. Otras marcas siguen con su prefijo y su MAX+1 actual (si más adelante piden lo mismo, se marca la orden "legacy" equivalente y listo).
+- No se integra ni se sincroniza con Alegra: es un reset local del ERP hasta que se termine el asentamiento de vendedores.
