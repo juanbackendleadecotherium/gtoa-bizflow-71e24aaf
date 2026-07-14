@@ -333,7 +333,7 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
       { data: parentItems, error: piErr },
     ] = await Promise.all([
       supabase.from("orders").select("id, invoice_number, order_number, brand_id").in("id", orderIds),
-      supabase.from("suppliers").select("id, name, advance_payment_pct, brand_id").in("id", supplierIds),
+      supabase.from("suppliers").select("id, name, advance_payment_pct, brand_id, requires_advance_payment").in("id", supplierIds),
       phaseParentIds.length > 0
         ? supabase.from("order_items").select("id, description").in("id", phaseParentIds)
         : Promise.resolve({ data: [], error: null } as any),
@@ -352,7 +352,17 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
     const bMap = new Map((brands ?? []).map((b: any) => [b.id, b]));
     const piMap = new Map((parentItems ?? []).map((p: any) => [p.id, p]));
 
-    const itemRows: PendingSupplierPayment[] = pendingItems.map((it: any) => {
+    // Excluye ítems/fases cuyo proveedor NO exige anticipo (misma regla que usa
+    // el trigger que crea las tareas de "Pago a proveedor pendiente" en Mis tareas).
+    const supplierRequiresAdvance = (supplierId: string | null | undefined) => {
+      if (!supplierId) return false;
+      const s: any = sMap.get(supplierId);
+      return !!s && s.requires_advance_payment === true;
+    };
+
+    const itemRows: PendingSupplierPayment[] = pendingItems
+      .filter((it: any) => supplierRequiresAdvance(it.supplier_id))
+      .map((it: any) => {
       const o = oMap.get(it.order_id) ?? {};
       const s = sMap.get(it.supplier_id) ?? {};
       const b = bMap.get(o.brand_id) ?? {};
@@ -379,7 +389,9 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
       };
     });
 
-    const phaseRows: PendingSupplierPayment[] = pendingPhases.map((ph: any) => {
+    const phaseRows: PendingSupplierPayment[] = pendingPhases
+      .filter((ph: any) => supplierRequiresAdvance(ph.supplier_id))
+      .map((ph: any) => {
       const o = oMap.get(ph.order_id) ?? {};
       const s = sMap.get(ph.supplier_id) ?? {};
       const b = bMap.get(o.brand_id) ?? {};
@@ -436,13 +448,13 @@ export const getPendingSupplierPaymentsCount = createServerFn({ method: "GET" })
     const [{ data: items, error: itErr }, { data: phases, error: phErr }] = await Promise.all([
       supabase
         .from("order_items")
-        .select("id, negotiated_cost, manufacturing_cost, has_phases")
+        .select("id, supplier_id, negotiated_cost, manufacturing_cost, has_phases")
         .not("supplier_id", "is", null)
         .not("quotation_date", "is", null)
         .eq("ready_for_advance_payment", true),
       supabase
         .from("order_item_phases")
-        .select("id, order_item_id, negotiated_cost, manufacturing_cost")
+        .select("id, order_item_id, supplier_id, negotiated_cost, manufacturing_cost")
         .not("supplier_id", "is", null)
         .not("quotation_date", "is", null)
         .eq("ready_for_advance_payment", true),
@@ -462,9 +474,29 @@ export const getPendingSupplierPaymentsCount = createServerFn({ method: "GET" })
 
     if (rawItems.length === 0 && rawPhases.length === 0) return { count: 0, total: 0 };
 
+    // Excluye proveedores que no requieren anticipo (misma regla del trigger de tareas).
+    const supplierIds = Array.from(new Set([
+      ...rawItems.map((r: any) => r.supplier_id),
+      ...rawPhases.map((p: any) => p.supplier_id),
+    ]));
+    const { data: suppliers, error: supErr } = await supabase
+      .from("suppliers")
+      .select("id, requires_advance_payment")
+      .in("id", supplierIds);
+    if (supErr) throw supErr;
+    const requiresSet = new Set(
+      (suppliers ?? [])
+        .filter((s: any) => s.requires_advance_payment === true)
+        .map((s: any) => s.id),
+    );
+    const filteredItems = rawItems.filter((r: any) => requiresSet.has(r.supplier_id));
+    const filteredPhases = rawPhases.filter((p: any) => requiresSet.has(p.supplier_id));
+
+    if (filteredItems.length === 0 && filteredPhases.length === 0) return { count: 0, total: 0 };
+
     const itemIds = Array.from(new Set([
-      ...rawItems.map((r: any) => r.id),
-      ...rawPhases.map((p: any) => p.order_item_id),
+      ...filteredItems.map((r: any) => r.id),
+      ...filteredPhases.map((p: any) => p.order_item_id),
     ]));
     const { data: paid, error: paidErr } = await supabase
       .from("order_item_supplier_payments")
@@ -483,8 +515,8 @@ export const getPendingSupplierPaymentsCount = createServerFn({ method: "GET" })
         .map((p: any) => p.phase_id),
     );
 
-    const pendingItems = rawItems.filter((r: any) => !paidItemSet.has(r.id)).length;
-    const pendingPhases = rawPhases.filter((p: any) => !paidPhaseSet.has(p.id)).length;
+    const pendingItems = filteredItems.filter((r: any) => !paidItemSet.has(r.id)).length;
+    const pendingPhases = filteredPhases.filter((p: any) => !paidPhaseSet.has(p.id)).length;
 
     return { count: pendingItems + pendingPhases, total: 0 };
   });
