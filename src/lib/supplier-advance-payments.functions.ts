@@ -462,29 +462,9 @@ export const getPendingSupplierPaymentsCount = createServerFn({ method: "GET" })
 
     if (rawItems.length === 0 && rawPhases.length === 0) return { count: 0, total: 0 };
 
-    // Excluye proveedores que no requieren anticipo (misma regla del trigger de tareas).
-    const supplierIds = Array.from(new Set([
-      ...rawItems.map((r: any) => r.supplier_id),
-      ...rawPhases.map((p: any) => p.supplier_id),
-    ]));
-    const { data: suppliers, error: supErr } = await supabase
-      .from("suppliers")
-      .select("id, requires_advance_payment")
-      .in("id", supplierIds);
-    if (supErr) throw supErr;
-    const requiresSet = new Set(
-      (suppliers ?? [])
-        .filter((s: any) => s.requires_advance_payment === true)
-        .map((s: any) => s.id),
-    );
-    const filteredItems = rawItems.filter((r: any) => requiresSet.has(r.supplier_id));
-    const filteredPhases = rawPhases.filter((p: any) => requiresSet.has(p.supplier_id));
-
-    if (filteredItems.length === 0 && filteredPhases.length === 0) return { count: 0, total: 0 };
-
     const itemIds = Array.from(new Set([
-      ...filteredItems.map((r: any) => r.id),
-      ...filteredPhases.map((p: any) => p.order_item_id),
+      ...rawItems.map((r: any) => r.id),
+      ...rawPhases.map((p: any) => p.order_item_id),
     ]));
     const { data: paid, error: paidErr } = await supabase
       .from("order_item_supplier_payments")
@@ -503,8 +483,8 @@ export const getPendingSupplierPaymentsCount = createServerFn({ method: "GET" })
         .map((p: any) => p.phase_id),
     );
 
-    const pendingItems = filteredItems.filter((r: any) => !paidItemSet.has(r.id)).length;
-    const pendingPhases = filteredPhases.filter((p: any) => !paidPhaseSet.has(p.id)).length;
+    const pendingItems = rawItems.filter((r: any) => !paidItemSet.has(r.id)).length;
+    const pendingPhases = rawPhases.filter((p: any) => !paidPhaseSet.has(p.id)).length;
 
     return { count: pendingItems + pendingPhases, total: 0 };
   });
