@@ -57,7 +57,7 @@ function OrdersPage() {
     queryFn: async () => {
       let q = supabase
         .from("orders")
-        .select("id, order_number, invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, brand_id, customer_name, customer_phone, customer_doc_number, sale_type, separe_completed_at, approval_status, brand:brands(name, invoice_prefix), status:order_statuses(name,color,slug,is_draft), invoices(id), items:order_items(description, quantity, sort_order)")
+        .select("id, order_number, invoice_number, alegra_invoice_number, total, advance_amount, created_at, estimated_delivery_date, status_id, brand_id, customer_name, customer_phone, customer_doc_number, sale_type, separe_completed_at, approval_status, brand:brands(name, invoice_prefix), status:order_statuses(name,color,slug,is_draft), invoices(id), items:order_items(description, quantity, sort_order)")
         .order("created_at", { ascending: false });
       if (effectiveBrandFilter !== "all") q = q.eq("brand_id", effectiveBrandFilter);
       if (statusFilter !== "all") q = q.eq("status_id", statusFilter);
@@ -192,6 +192,11 @@ function OrdersPage() {
                       {o.invoice_number && (
                         <p className="text-[11px] text-muted-foreground font-mono">{o.order_number}</p>
                       )}
+                      {o.alegra_invoice_number && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Alegra: <span className="font-mono text-foreground">Fact. {o.alegra_invoice_number}</span>
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-foreground">{summarizeItems(o.items)}</td>
                     <td className="px-4 py-3">
@@ -235,6 +240,11 @@ function OrdersPage() {
                     </span>
                     {o.status && !o.status.is_draft && o.status.slug !== "borrador" && <StatusBadge name={o.status.name} color={o.status.color} />}
                   </div>
+                  {o.alegra_invoice_number && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Alegra: <span className="font-mono text-foreground">Fact. {o.alegra_invoice_number}</span>
+                    </p>
+                  )}
                   <p className="text-sm">{summarizeItems(o.items)}</p>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <PaymentBadge total={Number(o.total)} advance={Number(o.advance_amount || 0)} />
