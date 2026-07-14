@@ -379,9 +379,7 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
       };
     });
 
-    const phaseRows: PendingSupplierPayment[] = pendingPhases
-      .filter((ph: any) => supplierRequiresAdvance(ph.supplier_id))
-      .map((ph: any) => {
+    const phaseRows: PendingSupplierPayment[] = pendingPhases.map((ph: any) => {
       const o = oMap.get(ph.order_id) ?? {};
       const s = sMap.get(ph.supplier_id) ?? {};
       const b = bMap.get(o.brand_id) ?? {};
