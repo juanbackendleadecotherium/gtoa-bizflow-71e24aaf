@@ -446,8 +446,7 @@ export function NewCustomerDialog({
         },
         order: {
           invoice_number: ext.order.invoice_number || d.order.invoice_number,
-          alegra_invoice_number:
-            ext.order.alegra_invoice_number || d.order.alegra_invoice_number,
+          alegra_invoice_number: d.order.alegra_invoice_number,
           sale_date: ext.order.sale_date || d.order.sale_date,
           estimated_delivery_date:
             ext.order.estimated_delivery_date || d.order.estimated_delivery_date,
