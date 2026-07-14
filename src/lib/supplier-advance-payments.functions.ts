@@ -352,7 +352,17 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
     const bMap = new Map((brands ?? []).map((b: any) => [b.id, b]));
     const piMap = new Map((parentItems ?? []).map((p: any) => [p.id, p]));
 
-    const itemRows: PendingSupplierPayment[] = pendingItems.map((it: any) => {
+    // Excluye ítems/fases cuyo proveedor NO exige anticipo (misma regla que usa
+    // el trigger que crea las tareas de "Pago a proveedor pendiente" en Mis tareas).
+    const supplierRequiresAdvance = (supplierId: string | null | undefined) => {
+      if (!supplierId) return false;
+      const s: any = sMap.get(supplierId);
+      return !!s && s.requires_advance_payment === true;
+    };
+
+    const itemRows: PendingSupplierPayment[] = pendingItems
+      .filter((it: any) => supplierRequiresAdvance(it.supplier_id))
+      .map((it: any) => {
       const o = oMap.get(it.order_id) ?? {};
       const s = sMap.get(it.supplier_id) ?? {};
       const b = bMap.get(o.brand_id) ?? {};
