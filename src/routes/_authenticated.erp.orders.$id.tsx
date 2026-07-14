@@ -25,6 +25,7 @@ import { uploadPlanimetryFiles, type PlanimetryFile } from "@/lib/planimetry-upl
 import { AuditTimeline, type AuditRow } from "@/features/orders/audit-timeline";
 import { InvoicePanel } from "@/features/invoices/invoice-panel";
 import { EditInvoiceNumberButton } from "@/features/invoices/edit-invoice-number-dialog";
+import { EditAlegraInvoiceButton } from "@/features/invoices/edit-alegra-number-dialog";
 import { PaymentBadge } from "@/features/invoices/invoice-badges";
 import { PaymentsPanel } from "@/features/finance/payments-panel";
 import { PartialShipmentToggle } from "@/features/orders/partial-shipment-toggle";
