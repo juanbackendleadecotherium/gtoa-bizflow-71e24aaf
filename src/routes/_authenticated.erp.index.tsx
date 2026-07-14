@@ -102,7 +102,7 @@ function SellerDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, order_number, invoice_number, customer_name, total, created_at, sale_type")
+        .select("id, order_number, invoice_number, alegra_invoice_number, customer_name, total, created_at, sale_type")
         .eq("seller_id", userId!)
         .eq("brand_id", selectedBrandId!)
         .order("created_at", { ascending: false })
@@ -196,6 +196,11 @@ function SellerDashboard() {
                       {o.invoice_number ?? o.order_number ?? "Borrador"}
                       {o.customer_name && <span className="text-muted-foreground"> · {o.customer_name}</span>}
                     </p>
+                    {o.alegra_invoice_number && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Alegra: <span className="font-mono text-foreground">Fact. {o.alegra_invoice_number}</span>
+                      </p>
+                    )}
                     <p className="text-[11px] text-muted-foreground">
                       {new Date(o.created_at).toLocaleDateString("es-CO")} · {fmtMoney(Number(o.total ?? 0))}
                     </p>
