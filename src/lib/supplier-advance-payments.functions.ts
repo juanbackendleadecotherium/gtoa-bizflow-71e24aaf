@@ -333,7 +333,7 @@ export const listPendingSupplierPayments = createServerFn({ method: "GET" })
       { data: parentItems, error: piErr },
     ] = await Promise.all([
       supabase.from("orders").select("id, invoice_number, order_number, brand_id").in("id", orderIds),
-      supabase.from("suppliers").select("id, name, advance_payment_pct, brand_id").in("id", supplierIds),
+      supabase.from("suppliers").select("id, name, advance_payment_pct, brand_id, requires_advance_payment").in("id", supplierIds),
       phaseParentIds.length > 0
         ? supabase.from("order_items").select("id, description").in("id", phaseParentIds)
         : Promise.resolve({ data: [], error: null } as any),
