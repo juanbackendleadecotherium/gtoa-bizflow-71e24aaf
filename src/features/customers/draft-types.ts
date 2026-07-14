@@ -19,6 +19,7 @@ export type CustomerDraft = {
 
 export type OrderDraft = {
   invoice_number: string;
+  alegra_invoice_number: string;
   sale_date: string;
   estimated_delivery_date: string;
   payment_method: string;

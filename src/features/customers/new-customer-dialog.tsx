@@ -98,6 +98,7 @@ const EMPTY: Draft = {
   },
   order: {
     invoice_number: "",
+    alegra_invoice_number: "",
     sale_date: todayISO(),
     estimated_delivery_date: "",
     payment_method: "",
@@ -445,6 +446,8 @@ export function NewCustomerDialog({
         },
         order: {
           invoice_number: ext.order.invoice_number || d.order.invoice_number,
+          alegra_invoice_number:
+            ext.order.alegra_invoice_number || d.order.alegra_invoice_number,
           sale_date: ext.order.sale_date || d.order.sale_date,
           estimated_delivery_date:
             ext.order.estimated_delivery_date || d.order.estimated_delivery_date,
@@ -557,6 +560,7 @@ export function NewCustomerDialog({
         source: rawText ? "whatsapp" : "manual",
         whatsapp_raw: rawText || null,
         invoice_number: invoiceNumber,
+        alegra_invoice_number: draft.order.alegra_invoice_number.trim() || null,
         sale_date: draft.order.sale_date || null,
         estimated_delivery_date: draft.order.estimated_delivery_date || null,
         payment_method: draft.order.payment_method || null,
@@ -997,12 +1001,19 @@ export function NewCustomerDialog({
             title="Cuentas de cobro y fechas"
             subtitle="Número de cuenta de cobro y fechas clave."
           >
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <FieldBlock label="Nro Cuenta de cobro">
                 <Input
                   value={draft.order.invoice_number}
                   onChange={(e) => setO("invoice_number", e.target.value)}
                   placeholder="Ej. CD-1686"
+                />
+              </FieldBlock>
+              <FieldBlock label="Nro Factura Alegra">
+                <Input
+                  value={draft.order.alegra_invoice_number}
+                  onChange={(e) => setO("alegra_invoice_number", e.target.value)}
+                  placeholder="Ej. 1940"
                 />
               </FieldBlock>
               <FieldBlock label="Fecha de venta">
