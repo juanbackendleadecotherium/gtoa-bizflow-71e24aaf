@@ -428,14 +428,64 @@ export const getPendingSupplierPaymentsCount = createServerFn({ method: "GET" })
     const ok = (roles ?? []).some((r: any) => r.role === "admin" || r.role === "finanzas");
     if (!ok) return { count: 0, total: 0 };
 
-    // Reuse the same shape; count via tasks assigned to this user is the fastest badge.
-    const { count, error } = await supabase
-      .from("seller_tasks")
-      .select("id", { count: "exact", head: true })
-      .eq("seller_id", userId)
-      .eq("type", "pay_supplier_advance")
-      .eq("status", "pendiente");
-    if (error) throw error;
-    return { count: count ?? 0, total: 0 };
+    // Cuenta los pagos pendientes reales usando la misma lógica que
+    // listPendingSupplierPayments para que el badge del sidebar coincida
+    // siempre con lo que se ve dentro del módulo (no dependemos de que
+    // exista un seller_task por usuario, que puede faltar por triggers
+    // antiguos o cambios de rol posteriores).
+    const [{ data: items, error: itErr }, { data: phases, error: phErr }] = await Promise.all([
+      supabase
+        .from("order_items")
+        .select("id, negotiated_cost, manufacturing_cost, has_phases")
+        .not("supplier_id", "is", null)
+        .not("quotation_date", "is", null)
+        .eq("ready_for_advance_payment", true),
+      supabase
+        .from("order_item_phases")
+        .select("id, order_item_id, negotiated_cost, manufacturing_cost")
+        .not("supplier_id", "is", null)
+        .not("quotation_date", "is", null)
+        .eq("ready_for_advance_payment", true),
+    ]);
+    if (itErr) throw itErr;
+    if (phErr) throw phErr;
+
+    const rawItems = (items ?? []).filter((it: any) => {
+      if (it.has_phases) return false;
+      const cost = it.negotiated_cost ?? it.manufacturing_cost;
+      return cost != null && Number(cost) > 0;
+    });
+    const rawPhases = (phases ?? []).filter((p: any) => {
+      const cost = p.negotiated_cost ?? p.manufacturing_cost;
+      return cost != null && Number(cost) > 0;
+    });
+
+    if (rawItems.length === 0 && rawPhases.length === 0) return { count: 0, total: 0 };
+
+    const itemIds = Array.from(new Set([
+      ...rawItems.map((r: any) => r.id),
+      ...rawPhases.map((p: any) => p.order_item_id),
+    ]));
+    const { data: paid, error: paidErr } = await supabase
+      .from("order_item_supplier_payments")
+      .select("order_item_id, phase_id, payment_type")
+      .in("order_item_id", itemIds);
+    if (paidErr) throw paidErr;
+
+    const paidItemSet = new Set(
+      (paid ?? [])
+        .filter((p: any) => (p.payment_type ?? "advance") === "advance" && !p.phase_id)
+        .map((p: any) => p.order_item_id),
+    );
+    const paidPhaseSet = new Set(
+      (paid ?? [])
+        .filter((p: any) => (p.payment_type ?? "advance") === "advance" && p.phase_id)
+        .map((p: any) => p.phase_id),
+    );
+
+    const pendingItems = rawItems.filter((r: any) => !paidItemSet.has(r.id)).length;
+    const pendingPhases = rawPhases.filter((p: any) => !paidPhaseSet.has(p.id)).length;
+
+    return { count: pendingItems + pendingPhases, total: 0 };
   });
 
