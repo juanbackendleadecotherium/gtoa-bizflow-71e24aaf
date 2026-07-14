@@ -624,15 +624,21 @@ export function NewCustomerDialog({
         );
       }
 
-      // Sube comprobante de pago (nuevo o el ya subido al borrador)
-      let finalProofUrl: string | null = paymentProofUrls[0] ?? null;
-      if (paymentProof[0]) {
-        finalProofUrl = await uploadOrderImage(paymentProof[0].file, `payments/${order.id}`);
+      // Sube comprobantes de pago (nuevos + los ya subidos al borrador).
+      // Guardamos todos en `payment_proof_urls` y mantenemos el primero en
+      // `payment_proof_url` para compatibilidad con vistas antiguas.
+      const uploadedProofs: string[] = [];
+      for (const p of paymentProof) {
+        uploadedProofs.push(await uploadOrderImage(p.file, `payments/${order.id}`));
       }
-      if (finalProofUrl) {
+      const finalProofUrls = [...paymentProofUrls, ...uploadedProofs];
+      if (finalProofUrls.length > 0) {
         await supabase
           .from("orders")
-          .update({ payment_proof_url: finalProofUrl } as never)
+          .update({
+            payment_proof_url: finalProofUrls[0],
+            payment_proof_urls: finalProofUrls,
+          } as never)
           .eq("id", order.id);
       }
 
@@ -1353,8 +1359,9 @@ export function NewCustomerDialog({
                 onChangePending={setPaymentProof}
                 existingUrls={paymentProofUrls}
                 onRemoveExisting={removeExistingPaymentProof}
-                label="Subir comprobante"
-                hint="Foto del recibo, transferencia o consignación. Se comprime antes de subir."
+                multiple
+                label="Subir comprobantes"
+                hint="Puedes adjuntar varias fotos del recibo, transferencia o consignación. Se comprimen antes de subir."
               />
             </div>
           </SectionCard>

@@ -1679,6 +1679,7 @@ export type Database = {
           paulatino_authorized_by_email: string | null
           payment_method: string | null
           payment_proof_url: string | null
+          payment_proof_urls: string[]
           price_locked_at: string | null
           requires_management_approval: boolean
           sale_date: string | null
@@ -1741,6 +1742,7 @@ export type Database = {
           paulatino_authorized_by_email?: string | null
           payment_method?: string | null
           payment_proof_url?: string | null
+          payment_proof_urls?: string[]
           price_locked_at?: string | null
           requires_management_approval?: boolean
           sale_date?: string | null
@@ -1803,6 +1805,7 @@ export type Database = {
           paulatino_authorized_by_email?: string | null
           payment_method?: string | null
           payment_proof_url?: string | null
+          payment_proof_urls?: string[]
           price_locked_at?: string | null
           requires_management_approval?: boolean
           sale_date?: string | null
