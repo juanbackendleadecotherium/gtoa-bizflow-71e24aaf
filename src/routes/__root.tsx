@@ -136,11 +136,45 @@ function AuthSync() {
   return null;
 }
 
+function StaleChunkReloader() {
+  useEffect(() => {
+    const RELOAD_KEY = "__stale_chunk_reloaded_at";
+    const isChunkError = (msg: string | undefined) =>
+      !!msg && (
+        /Failed to fetch dynamically imported module/i.test(msg) ||
+        /Importing a module script failed/i.test(msg) ||
+        /error loading dynamically imported module/i.test(msg) ||
+        /ChunkLoadError/i.test(msg)
+      );
+    const maybeReload = (msg: string | undefined) => {
+      if (!isChunkError(msg)) return;
+      const last = Number(sessionStorage.getItem(RELOAD_KEY) ?? "0");
+      // Evita loop infinito: máximo un reload cada 30s
+      if (Date.now() - last < 30_000) return;
+      sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+      window.location.reload();
+    };
+    const onError = (e: ErrorEvent) => maybeReload(e.message || (e.error && e.error.message));
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const reason: any = e.reason;
+      maybeReload(typeof reason === "string" ? reason : reason?.message);
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
       <AuthSync />
+      <StaleChunkReloader />
       <Outlet />
       <Toaster richColors position="top-right" />
     </QueryClientProvider>
