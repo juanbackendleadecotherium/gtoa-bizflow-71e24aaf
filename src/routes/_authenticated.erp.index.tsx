@@ -196,6 +196,11 @@ function SellerDashboard() {
                       {o.invoice_number ?? o.order_number ?? "Borrador"}
                       {o.customer_name && <span className="text-muted-foreground"> · {o.customer_name}</span>}
                     </p>
+                    {o.alegra_invoice_number && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Alegra: <span className="font-mono text-foreground">Fact. {o.alegra_invoice_number}</span>
+                      </p>
+                    )}
                     <p className="text-[11px] text-muted-foreground">
                       {new Date(o.created_at).toLocaleDateString("es-CO")} · {fmtMoney(Number(o.total ?? 0))}
                     </p>
