@@ -71,7 +71,7 @@ function OrderDetail() {
           sale_type, separe_activated_at, separe_completed_at, price_locked_at, seller_id,
           paulatino_authorized_by_email, paulatino_authorized_at, paulatino_advance_at_send,
           approval_status, approval_requested_at, approval_resolved_at, approval_note,
-          payment_method, advance_amount, advance_deposit_account, payment_proof_url,
+          payment_method, advance_amount, advance_deposit_account, payment_proof_url, payment_proof_urls,
           customer_name, customer_doc_type, customer_doc_number, customer_phone, customer_email,
           customer_address, customer_city, customer_department, customer_company, customer_person_type, customer_contact_type,
           status:order_statuses(id, name, color, slug, is_draft),
@@ -714,21 +714,32 @@ function OrderDetail() {
                 )}
               </div>
             )}
-            {o.payment_proof_url && (
-              <div className="mt-3 pt-3 border-t border-border">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-                  Comprobante de pago
-                </p>
-                <a
-                  href={o.payment_proof_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block rounded-lg overflow-hidden border border-border bg-muted aspect-video hover:border-accent/60 transition-colors"
-                >
-                  <img src={o.payment_proof_url} alt="Comprobante de pago" className="w-full h-full object-cover" />
-                </a>
-              </div>
-            )}
+            {(() => {
+              const proofs: string[] = (o.payment_proof_urls && o.payment_proof_urls.length > 0)
+                ? o.payment_proof_urls
+                : (o.payment_proof_url ? [o.payment_proof_url] : []);
+              if (proofs.length === 0) return null;
+              return (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                    {proofs.length > 1 ? `Comprobantes de pago (${proofs.length})` : "Comprobante de pago"}
+                  </p>
+                  <div className={proofs.length > 1 ? "grid grid-cols-2 gap-2" : ""}>
+                    {proofs.map((url, i) => (
+                      <a
+                        key={url + i}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block rounded-lg overflow-hidden border border-border bg-muted aspect-video hover:border-accent/60 transition-colors"
+                      >
+                        <img src={url} alt={`Comprobante de pago ${i + 1}`} className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <InvoicePanel order={o as any} />
