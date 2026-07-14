@@ -1639,6 +1639,7 @@ export type Database = {
         Row: {
           advance_amount: number
           advance_deposit_account: string | null
+          alegra_invoice_number: string | null
           approval_note: string | null
           approval_requested_at: string | null
           approval_requested_by: string | null
@@ -1700,6 +1701,7 @@ export type Database = {
         Insert: {
           advance_amount?: number
           advance_deposit_account?: string | null
+          alegra_invoice_number?: string | null
           approval_note?: string | null
           approval_requested_at?: string | null
           approval_requested_by?: string | null
@@ -1761,6 +1763,7 @@ export type Database = {
         Update: {
           advance_amount?: number
           advance_deposit_account?: string | null
+          alegra_invoice_number?: string | null
           approval_note?: string | null
           approval_requested_at?: string | null
           approval_requested_by?: string | null
