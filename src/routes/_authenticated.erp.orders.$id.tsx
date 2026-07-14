@@ -66,7 +66,7 @@ function OrderDetail() {
       const { data, error } = await supabase
         .from("orders")
         .select(`
-          id, order_number, invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date, scheduled_delivery_date, is_deferred_delivery, deferred_reason, deferred_at,
+          id, order_number, invoice_number, alegra_invoice_number, sale_date, status_id, notes, subtotal, discount, tax, total, created_at, brand_id, estimated_delivery_date, scheduled_delivery_date, is_deferred_delivery, deferred_reason, deferred_at,
           sale_type, separe_activated_at, separe_completed_at, price_locked_at, seller_id,
           paulatino_authorized_by_email, paulatino_authorized_at, paulatino_advance_at_send,
           approval_status, approval_requested_at, approval_resolved_at, approval_note,
@@ -368,6 +368,17 @@ function OrderDetail() {
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-1 truncate flex flex-wrap items-center gap-x-2 gap-y-1">
             <span>{o.order_number}{o.invoice_number ? ` · Fact. ${o.invoice_number}` : ""}</span>
             <EditInvoiceNumberButton orderId={o.id} currentInvoiceNumber={o.invoice_number} />
+          </p>
+          <p className="text-[11px] text-muted-foreground mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="normal-case tracking-normal">
+              Alegra:{" "}
+              {o.alegra_invoice_number ? (
+                <span className="font-mono text-foreground">Fact. {o.alegra_invoice_number}</span>
+              ) : (
+                <span className="italic">sin vincular</span>
+              )}
+            </span>
+            <EditAlegraInvoiceButton orderId={o.id} currentAlegraNumber={o.alegra_invoice_number} />
           </p>
           <h1 className="font-display text-2xl font-semibold break-words">{o.customer_name ?? "Sin cliente"}</h1>
           {(() => {
