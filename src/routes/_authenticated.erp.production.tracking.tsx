@@ -188,13 +188,38 @@ function TrackingPage() {
         itemsByPo.set(it.production_order_id, arr);
       }
 
+      // Costos por fase para items con has_phases=true (Mesa de comedor, etc.)
+      const phasedItemIds = ((itemsRes.data ?? []) as any[])
+        .filter((it: any) => it.has_phases)
+        .map((it: any) => it.id);
+      const phasesCostByItem = new Map<string, number | null>();
+      if (phasedItemIds.length) {
+        const { data: phaseRows } = await supabase
+          .from("order_item_phases")
+          .select("order_item_id, manufacturing_cost, negotiated_cost")
+          .in("order_item_id", phasedItemIds);
+        for (const p of (phaseRows ?? []) as any[]) {
+          const eff = p.negotiated_cost ?? p.manufacturing_cost;
+          if (eff == null) continue;
+          phasesCostByItem.set(
+            p.order_item_id,
+            (phasesCostByItem.get(p.order_item_id) ?? 0) + Number(eff),
+          );
+        }
+      }
+
       return rows.map((r) => {
         const items = itemsByPo.get(r.id) ?? [];
-        const poSaleTotal = items.reduce((acc: number, it: any) => acc + (Number(it.line_total) || 0), 0);
+        // Venta = solo raíces (los hijos son parte del padre y su line_total suele ser 0)
+        const roots = items.filter((it: any) => !it.parent_item_id);
+        const poSaleTotal = roots.reduce((acc: number, it: any) => acc + (Number(it.line_total) || 0), 0);
         return {
           ...r,
           supplier: suppliersById.get(r.supplier_id) ?? null,
-          items,
+          items: items.map((it: any) => ({
+            ...it,
+            phases_cost: it.has_phases ? phasesCostByItem.get(it.id) ?? null : null,
+          })),
           po_sale_total: poSaleTotal,
           seller: r.order?.seller_id ? sellersById.get(r.order.seller_id) ?? null : null,
         };
@@ -387,14 +412,49 @@ function TrackingRow({
   const saleTotal = Number(r.po_sale_total) || 0;
   const invoiceTotal = Number(r.order?.total) || 0;
   const itemsList: any[] = r.items ?? [];
-  const effectiveCosts = itemsList.map((it) => getEffectiveCost(it));
-  const allHaveCost = itemsList.length > 0 && effectiveCosts.every((c) => c != null);
-  const aggCost = allHaveCost
-    ? effectiveCosts.reduce((acc, c) => acc + Number(c ?? 0), 0)
-    : null;
-  const cost = aggCost ?? getEffectiveCost(r);
-  const liveMargin = cost != null && saleTotal > 0 ? ((saleTotal - cost) / saleTotal) * 100 : null;
 
+  // Costo efectivo por ítem: fases (si has_phases) o negociado/original.
+  const effectiveCostFor = (it: any): number | null => {
+    if (it.has_phases) {
+      const c = it.phases_cost;
+      return c != null && c > 0 ? Number(c) : null;
+    }
+    return getEffectiveCost(it);
+  };
+
+  // Padres con hijos: la venta la aporta el padre y el costo suma padre + hijos.
+  // Ítems "cortesía" (venta 0 y sin costo) no invalidan el margen global.
+  const roots = itemsList.filter((it) => !it.parent_item_id);
+  const childrenByParent = new Map<string, any[]>();
+  for (const it of itemsList) {
+    if (!it.parent_item_id) continue;
+    const arr = childrenByParent.get(it.parent_item_id) ?? [];
+    arr.push(it);
+    childrenByParent.set(it.parent_item_id, arr);
+  }
+
+  let aggCost = 0;
+  let allHaveCost = roots.length > 0;
+  for (const root of roots) {
+    const kids = childrenByParent.get(root.id) ?? [];
+    const rootLine = Number(root.line_total) || 0;
+    const rootCost = effectiveCostFor(root);
+    const kidsCosts = kids.map(effectiveCostFor);
+
+    // Cortesía: raíz sin venta y sin costo propio ni de hijos → se ignora.
+    if (rootLine === 0 && rootCost == null && kidsCosts.every((c) => c == null)) continue;
+
+    if (rootCost == null && kids.length === 0) { allHaveCost = false; continue; }
+    if (rootCost != null) aggCost += rootCost;
+    for (const cc of kidsCosts) {
+      if (cc == null) { allHaveCost = false; }
+      else aggCost += cc;
+    }
+    // Si el padre tiene hijos pero no todos aportan costo y el padre tampoco, marcar incompleto.
+    if (rootCost == null && kids.length > 0 && kidsCosts.every((c) => c == null)) allHaveCost = false;
+  }
+
+  const liveMargin = allHaveCost && saleTotal > 0 ? ((saleTotal - aggCost) / saleTotal) * 100 : null;
   const margin = liveMargin ?? (r.margin_pct == null ? null : Number(r.margin_pct));
   const cls = marginCls(margin);
 
