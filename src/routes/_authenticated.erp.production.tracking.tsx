@@ -412,14 +412,49 @@ function TrackingRow({
   const saleTotal = Number(r.po_sale_total) || 0;
   const invoiceTotal = Number(r.order?.total) || 0;
   const itemsList: any[] = r.items ?? [];
-  const effectiveCosts = itemsList.map((it) => getEffectiveCost(it));
-  const allHaveCost = itemsList.length > 0 && effectiveCosts.every((c) => c != null);
-  const aggCost = allHaveCost
-    ? effectiveCosts.reduce((acc, c) => acc + Number(c ?? 0), 0)
-    : null;
-  const cost = aggCost ?? getEffectiveCost(r);
-  const liveMargin = cost != null && saleTotal > 0 ? ((saleTotal - cost) / saleTotal) * 100 : null;
 
+  // Costo efectivo por ítem: fases (si has_phases) o negociado/original.
+  const effectiveCostFor = (it: any): number | null => {
+    if (it.has_phases) {
+      const c = it.phases_cost;
+      return c != null && c > 0 ? Number(c) : null;
+    }
+    return getEffectiveCost(it);
+  };
+
+  // Padres con hijos: la venta la aporta el padre y el costo suma padre + hijos.
+  // Ítems "cortesía" (venta 0 y sin costo) no invalidan el margen global.
+  const roots = itemsList.filter((it) => !it.parent_item_id);
+  const childrenByParent = new Map<string, any[]>();
+  for (const it of itemsList) {
+    if (!it.parent_item_id) continue;
+    const arr = childrenByParent.get(it.parent_item_id) ?? [];
+    arr.push(it);
+    childrenByParent.set(it.parent_item_id, arr);
+  }
+
+  let aggCost = 0;
+  let allHaveCost = roots.length > 0;
+  for (const root of roots) {
+    const kids = childrenByParent.get(root.id) ?? [];
+    const rootLine = Number(root.line_total) || 0;
+    const rootCost = effectiveCostFor(root);
+    const kidsCosts = kids.map(effectiveCostFor);
+
+    // Cortesía: raíz sin venta y sin costo propio ni de hijos → se ignora.
+    if (rootLine === 0 && rootCost == null && kidsCosts.every((c) => c == null)) continue;
+
+    if (rootCost == null && kids.length === 0) { allHaveCost = false; continue; }
+    if (rootCost != null) aggCost += rootCost;
+    for (const cc of kidsCosts) {
+      if (cc == null) { allHaveCost = false; }
+      else aggCost += cc;
+    }
+    // Si el padre tiene hijos pero no todos aportan costo y el padre tampoco, marcar incompleto.
+    if (rootCost == null && kids.length > 0 && kidsCosts.every((c) => c == null)) allHaveCost = false;
+  }
+
+  const liveMargin = allHaveCost && saleTotal > 0 ? ((saleTotal - aggCost) / saleTotal) * 100 : null;
   const margin = liveMargin ?? (r.margin_pct == null ? null : Number(r.margin_pct));
   const cls = marginCls(margin);
 
