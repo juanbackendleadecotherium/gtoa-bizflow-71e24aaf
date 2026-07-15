@@ -188,13 +188,38 @@ function TrackingPage() {
         itemsByPo.set(it.production_order_id, arr);
       }
 
+      // Costos por fase para items con has_phases=true (Mesa de comedor, etc.)
+      const phasedItemIds = ((itemsRes.data ?? []) as any[])
+        .filter((it: any) => it.has_phases)
+        .map((it: any) => it.id);
+      const phasesCostByItem = new Map<string, number | null>();
+      if (phasedItemIds.length) {
+        const { data: phaseRows } = await supabase
+          .from("order_item_phases")
+          .select("order_item_id, manufacturing_cost, negotiated_cost")
+          .in("order_item_id", phasedItemIds);
+        for (const p of (phaseRows ?? []) as any[]) {
+          const eff = p.negotiated_cost ?? p.manufacturing_cost;
+          if (eff == null) continue;
+          phasesCostByItem.set(
+            p.order_item_id,
+            (phasesCostByItem.get(p.order_item_id) ?? 0) + Number(eff),
+          );
+        }
+      }
+
       return rows.map((r) => {
         const items = itemsByPo.get(r.id) ?? [];
-        const poSaleTotal = items.reduce((acc: number, it: any) => acc + (Number(it.line_total) || 0), 0);
+        // Venta = solo raíces (los hijos son parte del padre y su line_total suele ser 0)
+        const roots = items.filter((it: any) => !it.parent_item_id);
+        const poSaleTotal = roots.reduce((acc: number, it: any) => acc + (Number(it.line_total) || 0), 0);
         return {
           ...r,
           supplier: suppliersById.get(r.supplier_id) ?? null,
-          items,
+          items: items.map((it: any) => ({
+            ...it,
+            phases_cost: it.has_phases ? phasesCostByItem.get(it.id) ?? null : null,
+          })),
           po_sale_total: poSaleTotal,
           seller: r.order?.seller_id ? sellersById.get(r.order.seller_id) ?? null : null,
         };
