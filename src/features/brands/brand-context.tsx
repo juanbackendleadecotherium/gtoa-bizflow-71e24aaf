@@ -19,6 +19,7 @@ type BrandCtx = {
   setSelectedBrandId: (id: string) => void;
   isAdmin: boolean;
   roles: string[];
+  restrictedModules: string[];
 };
 
 const SELECTED_BRAND_KEY = "getova:selected-brand";
