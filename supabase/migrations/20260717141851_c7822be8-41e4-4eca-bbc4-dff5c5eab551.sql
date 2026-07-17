@@ -1,0 +1,1 @@
+UPDATE public.order_items SET production_finished_at = NULL, production_finished_by = NULL, production_finished_by_email = NULL WHERE id = '23f65425-03aa-4b4c-aff6-a000049a2d06';
