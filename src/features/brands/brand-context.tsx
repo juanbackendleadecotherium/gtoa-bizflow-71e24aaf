@@ -102,7 +102,7 @@ export function BrandProvider({ userId, children }: { userId: string | undefined
 
   const value: BrandCtx = {
     brands, loading, selectedBrand, selectedBrandId,
-    setSelectedBrandId, isAdmin, roles,
+    setSelectedBrandId, isAdmin, roles, restrictedModules,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
