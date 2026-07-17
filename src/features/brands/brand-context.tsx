@@ -40,6 +40,21 @@ export function BrandProvider({ userId, children }: { userId: string | undefined
   const roles = useMemo(() => (rolesQuery.data ?? []).map((r) => r.role as string), [rolesQuery.data]);
   const isAdmin = roles.includes("admin");
 
+  const profileQuery = useQuery({
+    queryKey: ["profile-restrictions", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles").select("restricted_modules").eq("user_id", userId!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const restrictedModules = useMemo(
+    () => (profileQuery.data?.restricted_modules ?? []) as string[],
+    [profileQuery.data],
+  );
+
   const brandsQuery = useQuery({
     queryKey: ["brands", userId, isAdmin],
     enabled: !!userId && !rolesQuery.isLoading,
