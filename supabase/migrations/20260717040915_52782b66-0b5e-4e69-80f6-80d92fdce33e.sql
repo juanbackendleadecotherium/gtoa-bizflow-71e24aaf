@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS restricted_modules text[] NOT NULL DEFAULT '{}'::text[];
