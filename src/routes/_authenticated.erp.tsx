@@ -92,11 +92,12 @@ function Shell() {
   // Redirige a /erp si el rol actual no tiene acceso al módulo de la URL.
   // La barrera real está en RLS; esto sólo mejora UX ante URL directa.
   const rolesReady = roles.length > 0;
+  const isRestricted = (m: ModuleKey) => restrictedModules.includes(m);
   const matched = NAV.find((n) => (n.exact ? currentPath === n.to : currentPath.startsWith(n.to)));
   const isSellerRole = roles.includes("vendedor") || roles.includes("ventas");
   const isProductionDetailPath = /^\/erp\/production\/[^/]+$/.test(currentPath);
   const sellerCanViewProductionDetail = isSellerRole && !isAdmin && isProductionDetailPath;
-  const notAllowed = !!(rolesReady && matched && !canAccess(roles as AppRole[], matched.module) && !sellerCanViewProductionDetail);
+  const notAllowed = !!(rolesReady && matched && (!canAccess(roles as AppRole[], matched.module) || isRestricted(matched.module)) && !sellerCanViewProductionDetail);
   useEffect(() => {
     if (notAllowed) {
       toast.error("No tienes acceso a esa sección.");
