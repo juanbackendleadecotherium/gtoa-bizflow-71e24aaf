@@ -80,7 +80,7 @@ function Shell() {
   const session = useSession();
   const navigate = useNavigate();
   const userId = session.session?.user.id;
-  const { brands, selectedBrand, setSelectedBrandId, isAdmin, roles } = useBrand();
+  const { brands, selectedBrand, setSelectedBrandId, isAdmin, roles, restrictedModules } = useBrand();
   const isLogistics = isAdmin || roles.includes("logistica");
   const isFinance = isAdmin || roles.includes("finanzas");
   const routerState = useRouterState();
