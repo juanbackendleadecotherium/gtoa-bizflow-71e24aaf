@@ -19,6 +19,7 @@ type BrandCtx = {
   setSelectedBrandId: (id: string) => void;
   isAdmin: boolean;
   roles: string[];
+  restrictedModules: string[];
 };
 
 const SELECTED_BRAND_KEY = "getova:selected-brand";
@@ -38,6 +39,21 @@ export function BrandProvider({ userId, children }: { userId: string | undefined
 
   const roles = useMemo(() => (rolesQuery.data ?? []).map((r) => r.role as string), [rolesQuery.data]);
   const isAdmin = roles.includes("admin");
+
+  const profileQuery = useQuery({
+    queryKey: ["profile-restrictions", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles").select("restricted_modules").eq("user_id", userId!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const restrictedModules = useMemo(
+    () => (profileQuery.data?.restricted_modules ?? []) as string[],
+    [profileQuery.data],
+  );
 
   const brandsQuery = useQuery({
     queryKey: ["brands", userId, isAdmin],
@@ -86,7 +102,7 @@ export function BrandProvider({ userId, children }: { userId: string | undefined
 
   const value: BrandCtx = {
     brands, loading, selectedBrand, selectedBrandId,
-    setSelectedBrandId, isAdmin, roles,
+    setSelectedBrandId, isAdmin, roles, restrictedModules,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

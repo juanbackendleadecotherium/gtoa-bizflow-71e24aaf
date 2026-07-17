@@ -19,6 +19,12 @@ async function assertCanManageUsers(ctx: { supabase: any; userId: string }): Pro
   if (!roles.includes("admin") && !roles.includes("finanzas")) {
     throw new Error("Solo administradores o gerentes de finanzas pueden gestionar usuarios.");
   }
+  const { data: profile } = await ctx.supabase
+    .from("profiles").select("restricted_modules").eq("user_id", ctx.userId).maybeSingle();
+  const restricted = (profile?.restricted_modules ?? []) as string[];
+  if (restricted.includes("users")) {
+    throw new Error("No tienes acceso al módulo de usuarios.");
+  }
   return roles;
 }
 

@@ -80,7 +80,7 @@ function Shell() {
   const session = useSession();
   const navigate = useNavigate();
   const userId = session.session?.user.id;
-  const { brands, selectedBrand, setSelectedBrandId, isAdmin, roles } = useBrand();
+  const { brands, selectedBrand, setSelectedBrandId, isAdmin, roles, restrictedModules } = useBrand();
   const isLogistics = isAdmin || roles.includes("logistica");
   const isFinance = isAdmin || roles.includes("finanzas");
   const routerState = useRouterState();
@@ -92,11 +92,12 @@ function Shell() {
   // Redirige a /erp si el rol actual no tiene acceso al módulo de la URL.
   // La barrera real está en RLS; esto sólo mejora UX ante URL directa.
   const rolesReady = roles.length > 0;
+  const isRestricted = (m: ModuleKey) => restrictedModules.includes(m);
   const matched = NAV.find((n) => (n.exact ? currentPath === n.to : currentPath.startsWith(n.to)));
   const isSellerRole = roles.includes("vendedor") || roles.includes("ventas");
   const isProductionDetailPath = /^\/erp\/production\/[^/]+$/.test(currentPath);
   const sellerCanViewProductionDetail = isSellerRole && !isAdmin && isProductionDetailPath;
-  const notAllowed = !!(rolesReady && matched && !canAccess(roles as AppRole[], matched.module) && !sellerCanViewProductionDetail);
+  const notAllowed = !!(rolesReady && matched && (!canAccess(roles as AppRole[], matched.module) || isRestricted(matched.module)) && !sellerCanViewProductionDetail);
   useEffect(() => {
     if (notAllowed) {
       toast.error("No tienes acceso a esa sección.");
@@ -176,7 +177,7 @@ function Shell() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.filter((i) => canAccess(roles as AppRole[], i.module)).map((item) => {
+          {NAV.filter((i) => canAccess(roles as AppRole[], i.module) && !isRestricted(i.module)).map((item) => {
             const Icon = item.icon;
             const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
             const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
@@ -286,7 +287,7 @@ function Shell() {
                 </div>
 
                 <nav className="px-3 py-4 space-y-1">
-                  {NAV.filter((i) => canAccess(roles as AppRole[], i.module)).map((item) => {
+                  {NAV.filter((i) => canAccess(roles as AppRole[], i.module) && !isRestricted(i.module)).map((item) => {
                     const Icon = item.icon;
                     const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
                     const taskBadge = item.to === "/erp/my-tasks" && pendingTasks > 0 ? pendingTasks : 0;
