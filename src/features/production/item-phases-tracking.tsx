@@ -1,18 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Layers, Plus, Trash2, Rocket, CheckCircle2 } from "lucide-react";
+import { Loader2, Layers, Plus, Trash2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DateConfirmField } from "@/features/production/date-confirm-field";
 
 
 /**
@@ -270,76 +261,44 @@ function PhaseRow({
           onChange={(v) => { setActual(v); savePatch.mutate({ supplier_actual_date: v || null }); }} />
       </div>
 
-      <div className="flex items-center justify-between gap-2 flex-wrap pt-1 border-t border-border/60">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-          Estado fase
-        </span>
-        <div className="flex items-center gap-2 flex-wrap">
-          {!actual ? (
-            <button
-              type="button"
-              onClick={() => {
-                const today = new Date().toISOString().slice(0, 10);
-                setActual(today);
-                savePatch.mutate({ supplier_actual_date: today, started_at: new Date().toISOString(), status: "en_proceso" });
-              }}
-              disabled={savePatch.isPending}
-              className="inline-flex items-center gap-1 rounded-md bg-foreground hover:bg-foreground/90 text-background text-[11px] font-semibold px-2 py-1 disabled:opacity-50"
-              title="Marcar hoy como inicio real de esta fase (independiente de otras fases)"
-            >
-              <Rocket className="h-3 w-3" /> Inicio hoy
-            </button>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-[10.5px] text-muted-foreground">
-              Inicio: <span className="font-medium text-foreground">{actual}</span>
-            </span>
-          )}
-          {phase.finished_at ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-md px-2 py-0.5">
-              <CheckCircle2 className="h-3 w-3" /> Terminada · {new Date(phase.finished_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
-            </span>
-          ) : (
-            actual && canFinish && (
-              <button
-                type="button"
-                onClick={() => setConfirmFinish(true)}
-                disabled={savePatch.isPending}
-                className="text-[10px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50"
-                title="Marcar solo esta fase como terminada"
-              >
-                <CheckCircle2 className="h-3 w-3" /> Marcar terminada
-              </button>
-            )
-          )}
-        </div>
+      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/60">
+        <DateConfirmField
+          label="Inicio prod."
+          value={phase.started_at ? String(phase.started_at).slice(0, 10) : null}
+          disabled={!canFinish}
+          variant="inicio"
+          isSaving={savePatch.isPending}
+          confirmDescription={`Se guardará la fecha de inicio real para la fase "${phase.name}". Es independiente de las demás fases.`}
+          onSave={(v) => {
+            if (!v) return;
+            savePatch.mutate({
+              started_at: new Date(v + "T12:00:00").toISOString(),
+              status: phase.status === "pendiente" ? "en_proceso" : phase.status,
+            });
+          }}
+        />
+        <DateConfirmField
+          label="Terminado"
+          value={phase.finished_at ? String(phase.finished_at).slice(0, 10) : null}
+          disabled={!canFinish || !phase.started_at}
+          variant="terminado"
+          isSaving={savePatch.isPending}
+          confirmDescription={`Solo afecta la fase "${phase.name}". Las otras fases del producto siguen su curso de forma independiente.`}
+          onSave={(v) => {
+            if (!v) return;
+            savePatch.mutate(
+              { finished_at: new Date(v + "T12:00:00").toISOString(), status: "terminado" },
+              { onSuccess: () => toast.success(`Fase "${phase.name}" terminada`) },
+            );
+          }}
+        />
       </div>
+      {phase.finished_at && (
+        <p className="text-[10px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" /> Terminada
+        </p>
+      )}
 
-      <AlertDialog open={confirmFinish} onOpenChange={(o) => !savePatch.isPending && setConfirmFinish(o)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Marcar esta fase como terminada?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Solo afecta la fase "{phase.name}". Las otras fases del producto siguen su curso de forma independiente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={savePatch.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                savePatch.mutate(
-                  { status: "terminado", finished_at: new Date().toISOString() },
-                  { onSuccess: () => { toast.success(`Fase "${phase.name}" terminada`); setConfirmFinish(false); onChanged(); } },
-                );
-              }}
-              disabled={savePatch.isPending}
-              className="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-600"
-            >
-              {savePatch.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Marcando…</> : "Sí, terminar fase"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
     </li>
   );

@@ -3085,10 +3085,12 @@ export type Database = {
         Args: { p_item_id: string; p_note?: string }
         Returns: Json
       }
-      mark_order_item_finished: {
-        Args: { _item_id: string }
-        Returns: undefined
-      }
+      mark_order_item_finished:
+        | { Args: { _item_id: string }; Returns: undefined }
+        | {
+            Args: { _finished_at?: string; _item_id: string }
+            Returns: undefined
+          }
       mark_task_forms_done: { Args: { p_task_id: string }; Returns: Json }
       maybe_create_commission_request: {
         Args: { _order_id: string }
@@ -3173,6 +3175,14 @@ export type Database = {
       }
       unmark_order_item_finished: {
         Args: { _item_id: string; _reason: string }
+        Returns: undefined
+      }
+      update_order_item_finished_at: {
+        Args: { _finished_at: string; _item_id: string }
+        Returns: undefined
+      }
+      update_order_item_started_at: {
+        Args: { _item_id: string; _started_at: string }
         Returns: undefined
       }
       update_order_status: {

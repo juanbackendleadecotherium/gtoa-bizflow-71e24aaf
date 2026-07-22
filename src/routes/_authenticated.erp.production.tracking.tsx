@@ -17,10 +17,13 @@ import { SupplierAdvancePaymentForm } from "@/features/production/supplier-advan
 import { SupplierAdvancePaymentCard } from "@/features/production/supplier-advance-payment-card";
 import { SupplierQuickPaymentCheck } from "@/features/production/supplier-quick-payment-check";
 import { ItemPhasesTracking } from "@/features/production/item-phases-tracking";
-import { FinishItemButton } from "@/features/production/finish-item-button";
 import { InvoiceProgressPill } from "@/features/production/invoice-progress-pill";
 import { getEffectiveCost, hasNegotiation } from "@/features/production/effective-cost";
 import { useSellerRestricted } from "@/features/production/seller-restrictions";
+import { DateConfirmField } from "@/features/production/date-confirm-field";
+import { useServerFn } from "@tanstack/react-start";
+import { setItemProductionStart, setItemProductionFinish } from "@/lib/order-items-production-dates.functions";
+import { CheckCircle2 } from "lucide-react";
 
 
 
@@ -659,14 +662,26 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
-  const startProd = useMutation({
-    mutationFn: async (itemId: string) => {
-      const { error } = await supabase.rpc("start_real_production", { p_item_id: itemId });
-      if (error) throw error;
-    },
+  const startFn = useServerFn(setItemProductionStart);
+  const finishFn = useServerFn(setItemProductionFinish);
+
+  const setStart = useMutation({
+    mutationFn: (v: { itemId: string; startedAt: string; alreadyStarted: boolean }) => startFn({ data: v }),
     onSuccess: () => {
-      toast.success("Inicio real registrado y vendedor notificado");
+      toast.success("Fecha de inicio guardada");
       qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
+  const setFinish = useMutation({
+    mutationFn: (v: { itemId: string; finishedAt: string; alreadyFinished: boolean }) => finishFn({ data: v }),
+    onSuccess: () => {
+      toast.success("Fecha de terminado guardada");
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
+      qc.invalidateQueries({ queryKey: ["warehouse"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
       qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Error"),
@@ -710,7 +725,8 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
                         row={row}
                         suppliers={suppliers}
                         patchItem={patchItem}
-                        startProd={startProd}
+                        setStart={setStart}
+                        setFinish={setFinish}
                         canFinish={canFinish}
                         isAdmin={isAdmin}
                         isSellerRestricted={isSellerRestricted}
@@ -752,7 +768,8 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
                                 row={row}
                                 suppliers={suppliers}
                                 patchItem={patchItem}
-                                startProd={startProd}
+                                setStart={setStart}
+                                setFinish={setFinish}
                                 canFinish={canFinish}
                                 isAdmin={isAdmin}
                                 isSellerRestricted={isSellerRestricted}
@@ -826,13 +843,14 @@ function DateField({ label, value, onSave, readOnly, hint }: { label: string; va
 }
 
 function ProductItemBody({
-  it, row, suppliers, patchItem, startProd, canFinish, isAdmin, isSellerRestricted, canRegisterPayment,
+  it, row, suppliers, patchItem, setStart, setFinish, canFinish, isAdmin, isSellerRestricted, canRegisterPayment,
 }: {
   it: any;
   row: any;
   suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[];
   patchItem: any;
-  startProd: any;
+  setStart: any;
+  setFinish: any;
   canFinish: boolean;
   isAdmin: boolean;
   isSellerRestricted: boolean;
@@ -932,35 +950,20 @@ function ProductItemBody({
           value={it.supplier_actual_date}
           onSave={(v) => patchItem.mutate({ id: it.id, patch: { supplier_actual_date: v } })}
         />
-        {it.production_started_at ? (
-          <DateField
-            label="Inicio prod."
-            value={it.production_started_at ? String(it.production_started_at).slice(0, 10) : null}
-            onSave={(v) =>
-              patchItem.mutate({
-                id: it.id,
-                patch: { production_started_at: v ? new Date(v + "T12:00:00").toISOString() : null },
-              })
-            }
-          />
-        ) : (() => {
-          const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
-          if (sup?.requires_advance_payment) return <span className="text-[10px] text-muted-foreground self-end pb-1.5">Requiere pago anticipado ↓</span>;
-          return (
-            <button
-              type="button"
-              onClick={() => startProd.mutate(it.id)}
-              disabled={startProd.isPending && startProd.variables === it.id}
-              className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50 self-end"
-              title="Marcar inicio real de producción hoy (notifica al vendedor)"
-            >
-              {startProd.isPending && startProd.variables === it.id
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : "🚀"} Inicio hoy
-            </button>
-          );
-        })()}
+        <DateConfirmField
+          label="Inicio prod."
+          value={it.production_started_at}
+          disabled={!canFinish}
+          variant="inicio"
+          isSaving={setStart.isPending && setStart.variables?.itemId === it.id}
+          confirmDescription="Al confirmar, se marcará el inicio real de producción y (si es la primera vez) se notificará al vendedor. Verifica la fecha antes de continuar."
+          onSave={(v) => {
+            if (!v) return;
+            setStart.mutate({ itemId: it.id, startedAt: v, alreadyStarted: !!it.production_started_at });
+          }}
+        />
       </div>
+
 
       {(() => {
         const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
@@ -1000,17 +1003,25 @@ function ProductItemBody({
       </>)}
 
       {it.production_started_at && !it.has_phases && (
-        <div className="pt-1 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-            Estado producción
-          </span>
-          <FinishItemButton
-            itemId={it.id}
-            finishedAt={it.production_finished_at ?? null}
-            finishedByEmail={it.production_finished_by_email ?? null}
-            canFinish={canFinish}
-            isAdmin={isAdmin}
+        <div className="pt-1 border-t border-border/60 space-y-1">
+          <DateConfirmField
+            label="Terminado"
+            value={it.production_finished_at}
+            disabled={!canFinish}
+            variant="terminado"
+            isSaving={setFinish.isPending && setFinish.variables?.itemId === it.id}
+            confirmDescription="Al confirmar, el producto queda marcado como terminado. Si es la primera vez y todos los productos de la venta quedan terminados, se avisa al vendedor para gestionar el cobro."
+            onSave={(v) => {
+              if (!v) return;
+              setFinish.mutate({ itemId: it.id, finishedAt: v, alreadyFinished: !!it.production_finished_at });
+            }}
           />
+          {it.production_finished_at && (
+            <p className="text-[10px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" /> Terminado
+              {it.production_finished_by_email ? ` · ${it.production_finished_by_email}` : ""}
+            </p>
+          )}
         </div>
       )}
 
