@@ -662,14 +662,26 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
-  const startProd = useMutation({
-    mutationFn: async (itemId: string) => {
-      const { error } = await supabase.rpc("start_real_production", { p_item_id: itemId });
-      if (error) throw error;
-    },
+  const startFn = useServerFn(setItemProductionStart);
+  const finishFn = useServerFn(setItemProductionFinish);
+
+  const setStart = useMutation({
+    mutationFn: (v: { itemId: string; startedAt: string; alreadyStarted: boolean }) => startFn({ data: v }),
     onSuccess: () => {
-      toast.success("Inicio real registrado y vendedor notificado");
+      toast.success("Fecha de inicio guardada");
       qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+
+  const setFinish = useMutation({
+    mutationFn: (v: { itemId: string; finishedAt: string; alreadyFinished: boolean }) => finishFn({ data: v }),
+    onSuccess: () => {
+      toast.success("Fecha de terminado guardada");
+      qc.invalidateQueries({ queryKey: ["production-orders-drive"] });
+      qc.invalidateQueries({ queryKey: ["warehouse"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
       qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Error"),
