@@ -768,7 +768,8 @@ function ExpandedPanel({ row, suppliers, onPatch, canFinish, isAdmin, isSellerRe
                                 row={row}
                                 suppliers={suppliers}
                                 patchItem={patchItem}
-                                startProd={startProd}
+                                setStart={setStart}
+                                setFinish={setFinish}
                                 canFinish={canFinish}
                                 isAdmin={isAdmin}
                                 isSellerRestricted={isSellerRestricted}
