@@ -134,9 +134,10 @@ export function ItemPhasesTracking({
         <>
           <ul className="space-y-2">
             {list.map((p) => (
-              <PhaseRow key={p.id} phase={p} suppliers={suppliers} onChanged={invalidate} />
+              <PhaseRow key={p.id} phase={p} suppliers={suppliers} canFinish={canFinish} onChanged={invalidate} />
             ))}
           </ul>
+
           <div className="text-[11px] text-muted-foreground flex justify-end pt-1 border-t border-border/50">
             Costo total fases: <span className="font-semibold text-foreground tabular-nums ml-1">{fmtMoney(totalCost)}</span>
           </div>
