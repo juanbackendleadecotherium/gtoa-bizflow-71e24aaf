@@ -53,7 +53,7 @@ export function SaleFlowCard({
         <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">
-              Progreso hacia el 50% ({formatMoney(paidTotal)} de {formatMoney(total * 0.5)})
+              Progreso hacia el 30% ({formatMoney(paidTotal)} de {formatMoney(total * 0.3)})
             </span>
             <span className={`font-semibold tabular-nums ${separeDone ? "text-emerald-600" : "text-violet-600"}`}>
               {pct.toFixed(1)}%
@@ -62,16 +62,16 @@ export function SaleFlowCard({
           <div className="h-2 rounded-full bg-muted overflow-hidden">
             <div
               className={`h-full transition-all ${separeDone ? "bg-emerald-500" : "bg-violet-500"}`}
-              style={{ width: `${Math.min(100, (paidTotal / (total * 0.5 || 1)) * 100)}%` }}
+              style={{ width: `${Math.min(100, (paidTotal / (total * 0.3 || 1)) * 100)}%` }}
             />
           </div>
           {separeDone ? (
             <p className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" /> Separe completado el {new Date(order.separe_completed_at!).toLocaleDateString("es-CO")}. Ya puedes enviar a producción.
+              <CheckCircle2 className="h-3 w-3" /> 30% alcanzado el {new Date(order.separe_completed_at!).toLocaleDateString("es-CO")}. Ya puedes enviar a producción. Recuerda cobrar el 20% restante hasta el 50% del total.
             </p>
           ) : (
             <p className="text-[11px] text-muted-foreground">
-              El precio quedó congelado al crear el separe. Producción se habilita al alcanzar el 50%.
+              El precio quedó congelado al crear el separe. Producción se habilita al alcanzar el 30% del total.
             </p>
           )}
         </div>
