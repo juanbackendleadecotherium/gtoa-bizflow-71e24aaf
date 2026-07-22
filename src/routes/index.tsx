@@ -12,7 +12,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Acceso al backoffice de Grupo Getova: ERP operativo y CRM comercial para Espacio Inmobiliario, Montenegro Design, Casa Diseño y Getova.",
+          "Acceso al backoffice de Grupo Getova: ERP operativo y CRM comercial para Espacio Mobiliario, Montenegro Design, Casa Diseño y Getova.",
       },
       { property: "og:title", content: "Grupo Getova — Backoffice corporativo" },
       { property: "og:description", content: "Punto de acceso al ERP y CRM de Grupo Getova." },
