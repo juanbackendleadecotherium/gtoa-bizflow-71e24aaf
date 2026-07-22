@@ -133,19 +133,39 @@ export function OrderSellerTasksBadge({ orderId }: { orderId: string }) {
   );
 }
 
-/** Sidebar-style pending count for the current user. */
+/**
+ * Cuenta de pendientes del usuario actual, dividida entre **tareas
+ * accionables** y **notificaciones**. `data` sigue siendo un número
+ * (compatibilidad con el sidebar existente) pero también expone
+ * `data.tasks` / `data.notifications` cuando se necesita el desglose.
+ */
 export function useMyPendingTasksCount(userId: string | undefined) {
   return useQuery({
     queryKey: ["my-tasks-count", userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { count, error } = await supabase
+      const { data, error } = await supabase
         .from("seller_tasks")
-        .select("id", { count: "exact", head: true })
+        .select("type")
         .eq("seller_id", userId!)
         .eq("status", "pendiente");
       if (error) throw error;
-      return count ?? 0;
+      const rows = (data ?? []) as Array<{ type: string | null }>;
+      const { ACTIONABLE_TYPES } = await import("./task-classifier");
+      let tasks = 0;
+      let notifications = 0;
+      for (const r of rows) {
+        if (r.type && ACTIONABLE_TYPES.has(r.type)) tasks += 1;
+        else notifications += 1;
+      }
+      const total = tasks + notifications;
+      // Number-like con propiedades extra para uso avanzado
+      const value = Object.assign(Object(total), {
+        total,
+        tasks,
+        notifications,
+      }) as number & { total: number; tasks: number; notifications: number };
+      return value;
     },
   });
 }
