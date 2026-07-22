@@ -1314,9 +1314,18 @@ export function NewCustomerDialog({
 
             {subtotal > 0 && !advanceOk && (
               <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
-                El abono debe ser mínimo el 50% del total ({formatMoney(minAdvance)}). Faltan{" "}
-                <span className="font-medium">{formatMoney(Math.max(0, minAdvance - (draft.order.advance_amount || 0)))}</span>.
-                Marca <b>Plan Separe</b> o solicita aprobación gerencial para excepción.
+                {isPlanSepare ? (
+                  <>
+                    Plan Separe requiere un abono mínimo del <b>30%</b> del total ({formatMoney(minSepareAdvance)}). Faltan{" "}
+                    <span className="font-medium">{formatMoney(Math.max(0, minSepareAdvance - (draft.order.advance_amount || 0)))}</span>.
+                  </>
+                ) : (
+                  <>
+                    El abono debe ser mínimo el 50% del total ({formatMoney(minAdvance)}). Faltan{" "}
+                    <span className="font-medium">{formatMoney(Math.max(0, minAdvance - (draft.order.advance_amount || 0)))}</span>.
+                    Marca <b>Plan Separe</b> o solicita aprobación gerencial para excepción.
+                  </>
+                )}
               </div>
             )}
 
