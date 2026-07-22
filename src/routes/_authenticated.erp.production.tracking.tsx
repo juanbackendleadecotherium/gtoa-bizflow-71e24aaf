@@ -1003,17 +1003,25 @@ function ProductItemBody({
       </>)}
 
       {it.production_started_at && !it.has_phases && (
-        <div className="pt-1 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-            Estado producción
-          </span>
-          <FinishItemButton
-            itemId={it.id}
-            finishedAt={it.production_finished_at ?? null}
-            finishedByEmail={it.production_finished_by_email ?? null}
-            canFinish={canFinish}
-            isAdmin={isAdmin}
+        <div className="pt-1 border-t border-border/60 space-y-1">
+          <DateConfirmField
+            label="Terminado"
+            value={it.production_finished_at}
+            disabled={!canFinish}
+            variant="terminado"
+            isSaving={setFinish.isPending && setFinish.variables?.itemId === it.id}
+            confirmDescription="Al confirmar, el producto queda marcado como terminado. Si es la primera vez y todos los productos de la venta quedan terminados, se avisa al vendedor para gestionar el cobro."
+            onSave={(v) => {
+              if (!v) return;
+              setFinish.mutate({ itemId: it.id, finishedAt: v, alreadyFinished: !!it.production_finished_at });
+            }}
           />
+          {it.production_finished_at && (
+            <p className="text-[10px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" /> Terminado
+              {it.production_finished_by_email ? ` · ${it.production_finished_by_email}` : ""}
+            </p>
+          )}
         </div>
       )}
 
