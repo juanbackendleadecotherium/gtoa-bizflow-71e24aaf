@@ -127,10 +127,11 @@ function buildCustomerNotes(c: CustomerDraft, urgency: string) {
 async function fetchNextInvoiceNumber(brandId: string): Promise<string> {
   const { data: brand } = await supabase
     .from("brands")
-    .select("invoice_prefix")
+    .select("invoice_prefix, invoice_ignore_above")
     .eq("id", brandId)
     .maybeSingle();
   const prefix = (brand as { invoice_prefix?: string } | null)?.invoice_prefix ?? "INV";
+  const cap = (brand as { invoice_ignore_above?: number | null } | null)?.invoice_ignore_above ?? null;
 
   // Bolsa de liberados: elegir el menor
   const { data: pool } = await supabase
@@ -143,25 +144,24 @@ async function fetchNextInvoiceNumber(brandId: string): Promise<string> {
       const m = String(r.invoice_number ?? "").match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
       return m ? parseInt(m[1], 10) : NaN;
     })
-    .filter((n) => !Number.isNaN(n));
+    .filter((n) => !Number.isNaN(n) && (cap == null || n <= cap));
   if (poolNums.length > 0) {
     const min = Math.min(...poolNums);
     return `${prefix}-${String(min).padStart(4, "0")}`;
   }
 
-  // Siguiente consecutivo
+  // Siguiente consecutivo (numérico, respetando el cap para ignorar legados)
   const { data: ord } = await supabase
     .from("orders")
     .select("invoice_number")
     .eq("brand_id", brandId)
-    .ilike("invoice_number", `${prefix}-%`)
-    .order("invoice_number", { ascending: false })
-    .limit(50);
+    .ilike("invoice_number", `${prefix}-%`);
   let max = 0;
   for (const row of ord ?? []) {
     const m = String(row.invoice_number ?? "").match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
     if (m) {
       const n = parseInt(m[1], 10);
+      if (cap != null && n > cap) continue;
       if (n > max) max = n;
     }
   }
@@ -1023,8 +1023,11 @@ export function NewCustomerDialog({
               <FieldBlock label="Nro Cuenta de cobro">
                 <Input
                   value={draft.order.invoice_number}
-                  onChange={(e) => setO("invoice_number", e.target.value)}
-                  placeholder="Ej. CD-1686"
+                  placeholder="Se asigna automáticamente"
+                  readOnly
+                  tabIndex={-1}
+                  className="bg-muted/40 cursor-not-allowed"
+                  title="El consecutivo se asigna automáticamente por marca al guardar."
                 />
               </FieldBlock>
               <FieldBlock label="Nro Factura Alegra">
