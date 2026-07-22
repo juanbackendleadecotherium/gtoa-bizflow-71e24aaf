@@ -843,13 +843,14 @@ function DateField({ label, value, onSave, readOnly, hint }: { label: string; va
 }
 
 function ProductItemBody({
-  it, row, suppliers, patchItem, startProd, canFinish, isAdmin, isSellerRestricted, canRegisterPayment,
+  it, row, suppliers, patchItem, setStart, setFinish, canFinish, isAdmin, isSellerRestricted, canRegisterPayment,
 }: {
   it: any;
   row: any;
   suppliers: { id: string; name: string; requires_advance_payment?: boolean; advance_payment_pct?: number }[];
   patchItem: any;
-  startProd: any;
+  setStart: any;
+  setFinish: any;
   canFinish: boolean;
   isAdmin: boolean;
   isSellerRestricted: boolean;
