@@ -94,13 +94,13 @@ export function canSendToProduction(order: {
     return { ok: true };
   }
 
-  // Plan Separe: requiere 50% completado
+  // Plan Separe: requiere 30% completado
   if (order.sale_type === "plan_separe") {
     if (!order.separe_completed_at) {
       const pct = total > 0 ? (advance / total) * 100 : 0;
       return {
         ok: false,
-        reason: `Plan Separe: falta completar el 50% del anticipo (actual ${pct.toFixed(1)}%).`,
+        reason: `Plan Separe: falta completar el 30% del anticipo (actual ${pct.toFixed(1)}%).`,
       };
     }
   }

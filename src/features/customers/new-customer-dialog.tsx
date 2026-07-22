@@ -485,8 +485,15 @@ export function NewCustomerDialog({
       const isEntregaInmediata = draft.order.sale_type === "entrega_inmediata";
       const wantsApproval = draft.order.request_approval;
 
-      // Plan Separe, Pago Paulatino y Entrega Inmediata permiten arrancar con cualquier abono.
+      // Plan Separe: exige 30% mínimo para crearse (habilita producción).
+      // Pago Paulatino y Entrega Inmediata permiten arrancar con cualquier abono.
       // Venta normal exige 50% salvo excepción gerencial.
+      if (isPlanSepare && _advance < _subtotal * 0.3 - 0.01) {
+        throw new Error(
+          `Plan Separe requiere un abono mínimo del 30% del total (${formatMoney(_subtotal * 0.3)}). ` +
+          `Faltan ${formatMoney(Math.max(0, _subtotal * 0.3 - _advance))}.`,
+        );
+      }
       if (!isPlanSepare && !isPagoPaulatino && !isEntregaInmediata && !wantsApproval && _advance < _subtotal * 0.5 - 0.01) {
         throw new Error(
           `El abono debe ser mínimo el 50% del total (${formatMoney(_subtotal * 0.5)}). ` +
@@ -737,17 +744,23 @@ export function NewCustomerDialog({
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
   const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
   const minAdvance = subtotal * 0.5;
+  const minSepareAdvance = subtotal * 0.3;
   const isPlanSepare = draft.order.sale_type === "plan_separe";
   const isPagoPaulatino = draft.order.sale_type === "pago_paulatino";
   const isEntregaInmediata = draft.order.sale_type === "entrega_inmediata";
   const wantsApproval = draft.order.request_approval;
-  // Plan Separe permite arrancar con cualquier abono. Pago Paulatino también
-  // (vendedor autoriza y queda registrado). Aprobación gerencial exime del 50%.
-  // Entrega inmediata también permite cualquier abono (el 50% habilita el envío a logística).
+  // Plan Separe exige 30% mínimo. Pago Paulatino y Entrega Inmediata permiten
+  // arrancar con cualquier abono. Aprobación gerencial exime del 50%.
   // Solo la venta normal sin excepción exige el 50%.
   const advanceOk =
     subtotal > 0 &&
-    (isPlanSepare || isPagoPaulatino || isEntregaInmediata || wantsApproval || (draft.order.advance_amount || 0) >= minAdvance - 0.01);
+    (
+      (isPlanSepare && (draft.order.advance_amount || 0) >= minSepareAdvance - 0.01) ||
+      isPagoPaulatino ||
+      isEntregaInmediata ||
+      wantsApproval ||
+      (!isPlanSepare && (draft.order.advance_amount || 0) >= minAdvance - 0.01)
+    );
   const paymentMethodOk = !!draft.order.payment_method;
   // Cuando el abono es 0 (típico de Plan Separe) no exigimos cuenta destino.
   const depositAccountOk =
@@ -1177,7 +1190,7 @@ export function NewCustomerDialog({
                   }`}>
                   <div className="text-sm font-medium">Plan Separe</div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    Congela precio con abono parcial. Producción arranca al 50%.
+                    Congela precio con 30% de abono. Producción arranca al 30%; cobra el 20% restante hasta el 50%.
                   </div>
                 </button>
                 <button type="button"
@@ -1236,7 +1249,7 @@ export function NewCustomerDialog({
                 </Select>
               </FieldBlock>
               <FieldBlock label={isPlanSepare
-                ? "Abono inicial (opcional en Plan Separe)"
+                ? `Abono * (mín. 30% del total${subtotal > 0 ? ` — ${formatMoney(minSepareAdvance)}` : ""})`
                 : isPagoPaulatino
                 ? "Abono inicial (opcional en Pago Paulatino)"
                 : isEntregaInmediata
@@ -1301,9 +1314,18 @@ export function NewCustomerDialog({
 
             {subtotal > 0 && !advanceOk && (
               <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
-                El abono debe ser mínimo el 50% del total ({formatMoney(minAdvance)}). Faltan{" "}
-                <span className="font-medium">{formatMoney(Math.max(0, minAdvance - (draft.order.advance_amount || 0)))}</span>.
-                Marca <b>Plan Separe</b> o solicita aprobación gerencial para excepción.
+                {isPlanSepare ? (
+                  <>
+                    Plan Separe requiere un abono mínimo del <b>30%</b> del total ({formatMoney(minSepareAdvance)}). Faltan{" "}
+                    <span className="font-medium">{formatMoney(Math.max(0, minSepareAdvance - (draft.order.advance_amount || 0)))}</span>.
+                  </>
+                ) : (
+                  <>
+                    El abono debe ser mínimo el 50% del total ({formatMoney(minAdvance)}). Faltan{" "}
+                    <span className="font-medium">{formatMoney(Math.max(0, minAdvance - (draft.order.advance_amount || 0)))}</span>.
+                    Marca <b>Plan Separe</b> o solicita aprobación gerencial para excepción.
+                  </>
+                )}
               </div>
             )}
 
