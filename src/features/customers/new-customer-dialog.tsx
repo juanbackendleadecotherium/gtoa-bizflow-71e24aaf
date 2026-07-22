@@ -1249,7 +1249,7 @@ export function NewCustomerDialog({
                 </Select>
               </FieldBlock>
               <FieldBlock label={isPlanSepare
-                ? "Abono inicial (opcional en Plan Separe)"
+                ? `Abono * (mín. 30% del total${subtotal > 0 ? ` — ${formatMoney(minSepareAdvance)}` : ""})`
                 : isPagoPaulatino
                 ? "Abono inicial (opcional en Pago Paulatino)"
                 : isEntregaInmediata
