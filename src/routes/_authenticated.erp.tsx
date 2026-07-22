@@ -63,7 +63,7 @@ const NAV: NavItem[] = [
   { label: "Bodega", to: "/erp/warehouse", icon: Boxes, module: "warehouse" },
   { label: "Logística", to: "/erp/logistics/pickups", icon: Truck, module: "logistics" },
   { label: "Gráficas ERP", to: "/erp/analytics", icon: BarChart3, module: "analytics" },
-  { label: "Mis tareas", to: "/erp/my-tasks", icon: ListTodo, module: "my_tasks" },
+  { label: "Bandeja", to: "/erp/my-tasks", icon: ListTodo, module: "my_tasks" },
   { label: "Finanzas", to: "/erp/finance", icon: Wallet, module: "finance" },
   { label: "Pagos a proveedores", to: "/erp/finance/supplier-payments", icon: DollarSign, module: "supplier_payments" },
   { label: "Estados", to: "/erp/settings/statuses", icon: Settings, module: "estados" },

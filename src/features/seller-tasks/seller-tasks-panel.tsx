@@ -133,7 +133,9 @@ export function OrderSellerTasksBadge({ orderId }: { orderId: string }) {
   );
 }
 
-/** Sidebar-style pending count for the current user. */
+import { ACTIONABLE_TYPES } from "./task-classifier";
+
+/** Cuenta pendiente total (tareas + notificaciones) para el sidebar. */
 export function useMyPendingTasksCount(userId: string | undefined) {
   return useQuery({
     queryKey: ["my-tasks-count", userId],
@@ -146,6 +148,30 @@ export function useMyPendingTasksCount(userId: string | undefined) {
         .eq("status", "pendiente");
       if (error) throw error;
       return count ?? 0;
+    },
+  });
+}
+
+/** Desglose pendiente entre tareas accionables y notificaciones. */
+export function useMyPendingBreakdown(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["my-tasks-breakdown", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("seller_tasks")
+        .select("type")
+        .eq("seller_id", userId!)
+        .eq("status", "pendiente");
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{ type: string | null }>;
+      let tasks = 0;
+      let notifications = 0;
+      for (const r of rows) {
+        if (r.type && ACTIONABLE_TYPES.has(r.type)) tasks += 1;
+        else notifications += 1;
+      }
+      return { tasks, notifications, total: tasks + notifications };
     },
   });
 }
