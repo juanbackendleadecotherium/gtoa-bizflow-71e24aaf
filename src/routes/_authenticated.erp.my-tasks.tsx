@@ -172,33 +172,122 @@ function MyTasks() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
+  const markAllSeen = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from("seller_tasks")
+        .update({ status: "resuelta", resolved_at: new Date().toISOString() })
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Notificaciones archivadas");
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-count"] });
+      qc.invalidateQueries({ queryKey: ["my-tasks-breakdown"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
 
-  const tasks = q.data ?? [];
-  const total = tasks.length;
+  const allTasks = q.data ?? [];
+  const taskItems = useMemo(
+    () => allTasks.filter((t) => classifyTaskType(t.type) === "task"),
+    [allTasks],
+  );
+  const notificationItems = useMemo(
+    () => allTasks.filter((t) => classifyTaskType(t.type) === "notification"),
+    [allTasks],
+  );
+  const pendingTaskCount = useMemo(
+    () => allTasks.filter((t) => classifyTaskType(t.type) === "task" && t.status === "pendiente").length,
+    [allTasks],
+  );
+  const pendingNotifCount = useMemo(
+    () => allTasks.filter((t) => classifyTaskType(t.type) === "notification" && t.status === "pendiente").length,
+    [allTasks],
+  );
+
+  const currentList = view === "task" ? taskItems : notificationItems;
+  const total = currentList.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, totalPages);
   const startIdx = (currentPage - 1) * pageSize;
   const endIdx = Math.min(startIdx + pageSize, total);
-  const pagedTasks = useMemo(() => tasks.slice(startIdx, endIdx), [tasks, startIdx, endIdx]);
+  const pagedTasks = useMemo(() => currentList.slice(startIdx, endIdx), [currentList, startIdx, endIdx]);
+  const unreadNotifIds = useMemo(
+    () => notificationItems.filter((t) => t.status === "pendiente").map((t) => t.id),
+    [notificationItems],
+  );
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold flex items-center gap-2">
-          <ListTodo className="h-5 w-5 text-primary" /> Mis tareas
+          <Inbox className="h-5 w-5 text-primary" /> Bandeja
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Pendientes que producción te devolvió. Resuélvelas para no detener la venta.
+          Tus <strong>tareas</strong> son acciones que debes completar para desbloquear el flujo.
+          Las <strong>notificaciones</strong> son avisos de otros procesos — puedes marcarlas como vistas.
         </p>
+      </div>
+
+      {/* Selector Tareas vs Notificaciones */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setView("task")}
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium border transition-colors ${
+            view === "task"
+              ? "border-amber-500/60 bg-amber-500/10 text-amber-800 dark:text-amber-200 shadow-sm"
+              : "border-border bg-surface text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <ListTodo className="h-4 w-4" /> Tareas
+          {pendingTaskCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold bg-amber-600 text-white">
+              {pendingTaskCount}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("notification")}
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium border transition-colors ${
+            view === "notification"
+              ? "border-blue-500/60 bg-blue-500/10 text-blue-800 dark:text-blue-200 shadow-sm"
+              : "border-border bg-surface text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Bell className="h-4 w-4" /> Notificaciones
+          {pendingNotifCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold bg-blue-600 text-white">
+              {pendingNotifCount}
+            </span>
+          )}
+        </button>
+        {view === "notification" && tab === "pendiente" && unreadNotifIds.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto gap-1.5 h-9"
+            onClick={() => markAllSeen.mutate(unreadNotifIds)}
+            disabled={markAllSeen.isPending}
+          >
+            {markAllSeen.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCheck className="h-3.5 w-3.5" />}
+            Marcar todas como vistas
+          </Button>
+        )}
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as "pendiente" | "resuelta")}>
         <TabsList>
           <TabsTrigger value="pendiente" className="gap-2">
-            <AlertTriangle className="h-3.5 w-3.5" /> Pendientes
+            {view === "task" ? <AlertTriangle className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+            {view === "task" ? "Pendientes" : "No leídas"}
           </TabsTrigger>
           <TabsTrigger value="resuelta" className="gap-2">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Resueltas
+            <CheckCircle2 className="h-3.5 w-3.5" /> {view === "task" ? "Resueltas" : "Archivadas"}
           </TabsTrigger>
         </TabsList>
         <TabsContent value={tab} className="mt-4 space-y-3">
