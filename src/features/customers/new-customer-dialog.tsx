@@ -1023,8 +1023,11 @@ export function NewCustomerDialog({
               <FieldBlock label="Nro Cuenta de cobro">
                 <Input
                   value={draft.order.invoice_number}
-                  onChange={(e) => setO("invoice_number", e.target.value)}
-                  placeholder="Ej. CD-1686"
+                  placeholder="Se asigna automáticamente"
+                  readOnly
+                  tabIndex={-1}
+                  className="bg-muted/40 cursor-not-allowed"
+                  title="El consecutivo se asigna automáticamente por marca al guardar."
                 />
               </FieldBlock>
               <FieldBlock label="Nro Factura Alegra">
