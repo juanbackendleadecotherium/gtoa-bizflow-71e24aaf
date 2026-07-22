@@ -1,0 +1,1 @@
+UPDATE public.brands SET invoice_ignore_above = 1000 WHERE invoice_prefix IN ('CD','EM','GT') AND invoice_ignore_above IS NULL;
