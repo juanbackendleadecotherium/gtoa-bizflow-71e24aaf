@@ -54,12 +54,15 @@ export function ItemPhasesTracking({
   orderId,
   brandId,
   suppliers,
+  canFinish = false,
 }: {
   orderItemId: string;
   orderId: string;
   brandId: string;
   suppliers: { id: string; name: string }[];
+  canFinish?: boolean;
 }) {
+
   const qc = useQueryClient();
 
   const q = useQuery({
