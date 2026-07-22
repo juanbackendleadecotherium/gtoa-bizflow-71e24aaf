@@ -14,6 +14,7 @@ export type PlanimetryItem = {
 export type PlanimetryDocumentData = {
   production_code: string;
   invoice_number: string | null;
+  alegra_invoice_number?: string | null;
   order_number: string;
   sale_date?: string | null;
   estimated_delivery_date?: string | null;
