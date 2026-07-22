@@ -296,15 +296,24 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
               </View>
 
               <View style={styles.headerRight}>
-                <Text style={styles.factLabel}>
-                  {data.invoice_number ? "NRO FACT" : "PEDIDO"}
-                </Text>
-                <Text style={styles.factNumber}>{factNumber}</Text>
                 {data.alegra_invoice_number ? (
-                  <Text style={[styles.prodCode, { marginTop: 3 }]}>
-                    ALEGRA: {data.alegra_invoice_number}
-                  </Text>
-                ) : null}
+                  <>
+                    <Text style={styles.factLabel}>FACTURA ALEGRA</Text>
+                    <Text style={styles.factNumber}>{data.alegra_invoice_number}</Text>
+                    <Text style={[styles.prodCode, { marginTop: 4 }]}>
+                      {data.invoice_number
+                        ? `ERP: ${data.invoice_number}`
+                        : `PEDIDO: ${data.order_number}`}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.factLabel}>
+                      {data.invoice_number ? "NRO FACT" : "PEDIDO"}
+                    </Text>
+                    <Text style={styles.factNumber}>{factNumber}</Text>
+                  </>
+                )}
                 <Text style={styles.prodCode}>{data.production_code}</Text>
                 {data.items.length > 1 && (
                   <Text style={[styles.prodCode, { marginTop: 2 }]}>
