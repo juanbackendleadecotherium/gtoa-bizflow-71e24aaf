@@ -999,7 +999,7 @@ function ProductItemBody({
       })()}
       </>)}
 
-      {it.production_started_at && (
+      {it.production_started_at && !it.has_phases && (
         <div className="pt-1 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
             Estado producción
@@ -1013,6 +1013,7 @@ function ProductItemBody({
           />
         </div>
       )}
+
     </>
   );
 }
