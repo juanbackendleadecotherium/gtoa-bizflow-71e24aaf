@@ -90,7 +90,7 @@ async function buildPlanData(
 ): Promise<PlanimetryDocumentData> {
   const [orderRes, brandRes, userRes] = await Promise.all([
     supabase.from("orders").select(`
-      order_number, invoice_number, sale_date, estimated_delivery_date, notes,
+      order_number, invoice_number, alegra_invoice_number, sale_date, estimated_delivery_date, notes,
       customer_name, customer_phone, customer_city, created_by,
       items:order_items(id, description, quantity, images, sort_order, planimetry_files, is_standard_product)
     `).eq("id", orderId).maybeSingle(),
@@ -147,6 +147,7 @@ async function buildPlanData(
   return {
     production_code: productionCode,
     invoice_number: order.invoice_number,
+    alegra_invoice_number: (order as any).alegra_invoice_number ?? null,
     order_number: order.order_number,
     sale_date: order.sale_date,
     estimated_delivery_date: order.estimated_delivery_date,

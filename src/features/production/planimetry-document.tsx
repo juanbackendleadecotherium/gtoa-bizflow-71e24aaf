@@ -14,6 +14,7 @@ export type PlanimetryItem = {
 export type PlanimetryDocumentData = {
   production_code: string;
   invoice_number: string | null;
+  alegra_invoice_number?: string | null;
   order_number: string;
   sale_date?: string | null;
   estimated_delivery_date?: string | null;
@@ -299,6 +300,11 @@ export function PlanimetryDocument({ data }: { data: PlanimetryDocumentData }) {
                   {data.invoice_number ? "NRO FACT" : "PEDIDO"}
                 </Text>
                 <Text style={styles.factNumber}>{factNumber}</Text>
+                {data.alegra_invoice_number ? (
+                  <Text style={[styles.prodCode, { marginTop: 3 }]}>
+                    ALEGRA: {data.alegra_invoice_number}
+                  </Text>
+                ) : null}
                 <Text style={styles.prodCode}>{data.production_code}</Text>
                 {data.items.length > 1 && (
                   <Text style={[styles.prodCode, { marginTop: 2 }]}>
