@@ -355,11 +355,17 @@ function MyTasks() {
                 Reintentar
               </Button>
             </div>
-          ) : tasks.length === 0 ? (
+          ) : total === 0 ? (
             <div className="rounded-xl border border-dashed border-border p-12 text-center">
-              <ListTodo className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              {view === "task" ? (
+                <ListTodo className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              ) : (
+                <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              )}
               <p className="text-sm font-medium">
-                {tab === "pendiente" ? "Sin tareas pendientes 🎉" : "Aún no has resuelto tareas."}
+                {view === "task"
+                  ? tab === "pendiente" ? "Sin tareas pendientes 🎉" : "Aún no has resuelto tareas."
+                  : tab === "pendiente" ? "Sin notificaciones nuevas" : "Aún no has archivado notificaciones."}
               </p>
             </div>
           ) : (
