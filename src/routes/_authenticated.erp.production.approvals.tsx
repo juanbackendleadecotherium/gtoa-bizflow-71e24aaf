@@ -55,7 +55,7 @@ function ApprovalsPage() {
   const accept = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("production_orders")
-        .update({ status: "en_proceso", novedad: "produccion" }).eq("id", id);
+        .update({ status: "en_proceso", novedad: "pendiente" }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
