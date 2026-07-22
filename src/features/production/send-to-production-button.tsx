@@ -147,6 +147,7 @@ async function buildPlanData(
   return {
     production_code: productionCode,
     invoice_number: order.invoice_number,
+    alegra_invoice_number: (order as any).alegra_invoice_number ?? null,
     order_number: order.order_number,
     sale_date: order.sale_date,
     estimated_delivery_date: order.estimated_delivery_date,
