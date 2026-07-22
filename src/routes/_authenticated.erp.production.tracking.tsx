@@ -950,35 +950,20 @@ function ProductItemBody({
           value={it.supplier_actual_date}
           onSave={(v) => patchItem.mutate({ id: it.id, patch: { supplier_actual_date: v } })}
         />
-        {it.production_started_at ? (
-          <DateField
-            label="Inicio prod."
-            value={it.production_started_at ? String(it.production_started_at).slice(0, 10) : null}
-            onSave={(v) =>
-              patchItem.mutate({
-                id: it.id,
-                patch: { production_started_at: v ? new Date(v + "T12:00:00").toISOString() : null },
-              })
-            }
-          />
-        ) : (() => {
-          const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
-          if (sup?.requires_advance_payment) return <span className="text-[10px] text-muted-foreground self-end pb-1.5">Requiere pago anticipado ↓</span>;
-          return (
-            <button
-              type="button"
-              onClick={() => startProd.mutate(it.id)}
-              disabled={startProd.isPending && startProd.variables === it.id}
-              className="text-[10px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1.5 whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50 self-end"
-              title="Marcar inicio real de producción hoy (notifica al vendedor)"
-            >
-              {startProd.isPending && startProd.variables === it.id
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : "🚀"} Inicio hoy
-            </button>
-          );
-        })()}
+        <DateConfirmField
+          label="Inicio prod."
+          value={it.production_started_at}
+          disabled={!canFinish}
+          variant="inicio"
+          isSaving={setStart.isPending && setStart.variables?.itemId === it.id}
+          confirmDescription="Al confirmar, se marcará el inicio real de producción y (si es la primera vez) se notificará al vendedor. Verifica la fecha antes de continuar."
+          onSave={(v) => {
+            if (!v) return;
+            setStart.mutate({ itemId: it.id, startedAt: v, alreadyStarted: !!it.production_started_at });
+          }}
+        />
       </div>
+
 
       {(() => {
         const sup = it.supplier_id ? suppliers.find((s) => s.id === it.supplier_id) : null;
