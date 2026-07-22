@@ -1190,7 +1190,7 @@ export function NewCustomerDialog({
                   }`}>
                   <div className="text-sm font-medium">Plan Separe</div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    Congela precio con abono parcial. Producción arranca al 50%.
+                    Congela precio con 30% de abono. Producción arranca al 30%; cobra el 20% restante hasta el 50%.
                   </div>
                 </button>
                 <button type="button"
