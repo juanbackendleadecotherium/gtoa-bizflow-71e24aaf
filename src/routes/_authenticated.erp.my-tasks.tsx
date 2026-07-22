@@ -51,13 +51,14 @@ function MyTasks() {
   const qc = useQueryClient();
   const { isAdmin } = useBrand();
   const userId = session.session?.user.id;
+  const [view, setView] = useState<"task" | "notification">("task");
   const [tab, setTab] = useState<"pendiente" | "resuelta">("pendiente");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     setPage(1);
-  }, [tab, pageSize]);
+  }, [tab, pageSize, view]);
 
   // Realtime: any change on seller_tasks for this user + orders (approval flips) refresh instantly
   useRealtimeSync(
