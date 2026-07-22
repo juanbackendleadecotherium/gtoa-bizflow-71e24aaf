@@ -150,12 +150,16 @@ export function ItemPhasesTracking({
 function PhaseRow({
   phase,
   suppliers,
+  canFinish,
   onChanged,
 }: {
   phase: Phase;
   suppliers: { id: string; name: string }[];
+  canFinish: boolean;
   onChanged: () => void;
 }) {
+  const [confirmFinish, setConfirmFinish] = useState(false);
+
   const [name, setName] = useState(phase.name);
   const [supplierId, setSupplierId] = useState(phase.supplier_id ?? "");
   const [cost, setCost] = useState<string>(
