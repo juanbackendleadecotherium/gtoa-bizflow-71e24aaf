@@ -744,17 +744,23 @@ export function NewCustomerDialog({
   const subtotal = draft.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
   const saldo = Math.max(0, subtotal - (draft.order.advance_amount || 0));
   const minAdvance = subtotal * 0.5;
+  const minSepareAdvance = subtotal * 0.3;
   const isPlanSepare = draft.order.sale_type === "plan_separe";
   const isPagoPaulatino = draft.order.sale_type === "pago_paulatino";
   const isEntregaInmediata = draft.order.sale_type === "entrega_inmediata";
   const wantsApproval = draft.order.request_approval;
-  // Plan Separe permite arrancar con cualquier abono. Pago Paulatino también
-  // (vendedor autoriza y queda registrado). Aprobación gerencial exime del 50%.
-  // Entrega inmediata también permite cualquier abono (el 50% habilita el envío a logística).
+  // Plan Separe exige 30% mínimo. Pago Paulatino y Entrega Inmediata permiten
+  // arrancar con cualquier abono. Aprobación gerencial exime del 50%.
   // Solo la venta normal sin excepción exige el 50%.
   const advanceOk =
     subtotal > 0 &&
-    (isPlanSepare || isPagoPaulatino || isEntregaInmediata || wantsApproval || (draft.order.advance_amount || 0) >= minAdvance - 0.01);
+    (
+      (isPlanSepare && (draft.order.advance_amount || 0) >= minSepareAdvance - 0.01) ||
+      isPagoPaulatino ||
+      isEntregaInmediata ||
+      wantsApproval ||
+      (!isPlanSepare && (draft.order.advance_amount || 0) >= minAdvance - 0.01)
+    );
   const paymentMethodOk = !!draft.order.payment_method;
   // Cuando el abono es 0 (típico de Plan Separe) no exigimos cuenta destino.
   const depositAccountOk =
