@@ -485,8 +485,15 @@ export function NewCustomerDialog({
       const isEntregaInmediata = draft.order.sale_type === "entrega_inmediata";
       const wantsApproval = draft.order.request_approval;
 
-      // Plan Separe, Pago Paulatino y Entrega Inmediata permiten arrancar con cualquier abono.
+      // Plan Separe: exige 30% mínimo para crearse (habilita producción).
+      // Pago Paulatino y Entrega Inmediata permiten arrancar con cualquier abono.
       // Venta normal exige 50% salvo excepción gerencial.
+      if (isPlanSepare && _advance < _subtotal * 0.3 - 0.01) {
+        throw new Error(
+          `Plan Separe requiere un abono mínimo del 30% del total (${formatMoney(_subtotal * 0.3)}). ` +
+          `Faltan ${formatMoney(Math.max(0, _subtotal * 0.3 - _advance))}.`,
+        );
+      }
       if (!isPlanSepare && !isPagoPaulatino && !isEntregaInmediata && !wantsApproval && _advance < _subtotal * 0.5 - 0.01) {
         throw new Error(
           `El abono debe ser mínimo el 50% del total (${formatMoney(_subtotal * 0.5)}). ` +
